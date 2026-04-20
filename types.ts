@@ -37,7 +37,7 @@ export interface Transaction {
   date: string;
   items: CartItem[];
   total: number;
-  status: 'completed' | 'refunded';
+  status: 'pending' | 'preparing' | 'ready' | 'completed' | 'refunded';
   paymentMethod: 'cash' | 'card' | 'online';
 }
 
@@ -64,6 +64,14 @@ export interface AppSettings {
   };
 }
 
-export type ThemeColor = 'gold' | 'brown' | 'teal' | 'light';
+export type UserRole = 'admin' | 'manager' | 'cashier' | 'kitchen';
 
-export type SystemMode = 'cafe' | 'market' | 'restaurant' | 'retail';
+export interface Employee {
+  uid: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  permissions: string[];
+  employeeId: string;
+  joinedAt: string;
+}
