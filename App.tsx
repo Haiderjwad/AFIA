@@ -11,6 +11,8 @@ import SettingsView from './components/SettingsView';
 import LoginView from './components/LoginView';
 import KitchenView from './components/KitchenView';
 import SalesView from './components/SalesView';
+import TopHeader from './components/TopHeader';
+import LowStockAlert from './components/LowStockAlert';
 import { CartItem, MenuItem, Transaction, AppSettings, Employee } from './types';
 import { CURRENCY, DEFAULT_SETTINGS } from './constants';
 import { X, CheckCircle, Wifi, WifiOff, Globe } from 'lucide-react';
@@ -55,6 +57,8 @@ const App: React.FC = () => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [activeLowStockAlert, setActiveLowStockAlert] = useState<MenuItem | null>(null);
+  const [alertedIds, setAlertedIds] = useState<Set<string>>(new Set());
 
   // Data State (Loaded from DB)
   const [products, setProducts] = useState<MenuItem[]>([]);
@@ -229,7 +233,6 @@ const App: React.FC = () => {
     }
 
     // 2. Finalize Transaction
-    // We update status and payment method
     const transRef = doc(firestoreDb, "transactions", transactionId);
     await updateDoc(transRef, {
       status: 'completed',
@@ -239,12 +242,38 @@ const App: React.FC = () => {
 
   const handleSidebarNavigation = (tab: string) => {
     setActiveTab(tab);
-    setIsProductMenuOpen(false); // Ensure product menu closes when navigating
+    setIsProductMenuOpen(false);
   };
 
   // Calculate Low Stock Items
   const lowStockItems = useMemo(() => {
     return products.filter(p => p.stock <= settings.lowStockThreshold);
+  }, [products, settings.lowStockThreshold]);
+
+  // Monitor for new local stock alerts
+  useEffect(() => {
+    const newLowStockItem = products.find(p =>
+      p.stock <= settings.lowStockThreshold && !alertedIds.has(p.id)
+    );
+
+    if (newLowStockItem) {
+      setActiveLowStockAlert(newLowStockItem);
+      setAlertedIds(prev => new Set(prev).add(newLowStockItem.id));
+    }
+
+    // Clear alerted flag if stock is replenished
+    const replenishedIds = Array.from(alertedIds).filter(id => {
+      const p = products.find(prod => prod.id === id);
+      return p && p.stock > settings.lowStockThreshold;
+    });
+
+    if (replenishedIds.length > 0) {
+      setAlertedIds(prev => {
+        const next = new Set(prev);
+        replenishedIds.forEach(id => next.delete(id));
+        return next;
+      });
+    }
   }, [products, settings.lowStockThreshold]);
 
   // Cart Logic
@@ -278,7 +307,6 @@ const App: React.FC = () => {
 
   const clearCart = () => setCart([]);
 
-
   const handleAddProduct = async (newProduct: MenuItem) => {
     await firestoreService.addProduct(newProduct);
   };
@@ -292,15 +320,28 @@ const App: React.FC = () => {
     await firestoreService.deleteProduct(id);
   };
 
-
   const handleDashboardNavigate = (view: string, subTab?: string) => {
     setActiveTab(view);
-    setIsProductMenuOpen(false); // Also close menu when navigating from dashboard cards
+    setIsProductMenuOpen(false);
     if (view === 'settings' && subTab) {
       setSettingsTab(subTab as 'general' | 'payments');
     } else {
       setSettingsTab('general');
     }
+  };
+
+  const getActiveTabTitle = () => {
+    const titles: any = {
+      dashboard: 'الرئيسة',
+      sales: 'المبيعات',
+      kitchen: 'المطبخ',
+      invoices: 'الفواتير',
+      inventory: 'المخزون',
+      suppliers: 'الموردين',
+      reports: 'التقارير المفصلة',
+      settings: 'الإعدادات'
+    };
+    return titles[activeTab] || 'نظام نقطة البيع';
   };
 
   // View Routing based on Permissions
@@ -385,7 +426,7 @@ const App: React.FC = () => {
         break;
     }
 
-    // Default Fallback for roles
+    // Default Fallback
     if (role === 'kitchen') return <KitchenView isOnline={isOnline} />;
     return <Dashboard
       onProductClick={() => setActiveTab('sales')}
@@ -397,7 +438,6 @@ const App: React.FC = () => {
     />;
   };
 
-  // If system is loading data or auth is resolving
   if (isLoading || isAuthLoading) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-[#f8f5f2] gap-4">
@@ -407,28 +447,32 @@ const App: React.FC = () => {
     );
   }
 
-  // If not authenticated, show login
   if (!isAuthenticated) {
     return <LoginView onLogin={handleLogin} />;
   }
 
-  // Authenticated App Layout
   return (
     <div className={`flex h-screen w-full bg-[#f8f5f2] font-sans overflow-hidden transition-colors duration-500`}>
-
-      {/* Navigation */}
       <Sidebar
         activeItem={activeTab}
         setActiveItem={handleSidebarNavigation}
-        onLogout={handleLogout}
         user={currentUser}
       />
 
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden relative transition-all">
+        <TopHeader
+          user={currentUser}
+          onLogout={handleLogout}
+          notifications={notifications}
+          readyOrders={transactions.filter(t => t.status === 'ready')}
+          lowStockItems={lowStockItems}
+          onCompleteOrder={handleSendToCashier}
+          onNavigate={handleDashboardNavigate}
+          isOnline={isOnline}
+          activeTabTitle={getActiveTabTitle()}
+        />
         {renderContent()}
 
-        {/* Product Selection Modal */}
         {isProductMenuOpen && (
           <div
             className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-10 backdrop-blur-sm animate-in fade-in duration-200"
@@ -465,7 +509,6 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* Success Payment Modal */}
         {showSuccessModal && (
           <div className="absolute inset-0 bg-black/60 z-[60] flex items-center justify-center backdrop-blur-sm">
             <div className="bg-white rounded-3xl p-10 flex flex-col items-center gap-6 shadow-2xl animate-in zoom-in-95 duration-300 max-w-sm text-center">
@@ -492,7 +535,6 @@ const App: React.FC = () => {
         />
       )}
 
-      {/* Global Connectivity Toasts */}
       {showStatusToast !== 'none' && (
         <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-bottom-10 duration-500">
           {showStatusToast === 'offline' ? (
@@ -518,7 +560,17 @@ const App: React.FC = () => {
           )}
         </div>
       )}
-
+      {/* Low Stock Alert Toast */}
+      {activeLowStockAlert && (
+        <LowStockAlert
+          item={activeLowStockAlert}
+          onClose={() => setActiveLowStockAlert(null)}
+          onNavigateToInventory={() => {
+            handleDashboardNavigate('inventory');
+            setActiveLowStockAlert(null);
+          }}
+        />
+      )}
     </div>
   );
 };

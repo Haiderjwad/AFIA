@@ -3,7 +3,9 @@ import React, { useState, useRef } from 'react';
 import {
     X, QrCode, Download, Printer, Layout,
     CheckCircle2, Palette, Eye, Share2, FileText,
-    Smartphone, Sparkles, Image as ImageIcon
+    Smartphone, Sparkles, Image as ImageIcon,
+    Brush, Type, Settings2, Languages,
+    ArrowRightCircle, MonitorSmartphone
 } from 'lucide-react';
 import { MenuItem } from '../types';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -19,13 +21,33 @@ interface DigitalMenuModalProps {
 
 const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, onClose, storeName }) => {
     const [selectedProducts, setSelectedProducts] = useState<string[]>(products.map(p => p.id));
-    const [theme, setTheme] = useState<'gold' | 'dark' | 'minimal'>('gold');
+    const [theme, setTheme] = useState<'gold' | 'dark' | 'coffee' | 'modern'>('gold');
     const [layout, setLayout] = useState<'grid' | 'list'>('grid');
-    const [showPreview, setShowPreview] = useState(false);
+    const [storeDescription, setStoreDescription] = useState('أهلاً بكم في متجرنا، نقدّم لكم أجود أنواع المأكولات والمشروبات المحضّرة بحب.');
+    const [activeTab, setActiveTab] = useState<'design' | 'content'>('design');
+
     const previewRef = useRef<HTMLDivElement>(null);
-    const qrRef = useRef<HTMLDivElement>(null);
+    const posterRef = useRef<HTMLDivElement>(null);
 
     if (!isOpen) return null;
+
+    const exportProfessionalPDF = async () => {
+        if (!posterRef.current) return;
+
+        const canvas = await html2canvas(posterRef.current, {
+            scale: 3,
+            useCORS: true,
+            backgroundColor: '#ffffff'
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`Menu_Poster_${storeName}.pdf`);
+    };
 
     const toggleProduct = (id: string) => {
         setSelectedProducts(prev =>
@@ -33,207 +55,214 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
         );
     };
 
-    const exportPDF = async () => {
-        if (!previewRef.current) return;
-
-        // Create a temporary container for the print view
-        const canvas = await html2canvas(previewRef.current, {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: theme === 'dark' ? '#1a1a1a' : '#ffffff'
-        });
-
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF({
-            orientation: 'portrait',
-            unit: 'px',
-            format: [canvas.width / 2, canvas.height / 2]
-        });
-
-        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
-        pdf.save(`${storeName}-Menu.pdf`);
-    };
-
-    const exportQRCode = async () => {
-        if (!qrRef.current) return;
-        const canvas = await html2canvas(qrRef.current, { scale: 2 });
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF();
-        pdf.text('منيو المتجر الإلكتروني', 105, 40, { align: 'center' });
-        pdf.addImage(imgData, 'PNG', 55, 60, 100, 100);
-        pdf.text(storeName, 105, 170, { align: 'center' });
-        pdf.save(`${storeName}-QR-Code.pdf`);
-    };
-
     const filteredProducts = products.filter(p => selectedProducts.includes(p.id));
 
+    const themeConfig = {
+        gold: { bg: 'bg-[#fdfaf5]', text: 'text-coffee-900', accent: 'bg-gold-500', card: 'bg-white border-gold-100', secondary: 'text-gold-600' },
+        dark: { bg: 'bg-[#0f172a]', text: 'text-white', accent: 'bg-blue-500', card: 'bg-white/5 border-white/10', secondary: 'text-blue-400' },
+        coffee: { bg: 'bg-[#faf7f2]', text: 'text-[#4a3728]', accent: 'bg-[#8c6d46]', card: 'bg-white border-[#e0d6cc]', secondary: 'text-[#8c6d46]' },
+        modern: { bg: 'bg-white', text: 'text-gray-900', accent: 'bg-black', card: 'bg-gray-50 border-gray-100', secondary: 'text-gray-500' }
+    };
+
+    const currentTheme = themeConfig[theme];
+
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in" dir="rtl">
-            <div className="bg-white w-full max-w-6xl h-[90vh] rounded-[3rem] shadow-2xl overflow-hidden flex flex-col md:flex-row animate-in zoom-in-95">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300" dir="rtl">
+            <div className="bg-white w-full max-w-7xl h-[92vh] rounded-[3.5rem] shadow-3xl overflow-hidden flex flex-col md:flex-row animate-in zoom-in-95 duration-500">
 
-                {/* Left Side: Configuration (40%) */}
-                <div className="w-full md:w-[400px] bg-gray-50 border-l border-gray-100 p-8 overflow-y-auto no-scrollbar">
-                    <div className="flex justify-between items-center mb-10">
-                        <div>
-                            <h2 className="text-2xl font-black text-coffee-900 flex items-center gap-2">
-                                <Sparkles className="text-gold-500" /> صانع المنيو الذكي
-                            </h2>
-                            <p className="text-gray-500 text-sm">صمم منيو خاص بمتجرك بثواني</p>
+                {/* 1. Control Panel (Sidebar) */}
+                <div className="w-full md:w-[450px] bg-[#f8f9fa] border-l border-gray-200 flex flex-col h-full relative">
+                    <div className="p-8 border-b border-gray-200 bg-white">
+                        <div className="flex justify-between items-center mb-6">
+                            <div className="w-12 h-12 bg-gold-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-gold-500/20">
+                                <MonitorSmartphone size={24} />
+                            </div>
+                            <button onClick={onClose} className="p-2 hover:bg-red-50 hover:text-red-500 rounded-full transition-all">
+                                <X size={24} />
+                            </button>
                         </div>
-                        <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors md:hidden">
-                            <X size={24} />
+                        <h2 className="text-2xl font-black text-coffee-900 mb-1">استوديو المنيو الرقمي</h2>
+                        <p className="text-gray-500 text-sm">خصص تجربة الطلب الرقمي لعملائك</p>
+                    </div>
+
+                    {/* Tabs */}
+                    <div className="flex px-8 py-4 bg-white border-b border-gray-100 gap-4">
+                        <button
+                            onClick={() => setActiveTab('design')}
+                            className={`flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'design' ? 'bg-coffee-900 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100'}`}
+                        >
+                            <Brush size={18} /> التصميم والعرض
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('content')}
+                            className={`flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'content' ? 'bg-coffee-900 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100'}`}
+                        >
+                            <CheckCircle2 size={18} /> قائمة المنتجات
                         </button>
                     </div>
 
-                    {/* Theme Selection */}
-                    <div className="mb-8">
-                        <h3 className="text-sm font-black text-coffee-900 mb-4 flex items-center gap-2 uppercase tracking-tight">
-                            <Palette size={16} /> اختيار طابع المنيو
-                        </h3>
-                        <div className="grid grid-cols-3 gap-3">
-                            {(['gold', 'dark', 'minimal'] as const).map(t => (
-                                <button
-                                    key={t}
-                                    onClick={() => setTheme(t)}
-                                    className={`p-3 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${theme === t ? 'border-gold-500 bg-gold-50 shadow-inner' : 'border-gray-100 bg-white hover:border-gold-200'}`}
-                                >
-                                    <div className={`w-full h-8 rounded-lg ${t === 'gold' ? 'bg-gradient-to-r from-gold-400 to-gold-600' : t === 'dark' ? 'bg-gray-900' : 'bg-gray-200'}`}></div>
-                                    <span className="text-[10px] font-bold">{t === 'gold' ? 'الذهبي' : t === 'dark' ? 'الاحترافي' : 'البسيط'}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Product Selection List */}
-                    <div className="mb-8 flex-1 overflow-hidden flex flex-col">
-                        <h3 className="text-sm font-black text-coffee-900 mb-4 flex items-center gap-2 uppercase tracking-tight">
-                            <CheckCircle2 size={16} /> تحديد المنتجات ({selectedProducts.length})
-                        </h3>
-                        <div className="space-y-2 overflow-y-auto max-h-[300px] pr-2 no-scrollbar">
-                            {products.map(p => (
-                                <div
-                                    key={p.id}
-                                    onClick={() => toggleProduct(p.id)}
-                                    className={`flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all ${selectedProducts.includes(p.id) ? 'bg-coffee-900 text-white shadow-md' : 'bg-white text-coffee-900 hover:bg-gray-100'}`}
-                                >
-                                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${selectedProducts.includes(p.id) ? 'bg-gold-500 border-gold-500' : 'border-gray-200 bg-gray-50'}`}>
-                                        {selectedProducts.includes(p.id) && <X size={12} className="text-coffee-900" />}
+                    <div className="flex-1 overflow-y-auto p-8 no-scrollbar space-y-10">
+                        {activeTab === 'design' ? (
+                            <>
+                                {/* Theme Selection */}
+                                <section>
+                                    <div className="flex items-center gap-2 mb-6 pointer-events-none">
+                                        <div className="w-1.5 h-6 bg-gold-500 rounded-full"></div>
+                                        <h3 className="font-black text-coffee-900 uppercase tracking-widest text-sm">طابع الهاتف المحمول</h3>
                                     </div>
-                                    <span className="text-sm font-bold truncate">{p.name}</span>
-                                    <span className="text-[10px] opacity-60 mr-auto">{p.category}</span>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {Object.keys(themeConfig).map((t) => (
+                                            <button
+                                                key={t}
+                                                onClick={() => setTheme(t as any)}
+                                                className={`p-4 rounded-3xl border-2 transition-all flex flex-col items-center gap-3 ${theme === t ? 'border-coffee-900 bg-white shadow-xl scale-105' : 'border-transparent bg-white/50 hover:bg-white'}`}
+                                            >
+                                                <div className={`w-full h-12 rounded-xl shadow-inner ${themeConfig[t as keyof typeof themeConfig].bg}`}></div>
+                                                <span className="text-xs font-black capitalize">{t === 'gold' ? 'الملكي الذهبي' : t === 'dark' ? 'الليلي الاحترافي' : t === 'coffee' ? 'الكلاسيكي' : 'العصري'}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </section>
+
+                                {/* Branding Info */}
+                                <section>
+                                    <div className="flex items-center gap-2 mb-6 pointer-events-none">
+                                        <div className="w-1.5 h-6 bg-gold-500 rounded-full"></div>
+                                        <h3 className="font-black text-coffee-900 uppercase tracking-widest text-sm">معلومات العلامة التجارية</h3>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="text-[10px] font-black text-gray-400 mb-2 block uppercase">وصف المتجر (يظهر في المنيو)</label>
+                                            <textarea
+                                                value={storeDescription}
+                                                onChange={(e) => setStoreDescription(e.target.value)}
+                                                className="w-full p-4 bg-white rounded-2xl border border-gray-200 outline-none focus:ring-2 focus:ring-gold-500 text-sm font-bold min-h-[100px] resize-none"
+                                            />
+                                        </div>
+                                    </div>
+                                </section>
+                            </>
+                        ) : (
+                            /* Product Selection */
+                            <section>
+                                <div className="flex items-center justify-between mb-6">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1.5 h-6 bg-gold-500 rounded-full"></div>
+                                        <h3 className="font-black text-coffee-900 uppercase tracking-widest text-sm">اختيار الأصناف</h3>
+                                    </div>
+                                    <span className="text-[10px] font-black bg-gold-100 text-gold-700 px-3 py-1 rounded-full">{selectedProducts.length} مختار</span>
                                 </div>
-                            ))}
-                        </div>
+                                <div className="space-y-3">
+                                    {products.map(p => (
+                                        <button
+                                            key={p.id}
+                                            onClick={() => toggleProduct(p.id)}
+                                            className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${selectedProducts.includes(p.id) ? 'border-coffee-900 bg-white shadow-md' : 'border-transparent bg-white/50 hover:bg-white'}`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${selectedProducts.includes(p.id) ? 'bg-gold-500 text-white' : 'bg-gray-100 text-gray-400'}`}>☕</div>
+                                                <div className="text-right">
+                                                    <p className="text-sm font-black text-coffee-900">{p.name}</p>
+                                                    <p className="text-[10px] text-gray-400">{p.category}</p>
+                                                </div>
+                                            </div>
+                                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center border-2 transition-all ${selectedProducts.includes(p.id) ? 'bg-coffee-900 border-coffee-900 text-white' : 'border-gray-200'}`}>
+                                                {selectedProducts.includes(p.id) && <CheckCircle2 size={14} />}
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="mt-auto space-y-3 pt-6 border-t border-gray-200">
+                    {/* Sidebar Footer */}
+                    <div className="p-8 bg-white border-t border-gray-200">
                         <button
-                            onClick={exportQRCode}
-                            className="w-full bg-white border-2 border-coffee-900 text-coffee-900 py-4 rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-gold-50 transition-all"
+                            onClick={exportProfessionalPDF}
+                            className="w-full bg-gold-500 hover:bg-gold-600 text-coffee-900 py-5 rounded-3xl font-black flex items-center justify-center gap-3 shadow-xl shadow-gold-500/20 transition-all scale-100 hover:scale-[1.02]"
                         >
-                            <QrCode size={20} /> توليد كود QR و PDF
-                        </button>
-                        <button
-                            onClick={exportPDF}
-                            className="w-full bg-coffee-900 text-white py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-xl hover:bg-black transition-all"
-                        >
-                            <Download size={20} /> تحميل المنيو (PDF)
+                            <QrCode size={24} />
+                            إنشاء ملصق QR الموحد (PDF)
                         </button>
                     </div>
                 </div>
 
-                {/* Right Side: Live Preview (60%) */}
-                <div className="flex-1 bg-gray-200 p-8 flex flex-col relative overflow-hidden">
-                    <div className="absolute top-8 left-8 z-10 flex gap-2">
-                        <button onClick={onClose} className="hidden md:flex p-3 bg-white/80 backdrop-blur-sm hover:bg-white rounded-full shadow-lg transition-all">
-                            <X size={20} />
-                        </button>
-                    </div>
+                {/* 2. Preview Canvas (Main Area) */}
+                <div className="flex-1 bg-[#121212] p-12 overflow-y-auto no-scrollbar flex flex-col lg:flex-row gap-12">
 
-                    <div className="flex justify-between items-center mb-6">
-                        <div className="bg-white/50 backdrop-blur-sm px-4 py-2 rounded-2xl flex items-center gap-3">
-                            <Smartphone size={18} className="text-coffee-900" />
-                            <span className="text-sm font-black text-coffee-900">معاينة مباشرة للمنيو</span>
+                    {/* Mobile Preview View */}
+                    <div className="flex flex-col gap-6 items-center">
+                        <div className="flex items-center gap-2 text-white/40 uppercase tracking-[0.2em] text-[10px] font-black">
+                            <Smartphone size={14} /> معاينة واجهة العميل
                         </div>
-                        <div className="flex bg-white rounded-xl p-1 shadow-sm">
-                            <button onClick={() => setLayout('grid')} className={`p-2 rounded-lg ${layout === 'grid' ? 'bg-gold-500 text-white shadow-sm' : 'text-gray-400 hover:bg-gray-50'}`}><Layout size={18} /></button>
-                            <button onClick={() => setLayout('list')} className={`p-2 rounded-lg ${layout === 'list' ? 'bg-gold-500 text-white shadow-sm' : 'text-gray-400 hover:bg-gray-50'}`}><FileText size={18} /></button>
-                        </div>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto no-scrollbar rounded-[2.5rem] shadow-2xl bg-white border-[10px] border-coffee-900 max-w-[400px] mx-auto w-full relative group">
-                        {/* The Actual Menu Preview Content */}
-                        <div
-                            ref={previewRef}
-                            className={`min-h-full p-8 transition-colors duration-500 ${theme === 'gold' ? 'bg-[#fdfaf5]' :
-                                theme === 'dark' ? 'bg-[#1a1c1e] text-white' : 'bg-white'
-                                }`}
-                        >
-                            {/* Header inside preview */}
-                            <div className="text-center mb-10 pt-4">
-                                <div className={`w-20 h-20 mx-auto rounded-3xl flex items-center justify-center mb-4 shadow-xl ${theme === 'gold' ? 'bg-gold-600 text-white' :
-                                    theme === 'dark' ? 'bg-white text-coffee-900' : 'bg-coffee-900 text-white'
-                                    }`}>
-                                    <Smartphone size={40} />
-                                </div>
-                                <h1 className={`text-2xl font-black ${theme === 'dark' ? 'text-white' : 'text-coffee-900'}`}>{storeName}</h1>
-                                <div className={`w-16 h-1 mx-auto mt-2 rounded-full ${theme === 'dark' ? 'bg-white/20' : 'bg-gold-200'}`}></div>
-                            </div>
-
-                            {/* QR Code section for PDF output visibility */}
-                            <div className="flex flex-col items-center mb-8 bg-white p-4 rounded-3xl">
-                                <QRCodeCanvas value={`https://menu.goldenpos.com/${storeName.replace(/\s+/g, '-').toLowerCase()}`} size={100} />
-                                <p className="mt-2 text-[10px] font-bold text-coffee-900 opacity-60">امسح الكود لفتح المنيو</p>
-                            </div>
-
-                            {/* Products in preview */}
-                            <div className={layout === 'grid' ? 'grid grid-cols-1 gap-4' : 'space-y-4'}>
-                                {filteredProducts.map(p => (
-                                    <div
-                                        key={p.id}
-                                        className={`p-5 rounded-[2rem] border transition-all ${theme === 'gold' ? 'bg-white border-gold-100 hover:border-gold-300' :
-                                            theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-transparent'
-                                            }`}
-                                    >
-                                        <div className="flex justify-between items-start mb-2">
-                                            <span className={`text-base font-black ${theme === 'dark' ? 'text-white' : 'text-coffee-900'}`}>{p.name}</span>
-                                            <span className={`text-lg font-black ${theme === 'gold' ? 'text-gold-600' : theme === 'dark' ? 'text-gold-400' : 'text-coffee-900'}`}>
-                                                {p.price} $
-                                            </span>
-                                        </div>
-                                        <p className={`text-xs ${theme === 'dark' ? 'text-white/40' : 'text-gray-400'} line-clamp-2`}>
-                                            {p.notes || "وصف شهي ومميز لهذه الوجبة الرائعة من متجرنا."}
-                                        </p>
-                                        <div className="mt-3 flex items-center gap-2">
-                                            <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${theme === 'gold' ? 'bg-gold-50 text-gold-600' :
-                                                theme === 'dark' ? 'bg-white/10 text-white/60' : 'bg-coffee-100 text-coffee-800'
-                                                }`}>
-                                                {p.category}
-                                            </span>
-                                        </div>
+                        <div className="w-[360px] h-[720px] bg-coffee-900 rounded-[3rem] p-4 shadow-2xl relative border-[8px] border-[#222] ring-[12px] ring-white/5 overflow-hidden">
+                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-[#222] rounded-b-3xl z-30"></div>
+                            <div
+                                ref={previewRef}
+                                className={`w-full h-full overflow-y-auto no-scrollbar rounded-[2rem] transition-colors duration-700 ${currentTheme.bg} ${currentTheme.text}`}
+                                dir="rtl">
+                                {/* Preview Content */}
+                                <div className="p-8">
+                                    <div className="text-center mt-10 mb-12">
+                                        <div className={`w-20 h-20 mx-auto rounded-3xl shadow-2xl flex items-center justify-center mb-6 text-3xl ${currentTheme.accent} text-white`}>☕</div>
+                                        <h1 className="text-3xl font-black mb-2">{storeName}</h1>
+                                        <p className="text-xs opacity-60 leading-relaxed px-4">{storeDescription}</p>
                                     </div>
-                                ))}
-                            </div>
 
-                            {/* Footer in preview */}
-                            <div className="mt-12 text-center pb-8 opacity-40">
-                                <p className="text-[10px] font-bold">بدعم من نظام POS الذهبي</p>
+                                    <div className="space-y-4">
+                                        {filteredProducts.map(p => (
+                                            <div key={p.id} className={`p-5 rounded-[2.5rem] border ${currentTheme.card} transition-all`}>
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <h4 className="font-black text-base">{p.name}</h4>
+                                                    <span className={`text-lg font-black ${currentTheme.secondary}`}>{p.price} $</span>
+                                                </div>
+                                                <p className="text-[10px] opacity-50 line-clamp-2">{p.notes || "وصف هذا المنتج الرائع متوفر هنا لزيادة الرغبة في الطلب."}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="mt-20 text-center opacity-30 text-[8px] font-black uppercase tracking-widest pb-10">
+                                        Powered by Golden POS System
+                                    </div>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        {/* Floating QR on Preview (UI ONLY) */}
+                    {/* Poster Export Preview */}
+                    <div className="flex-1 flex flex-col gap-6 items-center">
+                        <div className="flex items-center gap-2 text-white/40 uppercase tracking-[0.2em] text-[10px] font-black">
+                            <Printer size={14} /> معاينة الملصق المطبوع (QR)
+                        </div>
                         <div
-                            ref={qrRef}
-                            className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-sm p-4 rounded-3xl shadow-2xl border border-white/20 flex flex-col items-center gap-2 group-hover:scale-110 transition-all duration-500"
+                            ref={posterRef}
+                            className="w-[450px] aspect-[1/1.4] bg-white rounded-3xl shadow-2xl p-12 flex flex-col items-center justify-between text-center overflow-hidden"
+                            style={{ direction: 'rtl' }}
                         >
-                            <QRCodeCanvas
-                                value={`https://menu.goldenpos.com/${storeName.replace(/\s+/g, '-').toLowerCase()}`}
-                                size={80}
-                                level="H"
-                                includeMargin={true}
-                            />
-                            <span className="text-[8px] font-black text-coffee-900">مسح الكود للمنيو</span>
+                            <div className="space-y-4">
+                                <div className="w-20 h-20 bg-coffee-900 rounded-[2rem] flex items-center justify-center text-white text-3xl mx-auto shadow-xl">☕</div>
+                                <h2 className="text-4xl font-black text-coffee-900">{storeName}</h2>
+                                <div className="w-20 h-1.5 bg-gold-500 mx-auto rounded-full"></div>
+                                <p className="text-xl font-bold text-gray-400">انضم إلينا في تجربة رقمية فريدة</p>
+                            </div>
+
+                            <div className="relative group">
+                                <div className="absolute inset-0 bg-gold-500 blur-3xl opacity-10 group-hover:opacity-20 transition-all"></div>
+                                <div className="p-8 bg-white rounded-[4rem] border-4 border-coffee-900 shadow-2xl relative z-10 transition-transform group-hover:scale-105 duration-500">
+                                    <QRCodeCanvas
+                                        value={`https://menu.goldenpos.com/${storeName.replace(/\s+/g, '-').toLowerCase()}`}
+                                        size={220}
+                                        level="H"
+                                        includeMargin={false}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <p className="text-2xl font-black text-coffee-900 uppercase tracking-tighter">امسح الكود لفتح القائمة</p>
+                                <p className="text-xs text-gray-400 font-bold">بإمكانك طلب كل ما تحب مباشرة من بريدك</p>
+                            </div>
                         </div>
                     </div>
                 </div>
