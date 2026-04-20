@@ -196,7 +196,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           onClick={() => onNavigate('suppliers')}
         />
         <DashboardCard
-          title="التقارير الذكية"
+          title="التقارير المفصلة"
           icon={Sparkles}
           colorClass="bg-gradient-to-br from-teal-600 to-teal-800"
           onClick={() => onNavigate('reports')}

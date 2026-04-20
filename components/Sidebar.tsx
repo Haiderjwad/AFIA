@@ -20,7 +20,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, setActiveItem, onLogout, 
     { id: 'invoices', label: 'الفواتير', icon: Receipt, roles: ['admin', 'manager', 'cashier'] },
     { id: 'inventory', label: 'المخزون', icon: Box, roles: ['admin', 'manager'] },
     { id: 'suppliers', label: 'الموردين', icon: Truck, roles: ['admin', 'manager'] },
-    { id: 'reports', label: 'التقارير', icon: FileText, roles: ['admin', 'manager'] },
+    { id: 'reports', label: 'التقارير المفصلة', icon: FileText, roles: ['admin', 'manager'] },
     { id: 'settings', label: 'الإعدادات', icon: Settings, roles: ['admin', 'manager'] },
   ];
 
