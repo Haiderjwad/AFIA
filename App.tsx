@@ -329,6 +329,8 @@ const App: React.FC = () => {
             products={products}
             addToCart={addToCart}
             settings={settings}
+            readyOrders={transactions.filter(t => t.status === 'ready')}
+            onCompleteOrder={handleSendToCashier}
           />;
         }
         break;
@@ -477,16 +479,18 @@ const App: React.FC = () => {
         )}
       </div>
 
-      <ReceiptPanel
-        cart={cart}
-        addToCart={addToCart}
-        removeFromCart={removeFromCart}
-        decreaseQuantity={decreaseQuantity}
-        onClear={clearCart}
-        onCheckout={handleSendToKitchen}
-        settings={settings}
-        userRole={currentUser?.role || 'sales'}
-      />
+      {activeTab === 'sales' && (
+        <ReceiptPanel
+          cart={cart}
+          addToCart={addToCart}
+          removeFromCart={removeFromCart}
+          decreaseQuantity={decreaseQuantity}
+          onClear={clearCart}
+          onCheckout={handleSendToKitchen}
+          settings={settings}
+          userRole={currentUser?.role || 'sales'}
+        />
+      )}
 
       {/* Global Connectivity Toasts */}
       {showStatusToast !== 'none' && (

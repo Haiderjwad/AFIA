@@ -1,17 +1,20 @@
 
 import React, { useState } from 'react';
-import { MenuItem, AppSettings } from '../types';
-import { Search, Coffee, Sparkles, Filter } from 'lucide-react';
+import { Search, Coffee, Sparkles, Filter, Bell, CheckCircle2, PackageCheck } from 'lucide-react';
+import { MenuItem, AppSettings, Transaction } from '../types';
 
 interface SalesViewProps {
     products: MenuItem[];
     addToCart: (product: MenuItem) => void;
     settings: AppSettings;
+    readyOrders: Transaction[];
+    onCompleteOrder: (id: string) => void;
 }
 
-const SalesView: React.FC<SalesViewProps> = ({ products, addToCart, settings }) => {
+const SalesView: React.FC<SalesViewProps> = ({ products, addToCart, settings, readyOrders, onCompleteOrder }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
+    const [showReadyAlert, setShowReadyAlert] = useState(true);
 
     const categories = ['all', ...Array.from(new Set(products.map(p => p.category)))];
 
@@ -23,7 +26,41 @@ const SalesView: React.FC<SalesViewProps> = ({ products, addToCart, settings }) 
     });
 
     return (
-        <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#fdfaf7] p-6 text-right" dir="rtl">
+        <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#fdfaf7] p-6 text-right relative" dir="rtl">
+
+            {/* Ready Orders Notification */}
+            {readyOrders.length > 0 && showReadyAlert && (
+                <div className="mb-6 bg-gradient-to-r from-green-600 to-emerald-500 text-white p-4 rounded-2xl shadow-xl shadow-green-100 flex flex-col md:flex-row justify-between items-center gap-4 animate-in slide-in-from-top-4 duration-500">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-white/20 p-2 rounded-xl animate-bounce">
+                            <Bell size={20} />
+                        </div>
+                        <div>
+                            <p className="font-bold text-sm">طلبات جاهزة للتسليم ({readyOrders.length})</p>
+                            <p className="text-[10px] text-white/80">انقر على الطلب أدناه لإرساله للفواتير</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar max-w-full">
+                        {readyOrders.slice(0, 3).map(order => (
+                            <button
+                                key={order.id}
+                                onClick={() => onCompleteOrder(order.id)}
+                                className="bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-xs font-black border border-white/20 transition-all flex items-center gap-2"
+                            >
+                                <PackageCheck size={14} />
+                                #{order.id.slice(-4)}
+                            </button>
+                        ))}
+                    </div>
+                    <button
+                        onClick={() => setShowReadyAlert(false)}
+                        className="text-white/50 hover:text-white transition-colors"
+                    >
+                        إغلاق
+                    </button>
+                </div>
+            )}
+
             {/* Header / Search */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
                 <div>
@@ -52,8 +89,8 @@ const SalesView: React.FC<SalesViewProps> = ({ products, addToCart, settings }) 
                         key={cat}
                         onClick={() => setSelectedCategory(cat)}
                         className={`px-6 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all shadow-sm border ${selectedCategory === cat
-                                ? 'bg-coffee-900 text-white border-transparent scale-105 shadow-coffee-900/20'
-                                : 'bg-white text-gray-500 border-gold-100 hover:border-gold-300 hover:text-coffee-900'
+                            ? 'bg-coffee-900 text-white border-transparent scale-105 shadow-coffee-900/20'
+                            : 'bg-white text-gray-500 border-gold-100 hover:border-gold-300 hover:text-coffee-900'
                             }`}
                     >
                         {cat === 'all' ? 'الكل' : cat}

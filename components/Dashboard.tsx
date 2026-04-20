@@ -167,36 +167,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Ready Orders Floating Alert */}
-      {readyOrders.length > 0 && showReadyAlert && (
-        <div className="mb-8 bg-green-600 text-white p-5 rounded-3xl shadow-xl shadow-green-200 flex flex-col md:flex-row justify-between items-center gap-4 animate-in slide-in-from-top-4 duration-500 relative z-10">
-          <div className="flex items-center gap-4">
-            <div className="bg-white/20 p-3 rounded-full animate-bounce">
-              <Bell size={24} />
-            </div>
-            <div className="text-right">
-              <h3 className="font-bold text-lg">طلبات جاهزة للاستلام!</h3>
-              <p className="text-white/80 text-sm">يوجد عدد {readyOrders.length} طلبات مكتملة في المطبخ بانتظار تسليمها للعميل.</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowReadyAlert(false)}
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl transition-colors text-sm font-bold"
-            >
-              تجاهل
-            </button>
-            <button
-              onClick={() => {
-                setShowNotifications(true);
-              }}
-              className="px-6 py-2 bg-white text-green-600 rounded-xl transition-colors text-sm font-bold shadow-sm"
-            >
-              عرض الطلبات
-            </button>
-          </div>
-        </div>
-      )}
+
 
       {/* Main Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8 relative z-0">
