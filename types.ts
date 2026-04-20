@@ -37,17 +37,22 @@ export interface Transaction {
   date: string;
   items: CartItem[];
   total: number;
-  status: 'pending' | 'preparing' | 'ready' | 'completed' | 'refunded';
+  status: 'pending' | 'preparing' | 'ready' | 'waiting_payment' | 'completed' | 'refunded';
   paymentMethod: 'cash' | 'card' | 'online';
+  isManual?: boolean;
 }
 
-export interface Customer {
+export interface Supplier {
   id: string;
   name: string;
   phone: string;
-  visits: number;
-  lastVisit: string;
-  loyaltyPoints: number;
+  email?: string;
+  suppliedItem: string; // The item they supply
+  category: string;
+  stockProvided: number;
+  costPerUnit: number;
+  totalPaid: number;
+  lastSupplyDate: string;
 }
 
 export interface AppSettings {
@@ -57,6 +62,7 @@ export interface AppSettings {
   taxRate: number;
   lowStockThreshold: number;
   enableNotifications: boolean;
+  enableSounds: boolean;
   paymentMethods: {
     cash: boolean;
     card: boolean;
@@ -64,7 +70,7 @@ export interface AppSettings {
   };
 }
 
-export type UserRole = 'admin' | 'manager' | 'cashier' | 'kitchen';
+export type UserRole = 'admin' | 'manager' | 'cashier' | 'kitchen' | 'sales';
 
 export interface Employee {
   uid: string;

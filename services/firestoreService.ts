@@ -13,8 +13,8 @@ import {
     where
 } from "firebase/firestore";
 import { db } from "../firebase";
-import { MenuItem, Transaction, Customer, AppSettings, Employee } from "../types";
-import { PRODUCTS, MOCK_CUSTOMERS, DEFAULT_SETTINGS } from "../constants";
+import { MenuItem, Transaction, Supplier, AppSettings, Employee } from "../types";
+import { PRODUCTS, MOCK_SUPPLIERS, DEFAULT_SETTINGS } from "../constants";
 
 export const firestoreService = {
     // Products
@@ -85,10 +85,24 @@ export const firestoreService = {
         }
     },
 
-    // Customers (If needed)
-    async getCustomers(): Promise<Customer[]> {
-        const snapshot = await getDocs(collection(db, "customers"));
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+    // Suppliers
+    async getSuppliers(): Promise<Supplier[]> {
+        const snapshot = await getDocs(collection(db, "suppliers"));
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Supplier));
+    },
+
+    async addSupplier(supplier: Supplier): Promise<string> {
+        const docRef = await addDoc(collection(db, "suppliers"), supplier);
+        return docRef.id;
+    },
+
+    async updateSupplier(id: string, supplier: Partial<Supplier>): Promise<void> {
+        const docRef = doc(db, "suppliers", id);
+        await updateDoc(docRef, supplier as any);
+    },
+
+    async deleteSupplier(id: string): Promise<void> {
+        await deleteDoc(doc(db, "suppliers", id));
     },
 
     // Settings
@@ -127,16 +141,16 @@ export const firestoreService = {
             console.log("Firestore: Settings seeded");
         }
 
-        // Check if customers exist
-        const customersSnapshot = await getDocs(collection(db, "customers"));
-        if (customersSnapshot.empty) {
+        // Check if suppliers exist
+        const suppliersSnapshot = await getDocs(collection(db, "suppliers"));
+        if (suppliersSnapshot.empty) {
             const batch = writeBatch(db);
-            MOCK_CUSTOMERS.forEach(customer => {
-                const docRef = doc(collection(db, "customers"));
-                batch.set(docRef, customer);
+            MOCK_SUPPLIERS.forEach(supplier => {
+                const docRef = doc(collection(db, "suppliers"));
+                batch.set(docRef, supplier);
             });
             await batch.commit();
-            console.log("Firestore: Customers seeded");
+            console.log("Firestore: Suppliers seeded");
         }
 
         // Check if employees exist
@@ -151,7 +165,8 @@ export const firestoreService = {
                 employeeId: "EMP-001",
                 joinedAt: new Date().toISOString()
             };
-            await setDoc(doc(db, "employees", "admin-id-placeholder"), adminData);
+            // Use a specific ID for seeding so we don't duplicate on multiple loads
+            await setDoc(doc(db, "employees", "seed-admin-id"), adminData);
             console.log("Firestore: Default employee created");
         }
     }

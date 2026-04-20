@@ -1,5 +1,5 @@
 
-import { SalesData, BarData, MenuItem, Customer, AppSettings } from './types';
+import { SalesData, BarData, MenuItem, Supplier, AppSettings } from './types';
 
 export const SALES_DATA: SalesData[] = [
   { name: 'السبت', value: 400 },
@@ -32,12 +32,40 @@ export const PRODUCTS: MenuItem[] = [
   { id: '10', name: 'كوكيز شوفان', price: 6.00, category: 'Dessert', stock: 60 },
 ];
 
-export const MOCK_CUSTOMERS: Customer[] = [
-  { id: '1', name: 'أحمد محمد', phone: '0501234567', visits: 12, lastVisit: '2023-10-25', loyaltyPoints: 150 },
-  { id: '2', name: 'سارة علي', phone: '0559876543', visits: 8, lastVisit: '2023-10-24', loyaltyPoints: 80 },
-  { id: '3', name: 'خالد عبدالله', phone: '0543332211', visits: 25, lastVisit: '2023-10-26', loyaltyPoints: 320 },
-  { id: '4', name: 'نورة السعيد', phone: '0567778899', visits: 3, lastVisit: '2023-10-20', loyaltyPoints: 30 },
-  { id: '5', name: 'فهد العمري', phone: '0591112233', visits: 18, lastVisit: '2023-10-26', loyaltyPoints: 210 },
+export const MOCK_SUPPLIERS: Supplier[] = [
+  {
+    id: '1',
+    name: 'شركة هرفي للمخبوزات',
+    phone: '0112223334',
+    suppliedItem: 'كرواسون وخبز',
+    category: 'Bakery',
+    stockProvided: 200,
+    costPerUnit: 5.50,
+    totalPaid: 1100,
+    lastSupplyDate: '2023-11-20'
+  },
+  {
+    id: '2',
+    name: 'محامص بن العالمية',
+    phone: '0119998887',
+    suppliedItem: 'حبوب بن إسبريسو',
+    category: 'Coffee',
+    stockProvided: 50,
+    costPerUnit: 85.00,
+    totalPaid: 4250,
+    lastSupplyDate: '2023-11-18'
+  },
+  {
+    id: '3',
+    name: 'شركة نادك للألبان',
+    phone: '0566655544',
+    suppliedItem: 'حليب كامل الدسم',
+    category: 'Milk',
+    stockProvided: 150,
+    costPerUnit: 12.00,
+    totalPaid: 1800,
+    lastSupplyDate: '2023-11-22'
+  },
 ];
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -47,6 +75,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   taxRate: 15,
   lowStockThreshold: 10,
   enableNotifications: true,
+  enableSounds: true,
   paymentMethods: {
     cash: true,
     card: true,

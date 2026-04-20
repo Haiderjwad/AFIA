@@ -13,7 +13,9 @@ import {
   Box,
   Receipt,
   CheckCircle,
-  PackageCheck
+  PackageCheck,
+  WifiOff,
+  Truck
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { SALES_DATA, BAR_DATA } from '../constants';
@@ -37,6 +39,8 @@ interface DashboardProps {
   lowStockItems: MenuItem[];
   readyOrders: Transaction[];
   onCompleteOrder: (id: string) => void;
+  isOnline: boolean;
+  notifications?: any[];
 }
 
 const Dashboard: React.FC<DashboardProps> = ({
@@ -44,7 +48,9 @@ const Dashboard: React.FC<DashboardProps> = ({
   onNavigate,
   lowStockItems,
   readyOrders,
-  onCompleteOrder
+  onCompleteOrder,
+  isOnline,
+  notifications = []
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showReadyAlert, setShowReadyAlert] = useState(true);
@@ -66,7 +72,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               className="p-2 bg-white rounded-full text-coffee-900 hover:bg-gold-100 transition-colors relative"
             >
               <Bell size={24} />
-              {(lowStockItems.length > 0 || readyOrders.length > 0) && (
+              {(lowStockItems.length > 0 || readyOrders.length > 0 || notifications.length > 0) && (
                 <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
               )}
             </button>
@@ -76,9 +82,22 @@ const Dashboard: React.FC<DashboardProps> = ({
               <div className="absolute left-0 mt-4 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 z-[100] overflow-hidden animate-in zoom-in-95">
                 <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
                   <h3 className="font-bold text-coffee-900">التنبيهات</h3>
-                  <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">{lowStockItems.length + readyOrders.length} جديد</span>
+                  <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">{lowStockItems.length + readyOrders.length + notifications.length} جديد</span>
                 </div>
-                <div className="max-h-64 overflow-y-auto">
+                <div className="max-h-80 overflow-y-auto">
+                  {/* Manual Kitchen Notifications */}
+                  {notifications.map(notif => (
+                    <div key={notif.id} className="p-3 border-b border-red-50 bg-red-50/20 hover:bg-red-50 transition-colors flex items-start gap-3 text-right">
+                      <div className={`p-2 rounded-lg shrink-0 ${notif.type === 'kitchen_warning' ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
+                        {notif.type === 'kitchen_warning' ? <AlertTriangle size={16} /> : <Box size={16} />}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-coffee-900">{notif.message}</p>
+                        <p className="text-[10px] text-gray-400 mt-1">{new Date(notif.timestamp).toLocaleTimeString('ar-EG')}</p>
+                      </div>
+                    </div>
+                  ))}
+
                   {/* Ready Orders in Notification */}
                   {readyOrders.map(order => (
                     <div key={order.id} className="p-3 border-b border-green-50 bg-green-50/30 hover:bg-green-100 transition-colors flex items-start gap-3 text-right">
@@ -95,37 +114,36 @@ const Dashboard: React.FC<DashboardProps> = ({
                           }}
                           className="mt-2 text-xs font-bold bg-green-600 text-white px-3 py-1 rounded-full hover:bg-green-700 transition-colors"
                         >
-                          تم الاستلام
+                          إرسال للمحاسبة
                         </button>
                       </div>
                     </div>
                   ))}
 
-                  {lowStockItems.length === 0 && readyOrders.length === 0 && (
-                    <div className="p-6 text-center text-gray-400 text-sm">
-                      لا توجد تنبيهات جديدة
-                    </div>
-                  )}
-
+                  {/* Low Stock Notifications */}
                   {lowStockItems.map(item => (
-                    <div key={item.id} className="p-3 border-b border-gray-50 hover:bg-red-50 transition-colors flex items-start gap-3 text-right">
-                      <div className="p-2 bg-red-100 text-red-600 rounded-lg shrink-0">
+                    <div key={item.id} className="p-3 border-b border-orange-50 bg-orange-50/30 hover:bg-orange-100 transition-colors flex items-start gap-3 text-right">
+                      <div className="p-2 bg-orange-100 text-orange-600 rounded-lg shrink-0">
                         <AlertTriangle size={16} />
                       </div>
-                      <div>
-                        <p className="text-sm font-bold text-coffee-900">{item.name}</p>
-                        <p className="text-xs text-red-500">مخزون منخفض: {item.stock} قطع متبقية</p>
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-coffee-900">انخفاض المخزون: {item.name}</p>
+                        <p className="text-xs text-gray-500">الكمية المتبقية: {item.stock}</p>
                       </div>
                     </div>
                   ))}
+
+                  {lowStockItems.length === 0 && readyOrders.length === 0 && notifications.length === 0 && (
+                    <div className="p-10 text-center text-gray-400 italic">لا توجد تنبيهات جديدة</div>
+                  )}
                 </div>
-                {(lowStockItems.length > 0 || readyOrders.length > 0) && (
+                {(lowStockItems.length > 0 || readyOrders.length > 0 || notifications.length > 0) && (
                   <button
                     onClick={() => {
                       onNavigate('inventory');
                       setShowNotifications(false);
                     }}
-                    className="w-full p-3 text-center text-xs font-bold text-coffee-900 hover:bg-gold-50 transition-colors"
+                    className="w-full p-3 text-center text-xs font-bold text-coffee-900 hover:bg-gold-50 transition-all border-t border-gray-100"
                   >
                     عرض جميع التنبيهات
                   </button>
@@ -134,7 +152,18 @@ const Dashboard: React.FC<DashboardProps> = ({
             )}
           </div>
 
-          <span className="bg-green-100 text-green-800 border-green-200 text-xs px-3 py-1 rounded-full border">متصل</span>
+          {isOnline ? (
+            <span className="bg-green-100 text-green-800 border-green-200 text-xs px-3 py-1 rounded-full border flex items-center gap-2">
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+              متصل بالسحابة
+            </span>
+          ) : (
+            <span className="bg-red-100 text-red-800 border-red-200 text-xs px-3 py-1 rounded-full border flex items-center gap-2 animate-bounce">
+              <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>
+              غير متصل
+              <WifiOff size={12} />
+            </span>
+          )}
         </div>
       </div>
 
@@ -190,12 +219,11 @@ const Dashboard: React.FC<DashboardProps> = ({
           onClick={() => onNavigate('settings', 'payments')}
         />
         <DashboardCard
-          title="العملاء"
-          icon={Users}
-          colorClass="bg-gradient-to-br from-gold-500 to-yellow-600"
-          onClick={() => onNavigate('customers')}
+          title="الموردين"
+          icon={Truck}
+          colorClass="bg-gradient-to-br from-gold-50 to-gold-600"
+          onClick={() => onNavigate('suppliers')}
         />
-
         <DashboardCard
           title="التقارير الذكية"
           icon={Sparkles}
@@ -224,7 +252,6 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Analytics Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-0">
-
         {/* Line Chart */}
         <div className="bg-[#fcfaf7] p-6 rounded-3xl shadow-lg border border-gold-100 relative overflow-hidden">
           <div className="flex justify-between items-center mb-6">
@@ -268,7 +295,6 @@ const Dashboard: React.FC<DashboardProps> = ({
             </ResponsiveContainer>
           </div>
         </div>
-
       </div>
     </div>
   );

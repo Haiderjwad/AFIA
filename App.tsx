@@ -5,16 +5,17 @@ import Dashboard from './components/Dashboard';
 import ReceiptPanel from './components/ReceiptPanel';
 import InventoryView from './components/InventoryView';
 import InvoicesView from './components/InvoicesView';
-import CustomersView from './components/CustomersView';
+import SuppliersView from './components/SuppliersView';
 import ReportsView from './components/ReportsView';
 import SettingsView from './components/SettingsView';
 import LoginView from './components/LoginView';
 import KitchenView from './components/KitchenView';
 import { CartItem, MenuItem, Transaction, AppSettings, Employee } from './types';
 import { CURRENCY, DEFAULT_SETTINGS } from './constants';
-import { X, CheckCircle } from 'lucide-react';
+import { X, CheckCircle, Wifi, WifiOff, Globe } from 'lucide-react';
 import { firestoreService } from './services/firestoreService';
-import { onSnapshot, collection, query, orderBy, doc } from 'firebase/firestore';
+import { soundService } from './services/soundService';
+import { onSnapshot, collection, query, orderBy, doc, updateDoc, limit } from 'firebase/firestore';
 import { db as firestoreDb, auth } from './firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 
@@ -23,11 +24,34 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<Employee | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [showStatusToast, setShowStatusToast] = useState<'none' | 'online' | 'offline'>('none');
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      setShowStatusToast('online');
+      setTimeout(() => setShowStatusToast('none'), 4000);
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      setShowStatusToast('offline');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const [activeTab, setActiveTab] = useState('sales');
   const [settingsTab, setSettingsTab] = useState<'general' | 'payments'>('general');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isProductMenuOpen, setIsProductMenuOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
@@ -74,7 +98,7 @@ const App: React.FC = () => {
     });
 
     // 3. Setup real-time listeners (Only if authenticated)
-    let unsubProducts: any, unsubTransactions: any, unsubSettings: any;
+    let unsubProducts: any, unsubTransactions: any, unsubSettings: any, unsubNotifications: any;
 
     const startListeners = () => {
       unsubProducts = onSnapshot(collection(firestoreDb, "products"), (snapshot) => {
@@ -95,6 +119,15 @@ const App: React.FC = () => {
           setSettings(snapshot.data() as AppSettings);
         }
       });
+
+      unsubNotifications = onSnapshot(
+        query(collection(firestoreDb, "notifications"), orderBy("timestamp", "desc"), limit(5)),
+        (snapshot) => {
+          const n = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          // Filter if not read or just keep them for display
+          setNotifications(n);
+        }
+      );
     };
 
     if (isAuthenticated) {
@@ -106,8 +139,32 @@ const App: React.FC = () => {
       if (unsubProducts) unsubProducts();
       if (unsubTransactions) unsubTransactions();
       if (unsubSettings) unsubSettings();
+      if (unsubNotifications) unsubNotifications();
     };
   }, [isAuthenticated]);
+
+  // Global Sound Control
+  useEffect(() => {
+    soundService.setSettings(settings);
+  }, [settings]);
+
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const isClickable = target.closest('button') ||
+        target.closest('a') ||
+        target.closest('[role="button"]') ||
+        target.closest('input[type="checkbox"]') ||
+        target.closest('input[type="radio"]');
+
+      if (isClickable) {
+        soundService.playClick();
+      }
+    };
+
+    window.addEventListener('click', handleGlobalClick);
+    return () => window.removeEventListener('click', handleGlobalClick);
+  }, []);
 
   // Update Settings Handler
   const handleUpdateSettings = async (newSettings: AppSettings) => {
@@ -128,6 +185,53 @@ const App: React.FC = () => {
     await signOut(auth);
     setCart([]);
     setActiveTab('sales');
+  };
+
+  const handleSendToKitchen = async () => {
+    if (cart.length === 0) return;
+
+    const total = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const tax = total * (settings.taxRate / 100);
+
+    const newTransaction: Transaction = {
+      id: Date.now().toString(),
+      date: new Date().toISOString(),
+      items: [...cart],
+      total: total + tax,
+      status: 'pending',
+      paymentMethod: 'cash' // Placeholder until cashier confirms
+    };
+
+    await firestoreService.addTransaction(newTransaction);
+    setCart([]);
+    setShowSuccessModal(true);
+    setTimeout(() => setShowSuccessModal(false), 2000);
+  };
+
+  const handleSendToCashier = async (transactionId: string) => {
+    await firestoreService.updateTransactionStatus(transactionId, 'waiting_payment');
+  };
+
+  const handleFinalizePayment = async (transactionId: string, paymentMethod: 'cash' | 'card' | 'online') => {
+    // 1. Update stock
+    const transaction = transactions.find(t => t.id === transactionId);
+    if (transaction) {
+      for (const cartItem of transaction.items) {
+        const product = products.find(p => p.id === cartItem.id);
+        if (product) {
+          const newStock = Math.max(0, product.stock - cartItem.quantity);
+          await firestoreService.updateProduct(product.id, { stock: newStock });
+        }
+      }
+    }
+
+    // 2. Finalize Transaction
+    // We update status and payment method
+    const transRef = doc(firestoreDb, "transactions", transactionId);
+    await updateDoc(transRef, {
+      status: 'completed',
+      paymentMethod: paymentMethod
+    });
   };
 
   const handleSidebarNavigation = (tab: string) => {
@@ -171,43 +275,6 @@ const App: React.FC = () => {
 
   const clearCart = () => setCart([]);
 
-  const handleCheckout = async (paymentMethod: 'cash' | 'card' | 'online') => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    const total = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-    const tax = total * (settings.taxRate / 100);
-
-    const newTransaction: Transaction = {
-      id: Date.now().toString(),
-      date: new Date().toISOString(),
-      items: [...cart],
-      total: total + tax,
-      status: 'pending',
-      paymentMethod: paymentMethod
-    };
-
-    // 1. Save Transaction to Firestore
-    await firestoreService.addTransaction(newTransaction);
-
-    // 2. Update Stock in Firestore
-    for (const cartItem of cart) {
-      const product = products.find(p => p.id === cartItem.id);
-      if (product) {
-        const newStock = Math.max(0, product.stock - cartItem.quantity);
-        await firestoreService.updateProduct(product.id, { stock: newStock });
-      }
-    }
-
-    // 3. Reset Cart and Show Success
-    setCart([]);
-    setShowSuccessModal(true);
-
-    // Hide success modal after 3 seconds
-    setTimeout(() => {
-      setShowSuccessModal(false);
-    }, 3000);
-  };
 
   const handleAddProduct = async (newProduct: MenuItem) => {
     await firestoreService.addProduct(newProduct);
@@ -241,21 +308,21 @@ const App: React.FC = () => {
 
     switch (activeTab) {
       case 'sales':
-        if (['admin', 'manager', 'cashier'].includes(role)) {
+        if (['admin', 'manager', 'cashier', 'sales'].includes(role)) {
           return <Dashboard
             onProductClick={() => setIsProductMenuOpen(true)}
             onNavigate={handleDashboardNavigate}
             lowStockItems={lowStockItems}
             readyOrders={transactions.filter(t => t.status === 'ready')}
-            onCompleteOrder={async (id) => {
-              await firestoreService.updateTransactionStatus(id, 'completed');
-            }}
+            onCompleteOrder={handleSendToCashier}
+            isOnline={isOnline}
+            notifications={notifications}
           />;
         }
         break;
       case 'kitchen':
         if (['admin', 'manager', 'kitchen'].includes(role)) {
-          return <KitchenView />;
+          return <KitchenView isOnline={isOnline} />;
         }
         break;
       case 'inventory':
@@ -266,17 +333,24 @@ const App: React.FC = () => {
             onUpdateProduct={handleUpdateProduct}
             onDeleteProduct={handleDeleteProduct}
             lowStockThreshold={settings.lowStockThreshold}
+            storeName={settings.storeName}
           />;
         }
         break;
       case 'invoices':
-        if (['admin', 'manager', 'cashier'].includes(role)) {
-          return <InvoicesView transactions={transactions} />;
+        if (['admin', 'manager', 'cashier', 'sales'].includes(role)) {
+          return <InvoicesView
+            transactions={transactions}
+            onFinalizePayment={handleFinalizePayment}
+            canFinalize={['admin', 'manager', 'cashier'].includes(role)}
+            products={products}
+            settings={settings}
+          />;
         }
         break;
-      case 'customers':
-        if (['admin', 'manager', 'cashier'].includes(role)) {
-          return <CustomersView />;
+      case 'suppliers':
+        if (['admin', 'manager'].includes(role)) {
+          return <SuppliersView />;
         }
         break;
       case 'reports':
@@ -298,15 +372,14 @@ const App: React.FC = () => {
     }
 
     // Default Fallback for roles
-    if (role === 'kitchen') return <KitchenView />;
+    if (role === 'kitchen') return <KitchenView isOnline={isOnline} />;
     return <Dashboard
       onProductClick={() => setIsProductMenuOpen(true)}
       onNavigate={handleDashboardNavigate}
       lowStockItems={lowStockItems}
       readyOrders={transactions.filter(t => t.status === 'ready')}
-      onCompleteOrder={async (id) => {
-        await firestoreService.updateTransactionStatus(id, 'completed');
-      }}
+      onCompleteOrder={handleSendToCashier}
+      isOnline={isOnline}
     />;
   };
 
@@ -392,16 +465,43 @@ const App: React.FC = () => {
         )}
       </div>
 
-      {/* Right Sidebar (Receipt) */}
       <ReceiptPanel
         cart={cart}
         addToCart={addToCart}
         removeFromCart={removeFromCart}
         decreaseQuantity={decreaseQuantity}
         onClear={clearCart}
-        onCheckout={handleCheckout}
+        onCheckout={handleSendToKitchen}
         settings={settings}
+        userRole={currentUser?.role || 'sales'}
       />
+
+      {/* Global Connectivity Toasts */}
+      {showStatusToast !== 'none' && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-bottom-10 duration-500">
+          {showStatusToast === 'offline' ? (
+            <div className="bg-red-600 text-white px-8 py-4 rounded-[2rem] shadow-2xl flex items-center gap-4 border border-red-500/50 backdrop-blur-xl">
+              <div className="bg-white/20 p-2 rounded-full animate-pulse">
+                <WifiOff size={24} />
+              </div>
+              <div className="text-right">
+                <p className="font-bold">انقطع الاتصال بالإنترنت</p>
+                <p className="text-xs opacity-80">أنت تعمل الآن في وضع عدم الاتصال، سيتم المزامنة عند العودة</p>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-blue-600 text-white px-8 py-4 rounded-[2rem] shadow-2xl flex items-center gap-4 border border-blue-500/50 backdrop-blur-xl">
+              <div className="bg-white/20 p-2 rounded-full">
+                <Wifi size={24} />
+              </div>
+              <div className="text-right">
+                <p className="font-bold">تم استعادة الاتصال</p>
+                <p className="text-xs opacity-80">تمت العودة للوضع السحابي بنجاح، جاري مزامنة البيانات...</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
     </div>
   );
