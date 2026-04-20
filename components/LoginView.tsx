@@ -52,29 +52,23 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         <div className="absolute bottom-[10%] -left-[5%] w-[30%] h-[30%] bg-coffee-800/5 rounded-full blur-3xl"></div>
       </div>
 
-      {/* Connectivity Status Floating Badge */}
-      <div className="absolute top-8 left-8 z-50">
-        <div className={`px-4 py-2 rounded-2xl shadow-xl flex items-center gap-3 border transition-all duration-500 backdrop-blur-md ${isOnline ? 'bg-green-500/10 border-green-500/20 text-green-600' : 'bg-red-500/10 border-red-500/20 text-red-600 animate-pulse'}`}>
-          <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-green-500 shadow-[0_0_12px_rgba(34,197,94,0.6)]' : 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.6)] animate-pulse'}`}></div>
-          <span className="text-sm font-bold">{isOnline ? 'البوابة السحابية متصلة' : 'عذراً، لا يوجد اتصال بالإنترنت'}</span>
-          {isOnline ? <Wifi size={18} /> : <WifiOff size={18} />}
+      <div className="bg-white w-full max-w-md p-8 rounded-[2.5rem] shadow-2xl border border-gold-100 z-10 animate-in fade-in zoom-in-95 duration-500 relative overflow-hidden">
+
+        {/* Connection Status Bar */}
+        <div className={`absolute top-0 left-0 right-0 h-8 flex items-center justify-center gap-2 transition-all duration-500 z-[60] ${isOnline
+            ? 'bg-gradient-to-r from-green-500/90 to-emerald-500/90 shadow-[0_2px_12px_rgba(34,197,94,0.25)]'
+            : 'bg-gradient-to-r from-red-500/90 to-rose-500/90 shadow-[0_2px_12px_rgba(239,68,68,0.25)] animate-pulse'
+          }`}>
+          <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-white' : 'bg-white animate-ping'}`}></div>
+          {isOnline ? (
+            <Wifi size={12} className="text-white drop-shadow" />
+          ) : (
+            <WifiOff size={12} className="text-white drop-shadow" />
+          )}
+          <span className="text-white text-[11px] font-semibold tracking-wide drop-shadow-sm">
+            {isOnline ? 'أنت متصل بالإنترنت' : 'لا يوجد اتصال بالإنترنت'}
+          </span>
         </div>
-      </div>
-
-      <div className="bg-white w-full max-w-md p-8 rounded-[2.5rem] shadow-2xl border border-gold-100 z-10 animate-in fade-in zoom-in-95 duration-500 relative">
-
-        {/* Offline Alert Overlay for Button Block */}
-        {!isOnline && (
-          <div className="bg-red-50 text-red-600 p-4 rounded-3xl mb-8 flex items-center gap-4 border border-red-100 animate-in slide-in-from-top-4">
-            <div className="bg-red-100 p-2 rounded-xl">
-              <AlertCircle size={24} />
-            </div>
-            <div className="text-right">
-              <p className="font-bold text-sm">خطأ في الاتصال</p>
-              <p className="text-xs opacity-80">يرجى الاتصال بالإنترنت لإكمال عملية تسجيل الدخول</p>
-            </div>
-          </div>
-        )}
 
         {/* Logo Section */}
         <div className="flex flex-col items-center mb-10">
