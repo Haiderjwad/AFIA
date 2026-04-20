@@ -186,7 +186,6 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, lowStockThreshold =
 
             {activeTab === 'orders' ? (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-20">
-                    {/* Columns logic here... */}
                     {['pending', 'preparing', 'ready'].map((status) => (
                         <div key={status} className="flex flex-col">
                             <div className={`p-5 rounded-2xl flex items-center justify-between mb-6 shadow-sm text-white ${status === 'pending' ? 'bg-gradient-to-r from-orange-500 to-orange-400' :
@@ -215,14 +214,30 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, lowStockThreshold =
                                         <div className="flex justify-between items-start mb-6">
                                             <div className="text-right">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-black text-coffee-900 text-2xl">#{order.id.slice(-4)}</span>
+                                                    <span className="font-black text-coffee-900 text-2xl">
+                                                        {order.tableNumber ? `طاولة ${order.tableNumber}` : `#${order.id.slice(-4)}`}
+                                                    </span>
                                                 </div>
                                                 <div className="text-gray-400 text-xs font-bold">{new Date(order.date).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</div>
                                             </div>
-                                            <div className="bg-gray-100 px-4 py-1 rounded-full text-[10px] font-black text-gray-500 uppercase">
-                                                {order.paymentMethod === 'cash' ? 'نقد' : 'بطاقة'}
+                                            <div className="flex flex-col items-end gap-2">
+                                                <div className="bg-gray-100 px-4 py-1 rounded-full text-[10px] font-black text-gray-500 uppercase">
+                                                    {order.paymentMethod === 'cash' ? 'نقد' : 'بطاقة'}
+                                                </div>
+                                                {order.notes && (
+                                                    <div className="flex items-center gap-1 text-gold-600 bg-gold-50 px-3 py-1 rounded-lg border border-gold-100 animate-pulse">
+                                                        <MessageSquare size={12} />
+                                                        <span className="text-[10px] font-bold">ملاحظة</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
+
+                                        {order.notes && (
+                                            <div className="mb-4 p-3 bg-gold-50 border border-gold-100 rounded-2xl text-xs text-coffee-800 font-bold leading-relaxed">
+                                                {order.notes}
+                                            </div>
+                                        )}
 
                                         <div className="bg-gray-50/50 p-4 rounded-3xl border border-gray-100 space-y-3 mb-6">
                                             {order.items.map((item, idx) => (

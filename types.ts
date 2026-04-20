@@ -39,6 +39,8 @@ export interface Transaction {
   total: number;
   status: 'pending' | 'preparing' | 'ready' | 'waiting_payment' | 'completed' | 'refunded';
   paymentMethod: 'cash' | 'card' | 'online';
+  tableNumber?: string;
+  notes?: string;
   isManual?: boolean;
 }
 

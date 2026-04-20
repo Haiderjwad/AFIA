@@ -192,24 +192,56 @@ const App: React.FC = () => {
     await signOut(auth);
     setCart([]);
     setActiveTab('dashboard');
-  };
+  }
 
-  const handleSendToKitchen = async () => {
+  const handleSendToKitchen = async (method: 'cash' | 'card' | 'online', tableNumber?: string, notes?: string) => {
     if (cart.length === 0) return;
 
-    const total = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-    const tax = total * (settings.taxRate / 100);
+    // Check if there's an active order for this table to append to
+    const activeTableOrder = tableNumber 
+      ? transactions.find(t => t.tableNumber === tableNumber && !['completed', 'refunded'].includes(t.status))
+      : null;
 
-    const newTransaction: Transaction = {
-      id: Date.now().toString(),
-      date: new Date().toISOString(),
-      items: [...cart],
-      total: total + tax,
-      status: 'pending',
-      paymentMethod: 'cash' // Placeholder until cashier confirms
-    };
+    if (activeTableOrder) {
+      // Append items to existing order
+      const updatedItems = [...activeTableOrder.items];
+      cart.forEach(cartItem => {
+        const existing = updatedItems.find(i => i.id === cartItem.id);
+        if (existing) {
+          existing.quantity += cartItem.quantity;
+        } else {
+          updatedItems.push({...cartItem});
+        }
+      });
 
-    await firestoreService.addTransaction(newTransaction);
+      const totalValue = updatedItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+      const taxAmount = totalValue * (settings.taxRate / 100);
+
+      await firestoreService.updateTransaction(activeTableOrder.id, {
+        items: updatedItems,
+        total: totalValue + taxAmount,
+        status: 'pending', 
+        notes: notes ? (activeTableOrder.notes ? `${activeTableOrder.notes} | ${notes}` : notes) : activeTableOrder.notes
+      });
+    } else {
+      // Create new order
+      const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+      const taxAmount = subtotal * (settings.taxRate / 100);
+
+      const newTransaction: Transaction = {
+        id: Date.now().toString(),
+        date: new Date().toISOString(),
+        items: [...cart],
+        total: subtotal + taxAmount,
+        status: 'pending',
+        paymentMethod: method,
+        tableNumber,
+        notes
+      };
+
+      await firestoreService.addTransaction(newTransaction);
+    }
+
     setCart([]);
     setShowSuccessModal(true);
     setTimeout(() => setShowSuccessModal(false), 2000);

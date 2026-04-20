@@ -34,12 +34,13 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
 
         // Search filter
         const matchesSearch = t.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            t.items.some(i => i.name.toLowerCase().includes(searchQuery.toLowerCase()));
+            t.items.some(i => i.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+            (t.tableNumber && t.tableNumber.toLowerCase().includes(searchQuery.toLowerCase()));
 
         return matchesSearch;
     });
 
-    const completedTransactions = transactions.filter(t => ['completed', 'refunded'].includes(t.status));
+const completedTransactions = transactions.filter(t => ['completed', 'refunded'].includes(t.status));
 
     const handlePrint = (transaction: Transaction) => {
         // ═══ ITEMS PER PAGE: 8 items max for premium large-font design ═══

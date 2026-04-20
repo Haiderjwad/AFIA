@@ -49,6 +49,11 @@ export const firestoreService = {
         return docRef.id;
     },
 
+    async updateTransaction(id: string, updates: Partial<Transaction>): Promise<void> {
+        const docRef = doc(db, "transactions", id);
+        await updateDoc(docRef, updates as any);
+    },
+
     async updateTransactionStatus(id: string, status: Transaction['status']): Promise<void> {
         const docRef = doc(db, "transactions", id);
         await updateDoc(docRef, { status });

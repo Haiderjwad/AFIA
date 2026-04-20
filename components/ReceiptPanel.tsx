@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { CartItem, MenuItem, AppSettings } from '../types';
-import { Plus, Minus, Sparkles, Coffee, CreditCard, Loader2, Banknote, Wifi, ArrowLeft, Check, AlertCircle } from 'lucide-react';
+import { Plus, Minus, Sparkles, Coffee, CreditCard, Loader2, Banknote, Wifi, ArrowLeft, Check, AlertCircle, Hash, MessageSquare } from 'lucide-react';
 import { suggestUpsell } from '../services/geminiService';
 
 interface ReceiptPanelProps {
@@ -10,7 +9,7 @@ interface ReceiptPanelProps {
     removeFromCart: (itemId: string) => void;
     decreaseQuantity: (itemId: string) => void;
     onClear: () => void;
-    onCheckout: (method: 'cash' | 'card' | 'online') => Promise<void>;
+    onCheckout: (method: 'cash' | 'card' | 'online', tableNumber: string, orderNote: string) => Promise<void>;
     settings: AppSettings;
     userRole: string;
 }
@@ -32,6 +31,8 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
     const [selectedMethod, setSelectedMethod] = useState<'cash' | 'card' | 'online' | null>(null);
     const [cashReceived, setCashReceived] = useState<string>('');
     const [isProcessing, setIsProcessing] = useState(false);
+    const [tableNumber, setTableNumber] = useState<string>('');
+    const [orderNote, setOrderNote] = useState<string>('');
 
     const currency = settings.currency;
     const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
@@ -61,7 +62,7 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
 
         // If sales, just send to kitchen directly
         if (['sales', 'kitchen'].includes(userRole)) {
-            onCheckout('cash'); // payment method doesn't matter here
+            onCheckout('cash', tableNumber, orderNote);
             return;
         }
 
@@ -76,10 +77,12 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
         if (!selectedMethod) return;
 
         setIsProcessing(true);
-        await onCheckout(selectedMethod);
+        await onCheckout(selectedMethod, tableNumber, orderNote);
         setIsProcessing(false);
         setShowPaymentModal(false);
         setUpsellSuggestion("");
+        setTableNumber('');
+        setOrderNote('');
     };
 
     // Helper to render payment method button
@@ -97,8 +100,8 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
         <button
             onClick={() => setSelectedMethod(method)}
             className={`p-6 rounded-2xl border-2 flex flex-col items-center justify-center gap-3 transition-all ${selectedMethod === method
-                    ? `${colorClass} border-transparent text-white shadow-lg scale-105`
-                    : `bg-white border-gray-100 text-gray-400 hover:text-gray-800 hover:border-gold-300`
+                ? `${colorClass} border-transparent text-white shadow-lg scale-105`
+                : `bg-white border-gray-100 text-gray-400 hover:text-gray-800 hover:border-gold-300`
                 }`}
         >
             <Icon size={32} />
@@ -162,6 +165,34 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                     </div>
                 )}
 
+
+
+                {/* Table & Notes Selection */}
+                <div className="px-4 pb-4 space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                         <div className="relative">
+                            <Hash className="absolute right-3 top-1/2 -translate-y-1/2 text-gold-600" size={16} />
+                            <input 
+                                type="text"
+                                placeholder="رقم الطاولة"
+                                value={tableNumber}
+                                onChange={(e) => setTableNumber(e.target.value)}
+                                className="w-full pr-10 pl-3 py-2.5 bg-white border border-gold-200 rounded-xl text-sm focus:ring-2 focus:ring-gold-500 outline-none font-bold text-coffee-900"
+                            />
+                        </div>
+                        <div className="relative">
+                            <MessageSquare className="absolute right-3 top-1/2 -translate-y-1/2 text-gold-600" size={16} />
+                            <input 
+                                type="text"
+                                placeholder="ملاحظة"
+                                value={orderNote}
+                                onChange={(e) => setOrderNote(e.target.value)}
+                                className="w-full pr-10 pl-3 py-2.5 bg-white border border-gold-200 rounded-xl text-sm focus:ring-2 focus:ring-gold-500 outline-none font-bold text-coffee-900"
+                            />
+                        </div>
+                    </div>
+                </div>
+
                 {/* Summary Section */}
                 <div className="bg-white p-6 rounded-t-[2.5rem] shadow-[0_-5px_20px_rgba(0,0,0,0.05)] relative shrink-0">
 
@@ -193,8 +224,8 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                             onClick={initiateCheckout}
                             disabled={cart.length === 0}
                             className={`w-full py-4 text-white rounded-xl font-bold text-lg shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${['sales', 'kitchen'].includes(userRole)
-                                    ? 'bg-gradient-to-r from-coffee-800 to-coffee-900 shadow-coffee-900/20'
-                                    : 'bg-gradient-to-r from-gold-500 to-gold-600 shadow-gold-500/30'
+                                ? 'bg-gradient-to-r from-coffee-800 to-coffee-900 shadow-coffee-900/20'
+                                : 'bg-gradient-to-r from-gold-500 to-gold-600 shadow-gold-500/30'
                                 }`}
                         >
                             {['sales', 'kitchen'].includes(userRole) ? (
