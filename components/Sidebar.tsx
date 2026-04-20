@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, Receipt, Box, FileText, Users, Settings, LogOut, CircleUser, UtensilsCrossed, Truck } from 'lucide-react';
+import { LayoutDashboard, Receipt, Box, FileText, Users, Settings, LogOut, CircleUser, UtensilsCrossed, Truck, ShoppingCart, Home } from 'lucide-react';
 import { Employee } from '../types';
 
 interface SidebarProps {
@@ -14,7 +14,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, setActiveItem, onLogout, 
   const profileRef = useRef<HTMLDivElement>(null);
 
   const menuItems = [
-    { id: 'sales', label: 'المبيعات', icon: LayoutDashboard, roles: ['admin', 'manager', 'cashier'] },
+    { id: 'dashboard', label: 'الرئيسة', icon: Home, roles: ['admin', 'manager', 'cashier', 'sales'] },
+    { id: 'sales', label: 'المبيعات', icon: ShoppingCart, roles: ['admin', 'manager', 'cashier', 'sales'] },
     { id: 'kitchen', label: 'المطبخ', icon: UtensilsCrossed, roles: ['admin', 'manager', 'kitchen'] },
     { id: 'invoices', label: 'الفواتير', icon: Receipt, roles: ['admin', 'manager', 'cashier'] },
     { id: 'inventory', label: 'المخزون', icon: Box, roles: ['admin', 'manager'] },

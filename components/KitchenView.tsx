@@ -7,7 +7,7 @@ import {
     ChefHat, Clock, CheckCircle2, AlertTriangle,
     UtensilsCrossed, Package, Bell, Search,
     Edit3, WifiOff, LayoutDashboard, History,
-    CheckCircle, MessageSquare
+    CheckCircle, MessageSquare, Loader2
 } from 'lucide-react';
 import { CURRENCY } from '../constants';
 
@@ -23,17 +23,20 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, lowStockThreshold =
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [editingProduct, setEditingProduct] = useState<MenuItem | null>(null);
+    const [loadingOrderId, setLoadingOrderId] = useState<string | null>(null);
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
     // Fetch Orders & Products
     useEffect(() => {
         const qOrders = query(
             collection(db, "transactions"),
-            where("status", "in", ["pending", "preparing", "ready"]),
-            orderBy("date", "asc")
+            where("status", "in", ["pending", "preparing", "ready"])
         );
 
         const unsubOrders = onSnapshot(qOrders, (snapshot) => {
-            const o = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
+            const o = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Transaction));
+            // Sort in memory to avoid needing a composite index in Firestore
+            o.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
             setOrders(o);
             setLoading(false);
         });
@@ -50,14 +53,32 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, lowStockThreshold =
         };
     }, []);
 
+
+    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3000);
+    };
+
     const updateStatus = async (orderId: string, newStatus: Transaction['status']) => {
+        if (loadingOrderId) return; // prevent double clicks
+        setLoadingOrderId(orderId);
         try {
             const orderRef = doc(db, "transactions", orderId);
             await updateDoc(orderRef, { status: newStatus });
+            const statusLabels: Record<string, string> = {
+                preparing: 'جاري العمل على الطلب',
+                ready: 'الطلب جاهز للتسليم ✓',
+                completed: 'تم تسليم الطلب',
+            };
+            showToast(statusLabels[newStatus] || 'تم تحديث الحالة');
         } catch (error) {
             console.error("Error updating order status:", error);
+            showToast('حدث خطأ أثناء تحديث الحالة', 'error');
+        } finally {
+            setLoadingOrderId(null);
         }
     };
+
 
     const handleUpdateStock = async (id: string, newStock: number) => {
         try {
@@ -114,6 +135,18 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, lowStockThreshold =
 
     return (
         <div className="flex-1 p-8 bg-[#fdfaf7] overflow-y-auto flex flex-col h-screen" dir="rtl">
+
+            {/* Toast Notification */}
+            {toast && (
+                <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[999] flex items-center gap-3 px-6 py-3 rounded-2xl shadow-2xl text-white font-bold text-sm transition-all animate-in slide-in-from-top-4 duration-300 ${toast.type === 'success'
+                    ? 'bg-gradient-to-r from-green-600 to-emerald-500'
+                    : 'bg-gradient-to-r from-red-600 to-rose-500'
+                    }`}>
+                    {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+                    <span>{toast.message}</span>
+                </div>
+            )}
+
             {/* Header Area */}
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 gap-6">
                 <div className="flex items-center gap-4 text-right">
@@ -157,8 +190,8 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, lowStockThreshold =
                     {['pending', 'preparing', 'ready'].map((status) => (
                         <div key={status} className="flex flex-col">
                             <div className={`p-5 rounded-2xl flex items-center justify-between mb-6 shadow-sm text-white ${status === 'pending' ? 'bg-gradient-to-r from-orange-500 to-orange-400' :
-                                    status === 'preparing' ? 'bg-gradient-to-r from-blue-600 to-blue-500' :
-                                        'bg-gradient-to-r from-green-600 to-green-500'
+                                status === 'preparing' ? 'bg-gradient-to-r from-blue-600 to-blue-500' :
+                                    'bg-gradient-to-r from-green-600 to-green-500'
                                 }`}>
                                 <span className="bg-white/20 px-3 py-1 rounded-full font-bold text-sm">
                                     {orders.filter(o => o.status === status).length}
@@ -176,8 +209,8 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, lowStockThreshold =
                             <div className="space-y-4">
                                 {orders.filter(o => o.status === status).map(order => (
                                     <div key={order.id} className={`bg-white rounded-[2.5rem] p-6 shadow-md border-r-8 transition-all hover:shadow-xl ${status === 'pending' ? 'border-orange-500' :
-                                            status === 'preparing' ? 'border-blue-500' :
-                                                'border-green-500'
+                                        status === 'preparing' ? 'border-blue-500' :
+                                            'border-green-500'
                                         }`}>
                                         <div className="flex justify-between items-start mb-6">
                                             <div className="text-right">
@@ -203,16 +236,24 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, lowStockThreshold =
                                         {status !== 'ready' && (
                                             <button
                                                 onClick={() => updateStatus(order.id, status === 'pending' ? 'preparing' : 'ready')}
-                                                className={`w-full py-4 rounded-2xl font-black text-white shadow-lg transition-all active:scale-95 flex items-center justify-center gap-3 ${status === 'pending' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-600 hover:bg-blue-700'
+                                                disabled={loadingOrderId === order.id}
+                                                className={`w-full py-4 rounded-2xl font-black text-white shadow-lg transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed ${status === 'pending'
+                                                    ? 'bg-gradient-to-l from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 shadow-orange-200'
+                                                    : 'bg-gradient-to-l from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-blue-200'
                                                     }`}
                                             >
-                                                {status === 'pending' ? <ChefHat size={20} /> : <CheckCircle size={20} />}
-                                                {status === 'pending' ? 'ابدأ العمل' : 'تم الانتهاء'}
+                                                {loadingOrderId === order.id ? (
+                                                    <><Loader2 size={20} className="animate-spin" /> جاري التحديث...</>
+                                                ) : status === 'pending' ? (
+                                                    <><ChefHat size={20} /> ابدأ التحضير الآن</>
+                                                ) : (
+                                                    <><CheckCircle size={20} /> جاهز للتسليم</>
+                                                )}
                                             </button>
                                         )}
                                         {status === 'ready' && (
-                                            <div className="bg-green-50 text-green-600 text-center py-4 rounded-2xl font-bold flex items-center justify-center gap-2 animate-pulse">
-                                                <CheckCircle size={20} /> بانتظار المبيعات
+                                            <div className="bg-gradient-to-l from-green-50 to-emerald-50 border border-green-200 text-green-700 text-center py-4 rounded-2xl font-bold flex items-center justify-center gap-2">
+                                                <CheckCircle2 size={20} className="text-green-500" /> جاهز — بانتظار استلام المبيعات
                                             </div>
                                         )}
                                     </div>

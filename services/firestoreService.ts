@@ -20,7 +20,7 @@ export const firestoreService = {
     // Products
     async getProducts(): Promise<MenuItem[]> {
         const snapshot = await getDocs(collection(db, "products"));
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem));
+        return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as MenuItem));
     },
 
     async addProduct(product: MenuItem): Promise<string> {
@@ -41,7 +41,7 @@ export const firestoreService = {
     async getTransactions(): Promise<Transaction[]> {
         const q = query(collection(db, "transactions"), orderBy("date", "desc"));
         const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
+        return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Transaction));
     },
 
     async addTransaction(transaction: Transaction): Promise<string> {
@@ -88,7 +88,7 @@ export const firestoreService = {
     // Suppliers
     async getSuppliers(): Promise<Supplier[]> {
         const snapshot = await getDocs(collection(db, "suppliers"));
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Supplier));
+        return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Supplier));
     },
 
     async addSupplier(supplier: Supplier): Promise<string> {

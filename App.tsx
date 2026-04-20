@@ -10,6 +10,7 @@ import ReportsView from './components/ReportsView';
 import SettingsView from './components/SettingsView';
 import LoginView from './components/LoginView';
 import KitchenView from './components/KitchenView';
+import SalesView from './components/SalesView';
 import { CartItem, MenuItem, Transaction, AppSettings, Employee } from './types';
 import { CURRENCY, DEFAULT_SETTINGS } from './constants';
 import { X, CheckCircle, Wifi, WifiOff, Globe } from 'lucide-react';
@@ -47,7 +48,7 @@ const App: React.FC = () => {
     };
   }, []);
 
-  const [activeTab, setActiveTab] = useState('sales');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [settingsTab, setSettingsTab] = useState<'general' | 'payments'>('general');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isProductMenuOpen, setIsProductMenuOpen] = useState(false);
@@ -102,14 +103,16 @@ const App: React.FC = () => {
 
     const startListeners = () => {
       unsubProducts = onSnapshot(collection(firestoreDb, "products"), (snapshot) => {
-        const p = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem));
+        const p = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as MenuItem));
         setProducts(p);
       });
 
       unsubTransactions = onSnapshot(
-        query(collection(firestoreDb, "transactions"), orderBy("date", "desc")),
+        query(collection(firestoreDb, "transactions")),
         (snapshot) => {
-          const t = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
+          const t = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Transaction));
+          // Sort in memory to avoid composite index requirement
+          t.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
           setTransactions(t);
         }
       );
@@ -123,7 +126,7 @@ const App: React.FC = () => {
       unsubNotifications = onSnapshot(
         query(collection(firestoreDb, "notifications"), orderBy("timestamp", "desc"), limit(5)),
         (snapshot) => {
-          const n = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          const n = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
           // Filter if not read or just keep them for display
           setNotifications(n);
         }
@@ -184,7 +187,7 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     await signOut(auth);
     setCart([]);
-    setActiveTab('sales');
+    setActiveTab('dashboard');
   };
 
   const handleSendToKitchen = async () => {
@@ -307,16 +310,25 @@ const App: React.FC = () => {
     const role = currentUser.role;
 
     switch (activeTab) {
-      case 'sales':
+      case 'dashboard':
         if (['admin', 'manager', 'cashier', 'sales'].includes(role)) {
           return <Dashboard
-            onProductClick={() => setIsProductMenuOpen(true)}
+            onProductClick={() => setActiveTab('sales')}
             onNavigate={handleDashboardNavigate}
             lowStockItems={lowStockItems}
             readyOrders={transactions.filter(t => t.status === 'ready')}
             onCompleteOrder={handleSendToCashier}
             isOnline={isOnline}
             notifications={notifications}
+          />;
+        }
+        break;
+      case 'sales':
+        if (['admin', 'manager', 'cashier', 'sales'].includes(role)) {
+          return <SalesView
+            products={products}
+            addToCart={addToCart}
+            settings={settings}
           />;
         }
         break;
@@ -374,7 +386,7 @@ const App: React.FC = () => {
     // Default Fallback for roles
     if (role === 'kitchen') return <KitchenView isOnline={isOnline} />;
     return <Dashboard
-      onProductClick={() => setIsProductMenuOpen(true)}
+      onProductClick={() => setActiveTab('sales')}
       onNavigate={handleDashboardNavigate}
       lowStockItems={lowStockItems}
       readyOrders={transactions.filter(t => t.status === 'ready')}
