@@ -26,6 +26,9 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
     const [isManualModalOpen, setIsManualModalOpen] = useState(false);
     const [isLogOpen, setIsLogOpen] = useState(false);
     const [manualCart, setManualCart] = useState<CartItem[]>([]);
+    const [autoPrint, setAutoPrint] = useState(false);
+    const [paymentStep, setPaymentStep] = useState<1 | 2>(1);
+    const [selectedMethod, setSelectedMethod] = useState<'cash' | 'card' | 'online' | null>(null);
 
     const filteredTransactions = transactions.filter(t => {
         // Tab filter
@@ -478,13 +481,17 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
         printWindow.document.close();
     };
 
-    const handleComplete = async (method: 'cash' | 'card' | 'online') => {
-        if (!selectedForPayment || !onFinalizePayment) return;
-        await onFinalizePayment(selectedForPayment.id, method);
-        const updated = { ...selectedForPayment, status: 'completed' as const, paymentMethod: method };
+    const handleComplete = async () => {
+        if (!selectedForPayment || !onFinalizePayment || !selectedMethod) return;
+        await onFinalizePayment(selectedForPayment.id, selectedMethod);
+        const updated = { ...selectedForPayment, status: 'completed' as const, paymentMethod: selectedMethod };
         setSelectedForPayment(null);
+        setPaymentStep(1);
+        setSelectedMethod(null);
         soundService.playSuccess();
-        handlePrint(updated);
+        if (autoPrint) {
+            handlePrint(updated);
+        }
     };
 
     const addToManualCart = (p: MenuItem) => {
@@ -577,6 +584,16 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                         >
                             الكل
                         </button>
+                    </div>
+
+                    <div
+                        onClick={() => setAutoPrint(!autoPrint)}
+                        className="flex items-center gap-3 bg-white px-6 py-3 rounded-2xl border border-brand-primary/10 cursor-pointer hover:bg-brand-light/5 transition-all shadow-sm"
+                    >
+                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all border-2 ${autoPrint ? 'bg-brand-primary border-transparent' : 'bg-transparent border-gray-200'}`}>
+                            {autoPrint && <Check size={14} className="text-white" />}
+                        </div>
+                        <span className="text-xs font-black text-brand-dark">طباعة الفاتورة فوراً بعد الدفع</span>
                     </div>
                 </div>
             </div>
@@ -1073,54 +1090,105 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
 
             {/* Payment Selection Modal for Cashier */}
             {selectedForPayment && (
-                <div className="fixed inset-0 z-[120] bg-brand-dark/40 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
-                    <div className="bg-white w-full max-w-lg rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95">
+                <div className="fixed inset-0 z-[400] bg-brand-dark/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+                    <div className="bg-white w-full max-w-lg rounded-[3.5rem] shadow-4xl overflow-hidden animate-in zoom-in-95 duration-500 border-4 border-white/20">
                         <div className={`p-8 border-b border-gray-100 flex justify-between items-center ${selectedForPayment.isManual ? 'bg-red-50' : 'bg-brand-light/20'}`}>
-                            <div>
-                                <h2 className={`text-2xl font-bold ${selectedForPayment.isManual ? 'text-red-600' : 'text-brand-dark'}`}>
-                                    {selectedForPayment.isManual ? 'تحصيل طلب يدوي' : 'تحصيل الفاتورة'}
-                                </h2>
-                                <p className="text-gray-500 text-sm">فاتورة رقم #{selectedForPayment.id.slice(-4)}</p>
+                            <div className="flex items-center gap-4">
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${selectedForPayment.isManual ? 'bg-red-500 text-white' : 'bg-brand-primary text-white'}`}>
+                                    {paymentStep === 1 ? <Banknote size={24} /> : <CheckCircle size={24} />}
+                                </div>
+                                <div>
+                                    <h2 className={`text-xl font-black ${selectedForPayment.isManual ? 'text-red-600' : 'text-brand-dark'}`}>
+                                        {paymentStep === 1 ? (selectedForPayment.isManual ? 'تحصيل يدوي' : 'طريقة الدفع') : 'تأكيد العملية'}
+                                    </h2>
+                                    <p className="text-gray-400 text-[10px] font-black uppercase tracking-tighter">
+                                        فاتورة رقم #{selectedForPayment.id.slice(-6)}
+                                    </p>
+                                </div>
                             </div>
-                            <button onClick={() => setSelectedForPayment(null)} className="p-3 bg-white rounded-full text-gray-400 hover:text-red-500 shadow-sm transition-all">
-                                <AlertCircle size={24} />
+                            <button
+                                onClick={() => {
+                                    setSelectedForPayment(null);
+                                    setPaymentStep(1);
+                                    setSelectedMethod(null);
+                                }}
+                                className="p-3 bg-white/50 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-2xl transition-all shadow-sm"
+                            >
+                                <X size={20} />
                             </button>
                         </div>
-                        <div className="p-10 text-center">
-                            <span className="text-gray-400 block text-sm mb-2 font-bold uppercase tracking-widest">إجمالي المبلغ المطلوب</span>
-                            <span className={`text-5xl font-black mb-10 block ${selectedForPayment.isManual ? 'text-red-600' : 'text-brand-dark'}`}>
-                                {selectedForPayment.total.toFixed(2)} {CURRENCY}
-                            </span>
 
-                            <div className="grid grid-cols-3 gap-4">
-                                <button
-                                    onClick={() => handleComplete('cash')}
-                                    className="flex flex-col items-center gap-3 p-6 rounded-[2rem] bg-green-50 border-2 border-green-100 text-green-700 hover:bg-green-600 hover:text-white hover:border-transparent transition-all group"
-                                >
-                                    <div className="p-4 bg-white rounded-2xl shadow-sm text-green-600 group-hover:bg-white/20 group-hover:text-white transition-all">
-                                        <Banknote size={32} />
+                        <div className="p-10">
+                            {paymentStep === 1 ? (
+                                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
+                                    <div className="text-center">
+                                        <span className="text-gray-400 block text-[10px] mb-2 font-black uppercase tracking-[0.2em]">اختيار الوسيلة</span>
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <button
+                                                onClick={() => { setSelectedMethod('cash'); setPaymentStep(2); }}
+                                                className="flex flex-col items-center gap-3 p-6 rounded-[2.5rem] bg-gray-50 border-2 border-transparent hover:border-green-500 hover:bg-green-50 text-brand-dark transition-all group active:scale-95"
+                                            >
+                                                <div className="p-4 bg-white rounded-2xl shadow-sm text-green-600 group-hover:scale-110 transition-all">
+                                                    <Banknote size={32} />
+                                                </div>
+                                                <span className="font-black text-xs">نقد</span>
+                                            </button>
+                                            <button
+                                                onClick={() => { setSelectedMethod('card'); setPaymentStep(2); }}
+                                                className="flex flex-col items-center gap-3 p-6 rounded-[2.5rem] bg-gray-50 border-2 border-transparent hover:border-blue-500 hover:bg-blue-50 text-brand-dark transition-all group active:scale-95"
+                                            >
+                                                <div className="p-4 bg-white rounded-2xl shadow-sm text-blue-600 group-hover:scale-110 transition-all">
+                                                    <CreditCard size={32} />
+                                                </div>
+                                                <span className="font-black text-xs">بطاقة</span>
+                                            </button>
+                                            <button
+                                                onClick={() => { setSelectedMethod('online'); setPaymentStep(2); }}
+                                                className="flex flex-col items-center gap-3 p-6 rounded-[2.5rem] bg-gray-50 border-2 border-transparent hover:border-purple-500 hover:bg-purple-50 text-brand-dark transition-all group active:scale-95"
+                                            >
+                                                <div className="p-4 bg-white rounded-2xl shadow-sm text-purple-600 group-hover:scale-110 transition-all">
+                                                    <Wifi size={32} />
+                                                </div>
+                                                <span className="font-black text-xs">إلكتروني</span>
+                                            </button>
+                                        </div>
                                     </div>
-                                    <span className="font-bold text-sm">نقد</span>
-                                </button>
-                                <button
-                                    onClick={() => handleComplete('card')}
-                                    className="flex flex-col items-center gap-3 p-6 rounded-[2rem] bg-blue-50 border-2 border-blue-100 text-blue-700 hover:bg-blue-600 hover:text-white hover:border-transparent transition-all group"
-                                >
-                                    <div className="p-4 bg-white rounded-2xl shadow-sm text-blue-600 group-hover:bg-white/20 group-hover:text-white transition-all">
-                                        <CreditCard size={32} />
+                                </div>
+                            ) : (
+                                <div className="space-y-10 animate-in fade-in zoom-in-95 duration-500">
+                                    <div className="text-center">
+                                        <div className="inline-flex items-center gap-2 bg-brand-primary/10 px-6 py-2 rounded-full text-brand-primary text-xs font-black uppercase tracking-widest mb-6">
+                                            {selectedMethod === 'cash' ? '💵 دفع نقدي' : selectedMethod === 'card' ? '💳 بطاقة بنكية' : '📱 دفع إلكتروني'}
+                                        </div>
+                                        <span className="text-gray-400 block text-[10px] mb-2 font-black uppercase tracking-[0.3em]">المبلغ المطلوب تحصيله</span>
+                                        <span className={`text-6xl font-black block tracking-tighter ${selectedForPayment.isManual ? 'text-red-600' : 'text-brand-dark'}`}>
+                                            {selectedForPayment.total.toFixed(0)}
+                                            <span className="text-xl mr-2 text-gray-300">{settings?.currency || CURRENCY}</span>
+                                        </span>
                                     </div>
-                                    <span className="font-bold text-sm">بطاقة</span>
-                                </button>
-                                <button
-                                    onClick={() => handleComplete('online')}
-                                    className="flex flex-col items-center gap-3 p-6 rounded-[2rem] bg-purple-50 border-2 border-purple-100 text-purple-700 hover:bg-purple-600 hover:text-white hover:border-transparent transition-all group"
-                                >
-                                    <div className="p-4 bg-white rounded-2xl shadow-sm text-purple-600 group-hover:bg-white/20 group-hover:text-white transition-all">
-                                        <Wifi size={32} />
+
+                                    <div className="flex gap-4">
+                                        <button
+                                            onClick={() => setPaymentStep(1)}
+                                            className="flex-1 py-5 rounded-[2rem] bg-gray-100 text-gray-400 font-black text-sm hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <ChevronLeft size={18} /> تراجع
+                                        </button>
+                                        <button
+                                            onClick={handleComplete}
+                                            className="flex-[2] py-5 rounded-[2rem] bg-brand-primary text-white font-black text-lg hover:bg-brand-secondary transition-all shadow-2xl shadow-brand-primary/30 flex items-center justify-center gap-3 active:scale-95"
+                                        >
+                                            <CheckCircle size={24} /> تم استلام المبلغ
+                                        </button>
                                     </div>
-                                    <span className="font-bold text-sm">إلكتروني</span>
-                                </button>
-                            </div>
+
+                                    {autoPrint && (
+                                        <div className="flex items-center justify-center gap-2 text-[10px] text-gray-400 font-bold uppercase tracking-widest animate-pulse">
+                                            <Printer size={12} /> سيتم إجراء الطباعة فور الحفظ
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
