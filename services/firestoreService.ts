@@ -99,7 +99,8 @@ export const firestoreService = {
         const map = new Map<string, Employee>();
         snapshot.docs.forEach(doc => {
             const data = doc.data() as Employee;
-            map.set(data.email, data);
+            // Crucial fix: ensure UID is set to document ID if not present in data
+            map.set(data.email, { ...data, uid: data.uid || doc.id });
         });
         return Array.from(map.values());
     },
@@ -111,12 +112,21 @@ export const firestoreService = {
     },
 
     async updateEmployee(id: string, updates: Partial<Employee>): Promise<void> {
+        if (!id) {
+            throw new Error("Employee ID is required for update");
+        }
+
+        // Remove undefined fields to prevent Firestore update errors
+        const cleanUpdates = Object.fromEntries(
+            Object.entries(updates).filter(([_, v]) => v !== undefined)
+        );
+
         const docRef = doc(db, "employees", id);
-        await updateDoc(docRef, updates as any);
+        await updateDoc(docRef, cleanUpdates);
 
         // If we updated by non-UID ID, we might need to sync with UID ID if it exists
-        if (updates.uid) {
-            await setDoc(doc(db, "employees", updates.uid), { ...updates }, { merge: true });
+        if (updates.uid && updates.uid !== id) {
+            await setDoc(doc(db, "employees", updates.uid), cleanUpdates, { merge: true });
         }
     },
 

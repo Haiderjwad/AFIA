@@ -3,6 +3,7 @@ import { Settings, Bell, CreditCard, Save, Check, ChevronDown, Coins, Users, Use
 import { AppSettings, Employee, UserRole } from '../types';
 import { firestoreService } from '../services/firestoreService';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
+import StatusModal from './StatusModal';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { db } from '../firebase';
@@ -34,6 +35,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // New Employee Form State
   const [empForm, setEmpForm] = useState({
@@ -43,6 +45,18 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
     role: 'sales' as UserRole,
     employeeId: '',
     permissions: [] as string[]
+  });
+
+  const [statusModal, setStatusModal] = useState<{
+    isOpen: boolean;
+    type: 'success' | 'error' | 'warning';
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: 'success',
+    title: '',
+    message: ''
   });
 
   useEffect(() => {
@@ -122,10 +136,20 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
       setEmpForm({ name: '', email: '', password: '', role: 'sales', employeeId: '', permissions: [] });
       setIsEmployeeModalOpen(false);
       fetchEmployees();
-      alert('تم إنشاء الموظف وافتتاح حساب رسمي له بنجاح');
+      setStatusModal({
+        isOpen: true,
+        type: 'success',
+        title: 'تم إنشاء الموظف',
+        message: 'تم إعداد حساب جديد وإرسال الصلاحيات للسحابة بنجاح.'
+      });
     } catch (error: any) {
       console.error("Error adding employee:", error);
-      alert(`فشل إنشاء الحساب: ${error.message}`);
+      setStatusModal({
+        isOpen: true,
+        type: 'error',
+        title: 'فشل الإنشاء',
+        message: `تأكد من اتصالك بالإنترنت وصحة البيانات: ${error.message}`
+      });
     } finally {
       if (secondaryApp) {
         await deleteApp(secondaryApp);
@@ -137,6 +161,44 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
   const handleDeleteEmployee = async (id: string) => {
     await firestoreService.deleteEmployee(id);
     fetchEmployees();
+  };
+
+  const handleUpdateEmployee = async () => {
+    if (!editingEmployee) return;
+
+    try {
+      setLoadingEmployees(true);
+      // We update both the document with the original ID and the UID document if they differ
+      await firestoreService.updateEmployee(editingEmployee.uid || editingEmployee.employeeId, {
+        name: empForm.name,
+        email: empForm.email,
+        role: empForm.role,
+        employeeId: empForm.employeeId,
+        permissions: empForm.permissions
+      });
+
+      setIsEmployeeModalOpen(false);
+      setEditingEmployee(null);
+      setEmpForm({ name: '', email: '', password: '', role: 'sales', employeeId: '', permissions: [] });
+      fetchEmployees();
+
+      setStatusModal({
+        isOpen: true,
+        type: 'success',
+        title: 'تم تحديث البيانات',
+        message: 'تم حفظ كافة التعديلات على حساب الموظف في النظام بنجاح.'
+      });
+    } catch (error: any) {
+      console.error("Error updating employee:", error);
+      setStatusModal({
+        isOpen: true,
+        type: 'error',
+        title: 'فشل التحديث',
+        message: `حدث خطأ تقني: ${error.message}`
+      });
+    } finally {
+      setLoadingEmployees(false);
+    }
   };
 
   return (
@@ -525,19 +587,37 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
         {/* Employees Management */}
         {activeTab === 'employees' && (
           <div className="col-span-1 md:col-span-2 space-y-6">
-            <div className="flex justify-between items-center bg-white p-6 rounded-3xl border border-brand-primary/10 shadow-sm">
-              <div>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-3xl border border-brand-primary/10 shadow-sm">
+              <div className="flex-1">
                 <h3 className="text-xl font-black text-brand-dark flex items-center gap-2">
                   <Users size={24} className="text-brand-primary" /> كادر العمل الذكي
                 </h3>
                 <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Personnel Management Intelligence</p>
               </div>
-              <button
-                onClick={() => setIsEmployeeModalOpen(true)}
-                className="flex items-center gap-2 bg-brand-primary text-white px-6 py-3 rounded-2xl font-black hover:bg-brand-secondary transition-all shadow-lg shadow-brand-primary/20"
-              >
-                <UserPlus size={20} /> إضافة موظف جديد
-              </button>
+
+              <div className="flex items-center gap-4 w-full md:w-auto">
+                <div className="relative flex-1 md:w-64">
+                  <input
+                    type="text"
+                    placeholder="بحث عن موظف..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-brand-primary/5 rounded-xl focus:ring-2 focus:ring-brand-primary outline-none text-sm font-bold"
+                  />
+                  <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                </div>
+
+                <button
+                  onClick={() => {
+                    setEditingEmployee(null);
+                    setEmpForm({ name: '', email: '', password: '', role: 'sales', employeeId: '', permissions: [] });
+                    setIsEmployeeModalOpen(true);
+                  }}
+                  className="flex items-center gap-2 bg-brand-primary text-white px-6 py-3 rounded-2xl font-black hover:bg-brand-secondary transition-all shadow-lg shadow-brand-primary/20 shrink-0"
+                >
+                  <UserPlus size={20} /> إضافة موظف
+                </button>
+              </div>
             </div>
 
             <div className="bg-white rounded-[2.5rem] shadow-xl border border-brand-primary/5 overflow-hidden">
@@ -555,53 +635,68 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                     <tr>
                       <td colSpan={4} className="py-20 text-center text-gray-400">جاري تحميل البيانات السحابية...</td>
                     </tr>
-                  ) : employees.length === 0 ? (
+                  ) : employees.filter(e => e.name.toLowerCase().includes(searchTerm.toLowerCase()) || e.email.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="py-20 text-center text-gray-400 italic">لا يوجد موظفين مسجلين حالياً</td>
+                      <td colSpan={4} className="py-20 text-center text-gray-400 italic">
+                        {searchTerm ? 'لا توجد نتائج مطابقة للبحث' : 'لا يوجد موظفين مسجلين حالياً'}
+                      </td>
                     </tr>
                   ) : (
-                    employees.map((emp) => (
-                      <tr key={emp.employeeId} className="hover:bg-brand-light/5 transition-colors group">
-                        <td className="px-8 py-5">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center font-black text-lg">
-                              {emp.name.charAt(0)}
+                    employees
+                      .filter(e => e.name.toLowerCase().includes(searchTerm.toLowerCase()) || e.email.toLowerCase().includes(searchTerm.toLowerCase()))
+                      .map((emp) => (
+                        <tr key={emp.uid || emp.email || emp.employeeId} className="hover:bg-brand-light/5 transition-colors group">
+                          <td className="px-8 py-5">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center font-black text-lg">
+                                {emp.name.charAt(0)}
+                              </div>
+                              <div>
+                                <p className="font-black text-brand-dark">{emp.name}</p>
+                                <p className="text-xs text-gray-400 font-bold">{emp.email}</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-black text-brand-dark">{emp.name}</p>
-                              <p className="text-xs text-gray-400 font-bold">{emp.email}</p>
+                          </td>
+                          <td className="px-8 py-5">
+                            <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${emp.role === 'admin' ? 'bg-red-50 text-red-600' :
+                              emp.role === 'manager' ? 'bg-brand-accent/20 text-brand-accent' :
+                                'bg-brand-light/50 text-brand-primary'
+                              }`}>
+                              {emp.role === 'admin' ? 'مدير' : emp.role === 'manager' ? 'مسؤول' : emp.role === 'cashier' ? 'كاشير' : 'مبيعات'}
+                            </span>
+                          </td>
+                          <td className="px-8 py-5 text-center font-bold text-brand-dark/40 text-sm">
+                            {emp.employeeId}
+                          </td>
+                          <td className="px-8 py-5 text-left">
+                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => {
+                                  setEditingEmployee(emp);
+                                  setEmpForm({
+                                    name: emp.name || '',
+                                    email: emp.email || '',
+                                    role: emp.role || 'sales',
+                                    employeeId: emp.employeeId || '',
+                                    password: '',
+                                    permissions: Array.isArray(emp.permissions) ? emp.permissions : []
+                                  });
+                                  setIsEmployeeModalOpen(true);
+                                }}
+                                className="p-2.5 bg-gray-50 text-gray-400 hover:bg-brand-primary hover:text-white rounded-xl transition-all"
+                              >
+                                <Edit size={18} />
+                              </button>
+                              <button
+                                onClick={() => setItemToDelete(emp.uid || emp.employeeId)}
+                                className="p-2.5 bg-gray-50 text-gray-400 hover:bg-red-500 hover:text-white rounded-xl transition-all"
+                              >
+                                <Trash2 size={18} />
+                              </button>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-8 py-5">
-                          <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${emp.role === 'admin' ? 'bg-red-50 text-red-600' :
-                            emp.role === 'manager' ? 'bg-brand-accent/20 text-brand-accent' :
-                              'bg-brand-light/50 text-brand-primary'
-                            }`}>
-                            {emp.role === 'admin' ? 'مدير' : emp.role === 'manager' ? 'مسؤول' : emp.role === 'cashier' ? 'كاشير' : 'مبيعات'}
-                          </span>
-                        </td>
-                        <td className="px-8 py-5 text-center font-bold text-brand-dark/40 text-sm">
-                          {emp.employeeId}
-                        </td>
-                        <td className="px-8 py-5 text-left">
-                          <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => { setEditingEmployee(emp); setEmpForm({ ...emp, password: '' }); setIsEmployeeModalOpen(true); }}
-                              className="p-2.5 bg-gray-50 text-gray-400 hover:bg-brand-primary hover:text-white rounded-xl transition-all"
-                            >
-                              <Edit size={18} />
-                            </button>
-                            <button
-                              onClick={() => setItemToDelete(emp.uid || emp.employeeId)}
-                              className="p-2.5 bg-gray-50 text-gray-400 hover:bg-red-500 hover:text-white rounded-xl transition-all"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                          </td>
+                        </tr>
+                      ))
                   )}
                 </tbody>
               </table>
@@ -707,23 +802,42 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                     <ListChecks size={18} className="text-brand-primary" /> صلاحيات الوصول المخصصة
                   </h4>
                   <div className="grid grid-cols-3 gap-3">
-                    {['dashboard', 'sales', 'kitchen', 'invoices', 'inventory', 'suppliers', 'reports', 'settings'].map(perm => (
-                      <label key={perm} className="flex items-center gap-2 p-3 bg-white rounded-xl border border-gray-100 cursor-pointer hover:bg-brand-light/5 transition-all">
+                    {[
+                      { id: 'dashboard', label: 'الرئيسة', icon: '📊' },
+                      { id: 'sales', label: 'المبيعات', icon: '💰' },
+                      { id: 'kitchen', label: 'المطبخ', icon: '👨‍🍳' },
+                      { id: 'invoices', label: 'الفواتير', icon: '📄' },
+                      { id: 'inventory', label: 'المخزون', icon: '📦' },
+                      { id: 'suppliers', label: 'الموردين', icon: '🚚' },
+                      { id: 'reports', label: 'التقارير', icon: '📈' },
+                      { id: 'settings', label: 'الإعدادات', icon: '⚙️' }
+                    ].map(perm => (
+                      <label
+                        key={perm.id}
+                        className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${Array.isArray(empForm.permissions) && empForm.permissions.includes(perm.id)
+                          ? 'bg-brand-primary/10 border-brand-primary/30 shadow-sm'
+                          : 'bg-white border-gray-100 hover:bg-gray-50'
+                          }`}
+                      >
                         <input
                           type="checkbox"
-                          checked={empForm.permissions.includes(perm)}
+                          checked={Array.isArray(empForm.permissions) && empForm.permissions.includes(perm.id)}
                           onChange={(e) => {
                             const checked = e.target.checked;
                             setEmpForm(prev => ({
                               ...prev,
                               permissions: checked
-                                ? [...prev.permissions, perm]
-                                : prev.permissions.filter(p => p !== perm)
+                                ? [...(Array.isArray(prev.permissions) ? prev.permissions : []), perm.id]
+                                : (Array.isArray(prev.permissions) ? prev.permissions : []).filter(p => p !== perm.id)
                             }));
                           }}
-                          className="w-5 h-5 accent-brand-primary"
+                          className="w-5 h-5 accent-brand-primary rounded-md"
                         />
-                        <span className="text-xs font-bold text-brand-dark capitalize">{perm}</span>
+                        <div className="flex flex-col">
+                          <span className="text-xs font-black text-brand-dark flex items-center gap-1">
+                            <span>{perm.icon}</span> {perm.label}
+                          </span>
+                        </div>
                       </label>
                     ))}
                   </div>
@@ -732,11 +846,18 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
 
               <div className="p-8 bg-gray-50 flex gap-4">
                 <button
-                  onClick={editingEmployee ? () => { } : handleAddEmployee}
-                  className="flex-1 bg-brand-primary text-white font-black py-5 rounded-[1.5rem] flex items-center justify-center gap-2 hover:bg-brand-secondary transition-all shadow-xl shadow-brand-primary/20"
+                  onClick={editingEmployee ? handleUpdateEmployee : handleAddEmployee}
+                  disabled={loadingEmployees}
+                  className="flex-1 bg-brand-primary text-white font-black py-5 rounded-[1.5rem] flex items-center justify-center gap-2 hover:bg-brand-secondary transition-all shadow-xl shadow-brand-primary/20 disabled:opacity-50"
                 >
-                  {editingEmployee ? <Save size={20} /> : <UserPlus size={20} />}
-                  {editingEmployee ? 'حفظ التعديلات' : 'إنشاء الموظف والحساب'}
+                  {loadingEmployees ? (
+                    <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <>
+                      {editingEmployee ? <Save size={20} /> : <UserPlus size={20} />}
+                      {editingEmployee ? 'حفظ التعديلات' : 'إنشاء الموظف والحساب'}
+                    </>
+                  )}
                 </button>
                 <button
                   onClick={() => { setIsEmployeeModalOpen(false); setEditingEmployee(null); }}
@@ -756,6 +877,15 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
         onConfirm={() => itemToDelete && handleDeleteEmployee(itemToDelete)}
         title="إنهاء صلاحيات الموظف؟"
         description="هل أنت متأكد من رغبتك في حذف هذا الموظف من النظام؟ سيؤدي ذلك لإيقاف قدرته على تسجيل الدخول وإزالة كافة صلاحياته فوراً."
+      />
+
+      {/* Status Notifications Modal */}
+      <StatusModal
+        isOpen={statusModal.isOpen}
+        onClose={() => setStatusModal({ ...statusModal, isOpen: false })}
+        type={statusModal.type}
+        title={statusModal.title}
+        message={statusModal.message}
       />
 
     </div>
