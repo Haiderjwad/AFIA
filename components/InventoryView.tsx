@@ -125,7 +125,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({
   };
 
   return (
-    <div className="flex-1 p-8 bg-brand-cream overflow-y-auto animate-in fade-in slide-in-from-bottom-4 relative no-scrollbar">
+    <div className="flex-1 p-8 bg-brand-cream overflow-y-auto animate-in fade-in slide-in-from-bottom-4 relative premium-scrollbar">
       {/* Background Patterns (Subtle) */}
       <div className="absolute top-0 left-0 w-64 h-64 opacity-5 pointer-events-none -translate-x-1/2 -translate-y-1/2">
         <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
@@ -304,7 +304,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-10 space-y-6 overflow-y-auto no-scrollbar">
+            <form onSubmit={handleSubmit} className="p-10 space-y-6 overflow-y-auto premium-scrollbar">
               <div className="space-y-3">
                 <label className="text-xs font-black text-brand-dark/40 uppercase tracking-tighter flex items-center gap-2">
                   <Coffee size={14} className="text-brand-primary" /> الاسم التجاري للمنتج

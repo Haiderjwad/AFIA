@@ -140,7 +140,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
   };
 
   return (
-    <div className="flex-1 p-8 overflow-y-auto animate-in fade-in slide-in-from-bottom-4 no-scrollbar" dir="rtl">
+    <div className="flex-1 p-8 overflow-y-auto animate-in fade-in slide-in-from-bottom-4 premium-scrollbar" dir="rtl">
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-coffee-900 mb-2">إعدادات النظام</h1>
@@ -628,7 +628,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                 </button>
               </div>
 
-              <div className="p-10 space-y-6 max-h-[70vh] overflow-y-auto no-scrollbar">
+              <div className="p-10 space-y-6 max-h-[70vh] overflow-y-auto premium-scrollbar">
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-xs font-black text-gray-400 uppercase flex items-center gap-2">
