@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import {
   Truck, Phone, Mail, Package,
   CreditCard, Calendar, Search, Plus,
@@ -23,6 +25,8 @@ const SuppliersView: React.FC = () => {
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [formData, setFormData] = useState<Partial<Supplier>>({});
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
 
   const fetchSuppliers = async () => {
     setLoading(true);
@@ -95,14 +99,42 @@ const SuppliersView: React.FC = () => {
 
   const categories = ['All', ...new Set(suppliers.map(s => s.category))];
 
-  const generateReport = (supplier?: Supplier) => {
-    const title = supplier ? `تقرير المورد: ${supplier.name}` : 'تقرير الموردين العام';
-    alert(`جاري استخراج ${title}...\nسيتم تحميل الملف قريباً`);
+  const generateReport = async (supplier?: Supplier) => {
+    setIsExporting(true);
+
+    // Aesthetic delay for the professional dialog
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    try {
+      if (!reportRef.current) return;
+
+      const canvas = await html2canvas(reportRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.9);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Afia_Suppliers_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+
+      setIsExporting(false);
+      soundService.playSuccess();
+    } catch (error) {
+      console.error("Report generation failed:", error);
+      setIsExporting(false);
+      soundService.playError();
+    }
   };
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center p-20 bg-[#fdfaf7]">
+      <div className="flex-1 flex items-center justify-center p-20 bg-brand-cream">
         <div className="flex flex-col items-center gap-4">
           <div className="w-16 h-16 border-4 border-brand-primary/20 border-t-brand-primary rounded-full animate-spin"></div>
           <p className="text-brand-primary font-black animate-pulse">جاري تحميل بيانات الموردين...</p>
@@ -213,7 +245,7 @@ const SuppliersView: React.FC = () => {
             placeholder="ابحث بالاسم، السلعة، أو التصنيف..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#fdfaf7] border-none rounded-3xl py-5 pr-14 pl-6 outline-none focus:ring-4 focus:ring-brand-primary/5 transition-all font-black text-brand-dark placeholder-brand-dark/20"
+            className="w-full bg-white border-2 border-brand-primary/5 rounded-3xl py-5 pr-14 pl-6 outline-none focus:ring-8 focus:ring-brand-primary/5 focus:border-brand-primary/20 transition-all font-black text-brand-dark placeholder-brand-dark/20 shadow-sm"
           />
         </div>
         <div className="flex gap-2 w-full lg:w-auto overflow-x-auto pb-2 lg:pb-0 scrollbar-hide">
@@ -221,7 +253,7 @@ const SuppliersView: React.FC = () => {
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`px-8 py-5 rounded-[1.5rem] font-black whitespace-nowrap transition-all flex items-center gap-2 ${activeCategory === cat ? 'bg-brand-primary text-white shadow-2xl shadow-brand-primary/20 scale-105' : 'bg-[#fdfaf7] text-brand-dark/40 hover:bg-brand-light/30'}`}
+              className={`px-8 py-5 rounded-[1.5rem] font-black whitespace-nowrap transition-all flex items-center gap-2 ${activeCategory === cat ? 'bg-brand-primary text-white shadow-2xl shadow-brand-primary/20 scale-105' : 'bg-white border border-brand-primary/5 text-brand-dark/40 hover:bg-brand-light/30 shadow-sm'}`}
             >
               {cat === 'All' ? 'كل الموردين' : cat}
             </button>
@@ -267,25 +299,25 @@ const SuppliersView: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-4 mb-10 flex-1">
-              <div className="bg-[#fcfaf7] p-5 rounded-[2rem] border border-gray-100 group-hover:border-brand-primary/10 transition-colors">
+              <div className="bg-brand-cream/50 p-5 rounded-[2rem] border border-brand-primary/5 group-hover:border-brand-primary/10 transition-colors">
                 <div className="flex items-center gap-2 text-brand-primary/40 text-[10px] font-black mb-2 uppercase tracking-tighter">
                   <Package size={14} /> السلعة الموردة
                 </div>
                 <p className="text-md font-black text-brand-dark pr-1">{supplier.suppliedItem}</p>
               </div>
-              <div className="bg-[#fcfaf7] p-5 rounded-[2rem] border border-gray-100 group-hover:border-brand-primary/10 transition-colors">
+              <div className="bg-brand-cream/50 p-5 rounded-[2rem] border border-brand-primary/5 group-hover:border-brand-primary/10 transition-colors">
                 <div className="flex items-center gap-2 text-brand-primary/40 text-[10px] font-black mb-2 uppercase tracking-tighter">
                   <CreditCard size={14} /> سعر الوحدة
                 </div>
                 <p className="text-md font-black text-brand-dark pr-1">{supplier.costPerUnit} {CURRENCY}</p>
               </div>
-              <div className="bg-[#fcfaf7] p-5 rounded-[2rem] border border-gray-100 group-hover:border-brand-primary/10 transition-colors">
+              <div className="bg-brand-cream/50 p-5 rounded-[2rem] border border-brand-primary/5 group-hover:border-brand-primary/10 transition-colors">
                 <div className="flex items-center gap-2 text-brand-primary/40 text-[10px] font-black mb-2 uppercase tracking-tighter">
                   <Calendar size={14} /> آخر توريد
                 </div>
                 <p className="text-md font-black text-brand-dark pr-1">{supplier.lastSupplyDate}</p>
               </div>
-              <div className="bg-[#fcfaf7] p-5 rounded-[2rem] border border-gray-100 group-hover:border-brand-primary/10 transition-colors">
+              <div className="bg-brand-cream/50 p-5 rounded-[2rem] border border-brand-primary/5 group-hover:border-brand-primary/10 transition-colors">
                 <div className="flex items-center gap-2 text-brand-primary/40 text-[10px] font-black mb-2 uppercase tracking-tighter">
                   <TrendingUp size={14} /> الكمية الإجمالية
                 </div>
@@ -468,6 +500,104 @@ const SuppliersView: React.FC = () => {
         title="هل أنت متأكد من حذف المورد؟"
         description="سيتم حذف كافة بيانات هذا المورد وتاريخ التوريد الخاص به بشكل نهائي من النظام، ولا يمكن التراجع عن هذا الإجراء."
       />
+
+      {/* Professional Export Dialog */}
+      {isExporting && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-brand-dark/60 backdrop-blur-xl animate-in fade-in duration-500 px-4">
+          <div className="bg-white rounded-[4rem] p-16 shadow-5xl max-w-md w-full text-center space-y-10 animate-in zoom-in duration-700 border-[12px] border-brand-primary/5 relative overflow-hidden">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-brand-primary/5 rounded-full blur-3xl -mt-32"></div>
+
+            <div className="relative">
+              <div className="w-32 h-32 mx-auto relative flex items-center justify-center">
+                <div className="absolute inset-0 border-[6px] border-brand-primary/10 rounded-[2.5rem]"></div>
+                <div className="absolute inset-0 border-[6px] border-brand-primary rounded-[2.5rem] border-t-transparent animate-spin duration-1000"></div>
+                <div className="bg-brand-primary w-20 h-20 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-brand-primary/40 animate-pulse">
+                  <FileText size={40} />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-3xl font-black text-brand-dark tracking-tighter">جاري إعداد التقرير</h3>
+              <p className="text-sm font-bold text-gray-500 leading-relaxed">
+                نقوم الآن بذكاء عافية بتنظيم كشوفات الموردين وتدقيق البيانات للحصول على ملف PDF احترافي وعالي الدقة.
+              </p>
+            </div>
+
+            <div className="flex gap-2 justify-center items-center">
+              {[0, 1, 2].map(i => (
+                <div key={i} className="w-3 h-3 rounded-full bg-brand-primary/20 animate-bounce" style={{ animationDelay: `${i * 0.2}s` }}></div>
+              ))}
+            </div>
+
+            <div className="text-[9px] font-black text-gray-300 uppercase tracking-widest pt-4">
+              Al Afia Enterprise Reporting Engine
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden Report Template (For html2canvas) */}
+      <div className="fixed -left-[2000px] top-0">
+        <div
+          ref={reportRef}
+          className="w-[210mm] bg-white p-[20mm] font-sans"
+          style={{ direction: 'rtl' }}
+        >
+          {/* Header */}
+          <div className="flex justify-between items-center border-b-4 border-brand-dark pb-8 mb-10">
+            <div className="flex items-center gap-6">
+              <img src="/branding/afia_logo.png" className="w-20 h-20 object-contain" alt="Afia" />
+              <div>
+                <h1 className="text-4xl font-black text-brand-dark">نظام عافية الذكي</h1>
+                <p className="text-brand-primary font-bold">كشف الموردين والشركات المعتمدة</p>
+              </div>
+            </div>
+            <div className="text-left">
+              <p className="text-sm text-gray-400 font-bold">التاريخ: {new Date().toLocaleDateString('ar-IQ')}</p>
+              <p className="text-sm text-gray-400 font-bold">الوقت: {new Date().toLocaleTimeString('ar-IQ')}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-8 mb-10">
+            <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100">
+              <p className="text-xs text-gray-400 font-black mb-1 uppercase">إجمالي عدد الموردين</p>
+              <p className="text-3xl font-black text-brand-dark">{suppliers.length} مورد</p>
+            </div>
+            <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100">
+              <p className="text-xs text-gray-400 font-black mb-1 uppercase">مجموع المستحقات المدفوعة</p>
+              <p className="text-3xl font-black text-brand-dark">{suppliers.reduce((acc, s) => acc + s.totalPaid, 0).toLocaleString()} {CURRENCY}</p>
+            </div>
+          </div>
+
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-brand-dark text-white">
+                <th className="p-4 text-right rounded-tr-2xl">المورد</th>
+                <th className="p-4 text-right">السلعة</th>
+                <th className="p-4 text-right">سعر الوحدة</th>
+                <th className="p-4 text-right">آخر توريد</th>
+                <th className="p-4 text-right rounded-tl-2xl">الإجمالي</th>
+              </tr>
+            </thead>
+            <tbody>
+              {suppliers.map((s, idx) => (
+                <tr key={s.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                  <td className="p-4 border-b border-gray-100 font-bold">{s.name}</td>
+                  <td className="p-4 border-b border-gray-100">{s.suppliedItem}</td>
+                  <td className="p-4 border-b border-gray-100 font-bold">{s.costPerUnit.toLocaleString()}</td>
+                  <td className="p-4 border-b border-gray-100">{s.lastSupplyDate}</td>
+                  <td className="p-4 border-b border-gray-100 font-black text-brand-primary">{s.totalPaid.toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="mt-20 pt-10 border-t border-dashed border-gray-200 text-center">
+            <p className="text-xs text-gray-400 font-bold capitalize">Generated by Al Afia Smart Business Solutions - Management Report System</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
