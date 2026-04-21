@@ -29,16 +29,55 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<Employee | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
-  const [showSplash, setShowSplash] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
 
   useEffect(() => {
-    // Show splash for at least 3 seconds
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-    }, 3000);
-    return () => clearTimeout(timer);
+    // 1. Initial Seeding and Settings Check
+    const initializeSystem = async () => {
+      try {
+        await firestoreService.seedDatabase();
+        // The real-time listener will handle settings, but we need a baseline
+        const initialSettings = await firestoreService.getSettings();
+        if (initialSettings) setSettings(initialSettings);
+      } catch (error) {
+        console.error("Initialization Error:", error);
+      }
+    };
+
+    initializeSystem();
+
+    // 2. Auth State Listener
+    const unsubAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      setIsAuthLoading(true);
+      if (firebaseUser) {
+        let profile = await firestoreService.getEmployee(firebaseUser.uid);
+        if (!profile && firebaseUser.email) {
+          profile = await firestoreService.getEmployeeByEmail(firebaseUser.email);
+          if (profile) {
+            await firestoreService.syncEmployeeUid(firebaseUser.email, firebaseUser.uid);
+          }
+        }
+
+        if (profile) {
+          setCurrentUser(profile);
+          setIsAuthenticated(true);
+        } else {
+          setIsAuthenticated(false);
+          if (firebaseUser.email !== 'admin@cafesun.com') await signOut(auth);
+        }
+      } else {
+        setCurrentUser(null);
+        setIsAuthenticated(false);
+      }
+      setIsAuthLoading(false);
+
+      // Minimum aesthetic delay to ensure smooth transition
+      setTimeout(() => setIsInitializing(false), 500);
+    });
+
+    return () => unsubAuth();
   }, []);
   const [showStatusToast, setShowStatusToast] = useState<'none' | 'online' | 'offline'>('none');
 
@@ -77,47 +116,10 @@ const App: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Authentication & Initial Data
   useEffect(() => {
-    // 1. Initial Seeding (Async)
-    firestoreService.seedDatabase();
-
-    // 2. Auth State Listener
-    const unsubAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      setIsAuthLoading(true);
-      if (firebaseUser) {
-        let profile = await firestoreService.getEmployee(firebaseUser.uid);
-
-        if (!profile && firebaseUser.email) {
-          // Try fetching by email and sync UID
-          profile = await firestoreService.getEmployeeByEmail(firebaseUser.email);
-          if (profile) {
-            await firestoreService.syncEmployeeUid(firebaseUser.email, firebaseUser.uid);
-          }
-        }
-
-        if (profile) {
-          setCurrentUser(profile);
-          setIsAuthenticated(true);
-        } else {
-          setIsAuthenticated(false);
-          // If logged in but no profile, maybe sign out
-          if (!profile && firebaseUser.email !== 'admin@cafesun.com') {
-            await signOut(auth);
-          }
-        }
-      } else {
-        setCurrentUser(null);
-        setIsAuthenticated(false);
-      }
-      setIsAuthLoading(false);
-      setIsLoading(false); // Data is ready once auth is resolved
-    });
-
-    // 3. Setup real-time listeners (Only if authenticated)
     let unsubProducts: any, unsubTransactions: any, unsubSettings: any, unsubNotifications: any;
 
-    const startListeners = () => {
+    if (isAuthenticated) {
       unsubProducts = onSnapshot(collection(firestoreDb, "products"), (snapshot) => {
         const p = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as MenuItem));
         setProducts(p);
@@ -127,7 +129,6 @@ const App: React.FC = () => {
         query(collection(firestoreDb, "transactions")),
         (snapshot) => {
           const t = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Transaction));
-          // Sort in memory to avoid composite index requirement
           t.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
           setTransactions(t);
         }
@@ -143,18 +144,12 @@ const App: React.FC = () => {
         query(collection(firestoreDb, "notifications"), orderBy("timestamp", "desc"), limit(5)),
         (snapshot) => {
           const n = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-          // Filter if not read or just keep them for display
           setNotifications(n);
         }
       );
-    };
-
-    if (isAuthenticated) {
-      startListeners();
     }
 
     return () => {
-      unsubAuth();
       if (unsubProducts) unsubProducts();
       if (unsubTransactions) unsubTransactions();
       if (unsubSettings) unsubSettings();
@@ -518,7 +513,7 @@ const App: React.FC = () => {
     />;
   };
 
-  if (showSplash || isLoading || isAuthLoading) {
+  if (isInitializing || isAuthLoading) {
     return <SplashScreen />;
   }
 

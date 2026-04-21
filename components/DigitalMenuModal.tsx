@@ -40,34 +40,50 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
 
         setIsExporting(true);
 
-        // Allow UI to render the loading state
-        await new Promise(resolve => setTimeout(resolve, 800));
+        // Stage 1: UI Update and Preparation
+        // We use a double requestAnimationFrame to ensure the browser has painted the loading dialog
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        await new Promise(resolve => setTimeout(resolve, 500));
 
         try {
+            // Stage 2: Heavy Lifting (html2canvas)
             const canvas = await html2canvas(posterRef.current, {
-                scale: 2, // Optimized scale for better performance without losing much quality
+                scale: 1.8, // Balanced scale for speed and A4 quality
                 useCORS: true,
                 backgroundColor: '#ffffff',
-                logging: false
+                logging: false,
+                allowTaint: true,
+                imageTimeout: 15000,
+                removeContainer: true
             });
 
-            const imgData = canvas.toDataURL('image/png', 1.0);
-            const pdf = new jsPDF('p', 'mm', 'a4');
+            // Stage 3: PDF Assembly
+            const imgData = canvas.toDataURL('image/jpeg', 0.9); // JPEG is faster and lighter for posters
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4',
+                compress: true
+            });
+
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(`Menu_Poster_Afia_${storeName}.pdf`);
+            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
 
-            // Professional close workflow
+            // Stage 4: Saving and cleanup
+            pdf.save(`Al_Afia_Menu_${storeName.replace(/\s+/g, '_')}.pdf`);
+
+            // Professional feedback delay before closing
             setTimeout(() => {
                 setIsExporting(false);
                 onClose();
-            }, 500);
+            }, 800);
 
         } catch (error) {
-            console.error("Export failed:", error);
+            console.error("Critical Export Error:", error);
             setIsExporting(false);
+            alert("حدث خطأ أثناء توليد الملف، يرجى المحاولة مرة أخرى.");
         }
     };
 
@@ -395,25 +411,49 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
                 </div>
             </div>
 
-            {/* Professional Export Progress Dialog */}
+            {/* Ultra-Premium Export Progress Overlay */}
             {isExporting && (
-                <div className="fixed inset-0 z-[300] flex items-center justify-center bg-brand-dark/40 backdrop-blur-md animate-in fade-in duration-300 px-4">
-                    <div className="bg-white rounded-[3rem] p-12 shadow-4xl max-w-sm w-full text-center space-y-8 animate-in zoom-in duration-500 border-4 border-white/20">
-                        <div className="relative w-28 h-28 mx-auto">
-                            <div className="absolute inset-0 border-4 border-gray-100 rounded-full"></div>
-                            <div className="absolute inset-0 border-4 border-brand-primary rounded-full border-t-transparent animate-spin"></div>
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <Sparkles size={32} className="text-brand-primary animate-pulse" />
+                <div className="fixed inset-0 z-[300] flex items-center justify-center bg-brand-dark/60 backdrop-blur-2xl animate-in fade-in duration-500 px-4">
+                    <div className="bg-white rounded-[4rem] p-16 shadow-5xl max-w-md w-full text-center space-y-10 animate-in zoom-in slide-in-from-bottom-10 duration-700 border-[12px] border-brand-primary/5 relative overflow-hidden">
+
+                        {/* Animated Background Pulse */}
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-brand-primary/5 rounded-full blur-3xl animate-pulse -mt-32"></div>
+
+                        <div className="relative">
+                            <div className="w-32 h-32 mx-auto relative flex items-center justify-center">
+                                <div className="absolute inset-0 border-[6px] border-brand-primary/10 rounded-[2.5rem]"></div>
+                                <div className="absolute inset-0 border-[6px] border-brand-primary rounded-[2.5rem] border-t-transparent border-l-transparent animate-spin duration-1000"></div>
+                                <div className="bg-gradient-to-br from-brand-primary to-brand-secondary w-20 h-20 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-brand-primary/40 group animate-bounce">
+                                    <Sparkles size={40} className="animate-pulse" />
+                                </div>
                             </div>
                         </div>
-                        <div className="space-y-3">
-                            <h3 className="text-2xl font-black text-brand-dark">جاري تحضير المنيو</h3>
-                            <p className="text-sm font-bold text-gray-400">نقوم الآن بذكاء اصطناعي بتوليد ملف الـ PDF عالي الجودة لمتجر {storeName}</p>
+
+                        <div className="space-y-4 relative z-10">
+                            <h3 className="text-3xl font-black text-brand-dark tracking-tighter">جاري الابتكار الرقمي</h3>
+                            <div className="flex items-center justify-center gap-2">
+                                <div className="h-1 w-8 bg-brand-primary/20 rounded-full"></div>
+                                <span className="text-[10px] font-black text-brand-primary uppercase tracking-[0.3em]">Processing Your Menu</span>
+                                <div className="h-1 w-8 bg-brand-primary/20 rounded-full"></div>
+                            </div>
+                            <p className="text-xs font-bold text-gray-500/80 leading-relaxed max-w-[280px] mx-auto">
+                                نحن الآن بصدد تحويل بيانات متجر <span className="text-brand-primary font-black">{storeName}</span> إلى ملصق QR فخيم جاهز للطباعة بدقة عالية.
+                            </p>
                         </div>
-                        <div className="flex gap-1 justify-center">
-                            {[1, 2, 3].map(i => (
-                                <div key={i} className={`w-2 h-2 rounded-full bg-brand-primary animate-bounce delay-${i * 100}`}></div>
+
+                        {/* Modern Progress Dots */}
+                        <div className="flex gap-2 justify-center items-center h-4">
+                            {[0, 1, 2].map(i => (
+                                <div
+                                    key={i}
+                                    className="w-2.5 h-2.5 rounded-full bg-brand-primary opacity-20 animate-bounce"
+                                    style={{ animationDelay: `${i * 0.15}s` }}
+                                ></div>
                             ))}
+                        </div>
+
+                        <div className="text-[8px] font-black text-gray-300 uppercase tracking-widest pt-4">
+                            Al Afia Intelligence Engine &bull; System v2.0
                         </div>
                     </div>
                 </div>
