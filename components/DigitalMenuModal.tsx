@@ -258,10 +258,14 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
                     <div className="p-10 bg-white border-t border-brand-primary/5">
                         <button
                             onClick={exportProfessionalPDF}
-                            className="w-full bg-brand-dark hover:bg-brand-primary text-white py-6 rounded-[2rem] font-black text-lg flex items-center justify-center gap-4 shadow-3xl shadow-brand-dark/20 transition-all active:scale-95 group"
+                            disabled={previewMode !== 'poster' || isExporting}
+                            className={`w-full py-6 rounded-[2rem] font-black text-lg flex items-center justify-center gap-4 transition-all active:scale-95 group shadow-3xl ${previewMode === 'poster'
+                                    ? 'bg-brand-dark hover:bg-brand-primary text-white shadow-brand-dark/20 cursor-pointer'
+                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-80 shadow-none'
+                                }`}
                         >
-                            <QrCode size={28} className="group-hover:rotate-12 transition-transform" />
-                            توليد ملصق QR فخيم (PDF)
+                            <QrCode size={28} className={`${previewMode === 'poster' ? 'group-hover:rotate-12' : ''} transition-transform`} />
+                            {previewMode === 'poster' ? 'توليد ملصق QR فخيم (PDF)' : 'شاهد الملصق لتفعيل التنزيل'}
                         </button>
                     </div>
                 </div>
