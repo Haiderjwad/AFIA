@@ -73,10 +73,8 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
             return `
                 <div class="thermal-receipt">
                     <div class="t-header">
-                        ${settings?.showLogoOnReceipt && settings?.storeLogo ?
-                    `<img src="${settings.storeLogo}" style="max-width: 80%; max-height: 80px; margin-bottom: 10px; border-radius: 10px" />` :
-                    `<div class="t-logo">A</div>`
-                }
+                        <img src="${settings?.storeLogo || '/branding/afia_logo.png'}" style="max-width: 60px; max-height: 60px; margin-bottom: 8px; object-fit: contain" />
+
                         <h1 class="t-store-name">${storeName}</h1>
                         <p class="t-subtext">وصل مبيعات رقم #${transaction.id.slice(-6)}</p>
                     </div>
@@ -146,10 +144,8 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                 <div class="a4-hdr">
                     <div class="a4-hdr-inner">
                         <div class="a4-hdr-left">
-                            ${settings?.showLogoOnReceipt && settings?.storeLogo ?
-                    `<img src="${settings.storeLogo}" style="width: 80px; height: 80px; object-fit: contain; border-radius: 15px; background: #f8f9fa; padding: 5px; border: 1px solid #eee" />` :
-                    `<div class="a4-logo-pill">A</div>`
-                }
+                            <img src="${settings?.storeLogo || '/branding/afia_logo.png'}" style="width: 70px; height: 70px; object-fit: contain; border-radius: 15px; background: #fff; padding: 5px; border: 1px solid rgba(45, 106, 79, 0.1)" />
+
                             <div>
                                 <h1 class="a4-store-name">${storeName}</h1>
                                 <p class="a4-sys-name">نظام ألف عافية لإدارة نقاط البيع</p>
@@ -240,13 +236,13 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                 <div class="c-header" style="border-left: 10px solid ${brandColor}">
                     <div class="c-header-main">
                         <div class="c-logos">
-                            ${settings?.storeLogo ?
-                    `<img src="${settings.storeLogo}" class="c-store-logo" />` :
-                    `<div class="c-logo-placeholder" style="background:${brandColor}">A</div>`
-                }
-                            <div class="c-divider-v"></div>
-                            <img src="/branding/afia_logo.png" class="c-system-logo" />
+                            <img src="${settings?.storeLogo || '/branding/afia_logo.png'}" class="c-store-logo" />
+                            ${settings?.storeLogo ? `
+                                <div class="c-divider-v"></div>
+                                <img src="/branding/afia_logo.png" class="c-system-logo" />
+                            ` : ''}
                         </div>
+
                         <div class="c-store-info">
                             <h1 style="color:${brandColor}">${storeName}</h1>
                             <span>فاتورة مبيعات فارة &middot; Premium Invoice</span>
@@ -346,14 +342,9 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
             padding: 40px; display: flex; flex-direction: column; overflow: hidden;
             box-shadow: 0 0 20px rgba(0,0,0,0.1);
         }
-        .a4-hdr { border-bottom: 4px solid #2d6a4f; padding-bottom: 25px; margin-bottom: 30px; }
+        .a4-hdr { border-bottom: 5px solid #2d6a4f; padding-bottom: 25px; margin-bottom: 30px; }
         .a4-hdr-inner { display: flex; justify-content: space-between; align-items: center; }
         .a4-hdr-left { display: flex; align-items: center; gap: 20px; }
-        .a4-logo-pill { 
-            width: 70px; height: 70px; background: #2d6a4f; color: #fff; 
-            border-radius: 20px; display: flex; items-center justify-center; 
-            font-size: 40px; font-weight: 900; 
-        }
         .a4-store-name { font-size: 32px; font-weight: 900; color: #1b4332; line-height: 1.2; }
         .a4-sys-name { font-size: 14px; color: #52b788; font-weight: 700; }
         .a4-hdr-right { text-align: left; }
@@ -361,31 +352,31 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
         .a4-inv-no { font-size: 18px; font-weight: 900; color: #1b4332; }
 
         .a4-info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
-        .a4-info-box { background: #f8f9fa; border: 1px solid #e9ecef; padding: 15px; border-radius: 15px; }
-        .a4-info-lbl { display: block; font-size: 12px; font-weight: 800; color: #52b788; text-transform: uppercase; margin-bottom: 5px; }
+        .a4-info-box { background: #fcfdfc; border: 1px solid #e9ecef; padding: 15px; border-radius: 15px; border-right: 4px solid #2d6a4f; }
+        .a4-info-lbl { display: block; font-size: 12px; font-weight: 800; color: #2d6a4f; text-transform: uppercase; margin-bottom: 5px; }
         .a4-info-val { display: block; font-size: 15px; font-weight: 900; color: #1b4332; }
 
         .a4-table-container { flex: 1; margin-bottom: 30px; }
         .a4-tbl { width: 100%; border-collapse: collapse; }
-        .a4-tbl th { background: #1b4332; color: #fff; padding: 12px; text-align: right; font-size: 14px; }
-        .a4-tbl td { padding: 12px; border-bottom: 1px solid #e9ecef; font-size: 14px; color: #1b4332; font-weight: 700; }
-        .a4-tbl tr:nth-child(even) { background: #f0f7f4; }
-        .td-idx { font-weight: 900; color: #52b788; text-align: center; }
+        .a4-tbl th { background: #1b4332; color: #fff; padding: 15px; text-align: right; font-size: 14px; font-weight: 900; }
+        .a4-tbl td { padding: 15px; border-bottom: 1px solid #eee; font-size: 14px; color: #1b4332; font-weight: 700; }
+        .a4-tbl tr:nth-child(even) { background: #f9fbf9; }
+        .td-idx { font-weight: 900; color: #2d6a4f; text-align: center; }
         .td-num, .td-total { text-align: center; }
-        .td-empty { height: 40px; }
 
         .a4-summary-container { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; }
-        .a4-total-badge { background: #1b4332; padding: 30px; border-radius: 25px; color: #fff; text-align: center; min-width: 250px; }
+        .a4-total-badge { background: #1b4332; padding: 30px; border-radius: 25px; color: #fff; text-align: center; min-width: 250px; box-shadow: 0 10px 20px rgba(27, 67, 50, 0.2); }
         .a4-tb-lbl { display: block; font-size: 14px; font-weight: 700; opacity: 0.8; margin-bottom: 10px; }
         .a4-tb-val { font-size: 36px; font-weight: 900; }
         .a4-summary-right { width: 300px; padding-top: 10px; }
         .a4-sum-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px; font-weight: 700; color: #1b4332; }
-        .a4-sum-total { font-size: 18px; font-weight: 900; border-top: 2px solid #2d6a4f; margin-top: 10px; padding-top: 15px; }
+        .a4-sum-total { font-size: 20px; font-weight: 900; border-top: 3px solid #2d6a4f; margin-top: 10px; padding-top: 15px; color: #2d6a4f; }
 
-        .a4-footer { text-align: center; }
-        .a4-footer-thanks { font-size: 20px; font-weight: 900; color: #2d6a4f; margin-bottom: 15px; }
-        .a4-footer-line { height: 4px; background: #f8961e; width: 100px; margin: 0 auto 15px; border-radius: 2px; }
-        .a4-footer-bottom { display: flex; justify-content: space-between; font-size: 12px; color: #999; font-weight: 700; }
+        .a4-footer { text-align: center; border-top: 1px solid #eee; padding-top: 30px; }
+        .a4-footer-thanks { font-size: 22px; font-weight: 900; color: #1b4332; margin-bottom: 10px; }
+        .a4-footer-line { height: 5px; background: #f8961e; width: 60px; margin: 0 auto 15px; border-radius: 3px; }
+        .a4-footer-bottom { display: flex; justify-content: space-between; font-size: 12px; color: #aaa; font-weight: 700; }
+
 
         /* ═════════ CUSTOM PREMIUM STYLES ═════════ */
         .custom-invoice {

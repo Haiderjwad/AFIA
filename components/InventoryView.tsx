@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { MenuItem } from '../types';
+import { MenuItem, AppSettings } from '../types';
 import { Package, Search, Filter, Plus, X, Tag, DollarSign, Coffee, Trash2, AlertTriangle, Edit, Layers, FileText, QrCode, ArrowLeft, Check } from 'lucide-react';
 import DigitalMenuModal from './DigitalMenuModal';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
@@ -12,7 +12,9 @@ interface InventoryViewProps {
   onDeleteProduct: (id: string) => void;
   lowStockThreshold: number;
   storeName: string;
+  settings: AppSettings;
 }
+
 
 const InventoryView: React.FC<InventoryViewProps> = ({
   products,
@@ -20,8 +22,10 @@ const InventoryView: React.FC<InventoryViewProps> = ({
   onUpdateProduct,
   onDeleteProduct,
   lowStockThreshold = 10,
-  storeName
+  storeName,
+  settings
 }) => {
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -422,7 +426,9 @@ const InventoryView: React.FC<InventoryViewProps> = ({
         onClose={() => setIsMenuModalOpen(false)}
         products={products}
         storeName={storeName}
+        settings={settings}
       />
+
     </div>
   );
 };

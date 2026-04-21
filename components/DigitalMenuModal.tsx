@@ -7,7 +7,7 @@ import {
     Brush, Type, Settings2, Languages,
     ArrowRightCircle, MonitorSmartphone
 } from 'lucide-react';
-import { MenuItem } from '../types';
+import { MenuItem, AppSettings } from '../types';
 import { QRCodeCanvas } from 'qrcode.react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -17,9 +17,11 @@ interface DigitalMenuModalProps {
     isOpen: boolean;
     onClose: () => void;
     storeName: string;
+    settings: AppSettings;
 }
 
-const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, onClose, storeName }) => {
+const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, onClose, storeName, settings }) => {
+
     const [selectedProducts, setSelectedProducts] = useState<string[]>(products.map(p => p.id));
     const [theme, setTheme] = useState<'afia' | 'dark' | 'coffee' | 'modern'>('afia');
     const [layout, setLayout] = useState<'grid' | 'list'>('grid');
@@ -251,10 +253,15 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
                                 {/* Preview Content */}
                                 <div className="p-10">
                                     <div className="text-center mt-12 mb-12">
-                                        <div className={`w-24 h-24 mx-auto rounded-[2.5rem] shadow-2xl flex items-center justify-center mb-6 text-4xl transition-all duration-1000 ${currentTheme.accent} text-white border-4 border-white/20 rotate-3`}>
-                                            {storeName.charAt(0)}
+                                        <div className={`w-28 h-28 mx-auto rounded-[2.5rem] shadow-2xl flex items-center justify-center mb-6 overflow-hidden transition-all duration-1000 ${currentTheme.accent} border-4 border-white/20 rotate-3 bg-white`}>
+                                            {settings?.storeLogo ? (
+                                                <img src={settings.storeLogo} alt={storeName} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <img src="/branding/afia_logo.png" alt="Afia" className="w-full h-full object-contain p-4" />
+                                            )}
                                         </div>
                                         <h1 className="text-3xl font-black mb-3 tracking-tighter">{storeName}</h1>
+
                                         <div className={`w-12 h-1 bg-current opacity-10 mx-auto rounded-full mb-4`}></div>
                                         <p className="text-[11px] opacity-60 leading-relaxed font-bold px-4">{storeDescription}</p>
                                     </div>
@@ -293,9 +300,14 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
                             <div className="absolute inset-10 border-2 border-brand-primary/5 rounded-[2rem] pointer-events-none"></div>
 
                             <div className="space-y-6 relative z-10">
-                                <div className="w-24 h-24 bg-brand-dark rounded-[2.5rem] flex items-center justify-center text-white text-4xl mx-auto shadow-2xl border-4 border-white transform -rotate-12 transition-transform group-hover/poster:rotate-0 duration-700">
-                                    {storeName.charAt(0)}
+                                <div className="w-28 h-28 bg-white rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl border-4 border-brand-dark transform -rotate-12 transition-transform group-hover/poster:rotate-0 duration-700 overflow-hidden">
+                                    {settings?.storeLogo ? (
+                                        <img src={settings?.storeLogo} alt={storeName} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <img src="/branding/afia_logo.png" alt="Afia" className="w-full h-full object-contain p-4" />
+                                    )}
                                 </div>
+
                                 <div className="space-y-2">
                                     <h2 className="text-5xl font-black text-brand-dark tracking-tighter">{storeName}</h2>
                                     <div className="w-24 h-2 bg-brand-secondary mx-auto rounded-full shadow-lg shadow-brand-secondary/20"></div>

@@ -23,6 +23,7 @@ import { db as firestoreDb, auth } from './firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import SplashScreen from './components/SplashScreen';
 
+
 const App: React.FC = () => {
   // Authentication State
   const [currentUser, setCurrentUser] = useState<Employee | null>(null);
@@ -30,6 +31,7 @@ const App: React.FC = () => {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+
 
   useEffect(() => {
     // Show splash for at least 3 seconds
@@ -448,6 +450,7 @@ const App: React.FC = () => {
             readyOrders={transactions.filter(t => t.status === 'ready')}
             onCompleteOrder={handleSendToCashier}
           />;
+
         }
         break;
       case 'kitchen':
@@ -464,7 +467,9 @@ const App: React.FC = () => {
             onDeleteProduct={handleDeleteProduct}
             lowStockThreshold={settings.lowStockThreshold}
             storeName={settings.storeName}
+            settings={settings}
           />;
+
         }
         break;
       case 'invoices':
