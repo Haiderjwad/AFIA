@@ -58,6 +58,9 @@ export const firestoreService = {
         const docRef = doc(db, "transactions", id);
         await updateDoc(docRef, { status });
     },
+    async deleteTransaction(id: string): Promise<void> {
+        await deleteDoc(doc(db, "transactions", id));
+    },
 
     // Employees
     async getEmployee(uid: string): Promise<Employee | null> {

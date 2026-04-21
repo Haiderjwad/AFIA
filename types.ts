@@ -42,6 +42,7 @@ export interface Transaction {
   tableNumber?: string;
   notes?: string;
   isManual?: boolean;
+  isPaid?: boolean;
 }
 
 export interface Supplier {

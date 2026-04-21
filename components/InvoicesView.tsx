@@ -29,8 +29,11 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
 
     const filteredTransactions = transactions.filter(t => {
         // Tab filter
-        if (activeTab === 'pending' && t.status !== 'waiting_payment') return false;
-        if (activeTab === 'all' && !['completed', 'refunded'].includes(t.status)) return false;
+        // Tab filter: Pending shows all active orders that are NOT yet paid
+        if (activeTab === 'pending' && (['completed', 'refunded'].includes(t.status) || t.isPaid)) return false;
+
+        // All tab shows historical (completed/refunded/paid)
+        if (activeTab === 'all' && !(['completed', 'refunded'].includes(t.status) || t.isPaid)) return false;
 
         // Search filter
         const matchesSearch = t.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -40,7 +43,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
         return matchesSearch;
     });
 
-    const completedTransactions = transactions.filter(t => ['completed', 'refunded'].includes(t.status));
+    const completedTransactions = transactions.filter(t => ['completed', 'refunded'].includes(t.status) || t.isPaid);
 
     const handlePrint = (transaction: Transaction) => {
         const curr = settings?.currency || CURRENCY;
@@ -708,7 +711,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                 </div>
                             </div>
 
-                            {transaction.status === 'waiting_payment' && canFinalize && (
+                            {!['completed', 'refunded'].includes(transaction.status) && canFinalize && (
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();

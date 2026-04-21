@@ -208,34 +208,55 @@ const App: React.FC = () => {
   const handleSendToKitchen = async (method: 'cash' | 'card' | 'online', tableNumber?: string, notes?: string) => {
     if (cart.length === 0) return;
 
-    // Check if there's an active order for this table to append to
-    const activeTableOrder = tableNumber
-      ? transactions.find(t => t.tableNumber === tableNumber && !['completed', 'refunded'].includes(t.status))
-      : null;
+    // -- SMART TABLE MANAGEMENT --
+    const activeTableOrders = (tableNumber && tableNumber !== 'Takeaway')
+      ? transactions.filter(t => t.tableNumber === tableNumber && !['completed', 'refunded'].includes(t.status) && !t.isPaid)
+      : [];
 
-    if (activeTableOrder) {
-      // Append items to existing order
-      const updatedItems = [...activeTableOrder.items];
+    if (activeTableOrders.length > 0) {
+      // 1. Pick the first one as our "Master" transaction
+      const masterOrder = activeTableOrders[0];
+      const otherOrders = activeTableOrders.slice(1);
+
+      // 2. Consolidate items from all "other" open orders into the Master's item list
+      let consolidatedItems = [...masterOrder.items];
+
+      for (const other of otherOrders) {
+        other.items.forEach(otherItem => {
+          const existing = consolidatedItems.find(ci => ci.id === otherItem.id);
+          if (existing) {
+            existing.quantity += otherItem.quantity;
+          } else {
+            consolidatedItems.push({ ...otherItem });
+          }
+        });
+        // Delete the redundant "extra" transaction from Firestore
+        await firestoreService.deleteTransaction(other.id);
+      }
+
+      // 3. Finally, merge the CURRENT cart items into the consolidated Master list
       cart.forEach(cartItem => {
-        const existing = updatedItems.find(i => i.id === cartItem.id);
+        const existing = consolidatedItems.find(ci => ci.id === cartItem.id);
         if (existing) {
           existing.quantity += cartItem.quantity;
         } else {
-          updatedItems.push({ ...cartItem });
+          consolidatedItems.push({ ...cartItem });
         }
       });
 
-      const totalValue = updatedItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-      const taxAmount = totalValue * (settings.taxRate / 100);
+      // 4. Calculate new total and update the Master transaction
+      const subtotal = consolidatedItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+      const taxAmount = subtotal * (settings.taxRate / 100);
 
-      await firestoreService.updateTransaction(activeTableOrder.id, {
-        items: updatedItems,
-        total: totalValue + taxAmount,
-        status: 'pending',
-        notes: notes ? (activeTableOrder.notes ? `${activeTableOrder.notes} | ${notes}` : notes) : activeTableOrder.notes
+      await firestoreService.updateTransaction(masterOrder.id, {
+        items: consolidatedItems,
+        total: subtotal + taxAmount,
+        status: 'pending', // Re-send to kitchen for prepare
+        notes: notes ? (masterOrder.notes ? `${masterOrder.notes} | ${notes}` : notes) : masterOrder.notes,
+        date: new Date().toISOString() // Update date to show it's active
       });
     } else {
-      // Create new order
+      // Create a fresh new transaction
       const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
       const taxAmount = subtotal * (settings.taxRate / 100);
 
@@ -275,12 +296,23 @@ const App: React.FC = () => {
       }
     }
 
-    // 2. Finalize Transaction
-    const transRef = doc(firestoreDb, "transactions", transactionId);
-    await updateDoc(transRef, {
-      status: 'completed',
-      paymentMethod: paymentMethod
-    });
+    // 2. Finalize Transaction (Smart Logic)
+    const currentTrans = transactions.find(t => t.id === transactionId);
+    if (currentTrans) {
+      // If order is ready or waiting, it's fully done. 
+      // If it's still pending/preparing, it's paid but stays in kitchen.
+      let finalStatus = currentTrans.status;
+      if (currentTrans.status === 'ready' || currentTrans.status === 'waiting_payment') {
+        finalStatus = 'completed';
+      }
+
+      await firestoreService.updateTransaction(transactionId, {
+        status: finalStatus,
+        paymentMethod: paymentMethod,
+        isPaid: true
+      });
+    }
+
   };
 
   const handleSidebarNavigation = (tab: string) => {
