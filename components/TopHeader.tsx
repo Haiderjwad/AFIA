@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Bell, CircleUser, LogOut, PackageCheck, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
-import { Employee, Transaction, MenuItem } from '../types';
+import { Employee, Transaction, MenuItem, AppSettings } from '../types';
 
 interface TopHeaderProps {
     user: Employee | null;
@@ -13,11 +13,12 @@ interface TopHeaderProps {
     onNavigate: (view: string) => void;
     isOnline: boolean;
     activeTabTitle: string;
+    settings?: AppSettings;
 }
 
 const TopHeader: React.FC<TopHeaderProps> = ({
     user, onLogout, notifications, readyOrders, lowStockItems,
-    onCompleteOrder, onNavigate, isOnline, activeTabTitle
+    onCompleteOrder, onNavigate, isOnline, activeTabTitle, settings
 }) => {
     const [showProfile, setShowProfile] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
@@ -49,12 +50,15 @@ const TopHeader: React.FC<TopHeaderProps> = ({
     const notificationCount = readyOrders.length + lowStockItems.length;
 
     return (
-        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-100 px-8 flex items-center justify-between z-40 sticky top-0" dir="rtl">
+        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-brand-primary/10 px-8 flex items-center justify-between z-40 sticky top-0" dir="rtl">
 
-            {/* Title / Breedcrumb */}
+            {/* Title / Brand Section */}
             <div className="flex items-center gap-4">
-                <h2 className="text-xl font-black text-coffee-900">{activeTabTitle}</h2>
-                <div className="w-1.5 h-6 bg-gold-500 rounded-full"></div>
+                <div className="flex flex-col">
+                    <h1 className="text-xs font-black text-brand-primary uppercase tracking-widest">{settings?.storeName || 'ألف عافية'}</h1>
+                    <h2 className="text-xl font-black text-brand-dark">{activeTabTitle}</h2>
+                </div>
+                <div className="w-1.5 h-10 bg-brand-accent rounded-full shadow-[0_0_10px_#F8961E]"></div>
             </div>
 
             {/* Actions */}
@@ -80,21 +84,21 @@ const TopHeader: React.FC<TopHeaderProps> = ({
                 <div className="relative" ref={notificationRef}>
                     <button
                         onClick={() => setShowNotifications(!showNotifications)}
-                        className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all relative ${showNotifications ? 'bg-coffee-900 text-white shadow-lg' : 'bg-white border border-gray-100 text-gray-500 hover:bg-gold-50'}`}
+                        className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all relative ${showNotifications ? 'bg-brand-primary text-white shadow-xl scale-105' : 'bg-white border border-brand-primary/10 text-brand-dark/50 hover:bg-brand-light/20'}`}
                     >
                         <Bell size={20} />
                         {notificationCount > 0 && (
-                            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white text-[10px] font-black rounded-full flex items-center justify-center ring-4 ring-white">
+                            <span className="absolute -top-1 -right-1 w-5 h-5 bg-brand-accent text-white text-[10px] font-black rounded-full flex items-center justify-center ring-4 ring-white animate-bounce">
                                 {notificationCount}
                             </span>
                         )}
                     </button>
 
                     {showNotifications && (
-                        <div className="absolute top-16 left-0 w-80 bg-white rounded-3xl shadow-2xl border border-gold-100 overflow-hidden animate-in fade-in slide-in-from-top-2 origin-top-left">
-                            <div className="p-4 bg-gold-50 border-b border-gold-100 flex justify-between items-center">
-                                <span className="font-black text-coffee-900 text-sm">التنبيهات السحابية</span>
-                                <span className="text-[10px] font-bold text-gold-700">{notificationCount} طلبات جديدة</span>
+                        <div className="absolute top-16 left-0 w-80 bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-brand-primary/10 overflow-hidden animate-in fade-in slide-in-from-top-2 origin-top-left">
+                            <div className="p-4 bg-brand-light/10 border-b border-brand-primary/5 flex justify-between items-center">
+                                <span className="font-black text-brand-dark text-sm">التنبيهات السحابية</span>
+                                <span className="text-[10px] font-bold text-brand-secondary">{notificationCount} طلبات جديدة</span>
                             </div>
                             <div className="max-h-96 overflow-y-auto no-scrollbar">
                                 {readyOrders.map(order => (
@@ -103,8 +107,8 @@ const TopHeader: React.FC<TopHeaderProps> = ({
                                             <PackageCheck size={16} />
                                         </div>
                                         <div className="flex-1">
-                                            <p className="text-sm font-bold text-coffee-900">الطلب #{order.id.slice(-4)} جاهز!</p>
-                                            <button onClick={() => { onCompleteOrder(order.id); setShowNotifications(false); }} className="mt-2 text-[10px] font-black bg-green-600 text-white px-3 py-1 rounded-full">إرسال للمحاسبة</button>
+                                            <p className="text-sm font-bold text-brand-dark">الطلب #{order.id.slice(-4)} جاهز!</p>
+                                            <button onClick={() => { onCompleteOrder(order.id); setShowNotifications(false); }} className="mt-2 text-[10px] font-black bg-brand-primary text-white px-3 py-1 rounded-full">إرسال للمحاسبة</button>
                                         </div>
                                     </div>
                                 ))}
@@ -114,7 +118,7 @@ const TopHeader: React.FC<TopHeaderProps> = ({
                                             <AlertTriangle size={16} />
                                         </div>
                                         <div className="flex-1">
-                                            <p className="text-sm font-black text-coffee-900">المخزون منخفض: {item.name}</p>
+                                            <p className="text-sm font-black text-brand-dark">المخزون منخفض: {item.name}</p>
                                             <p className="text-[10px] text-amber-700 font-bold mb-1">يرجى تعبئة المخزون فوراً</p>
                                             <p className="text-[10px] text-gray-400">الكمية الحالية: {item.stock} وحدة</p>
                                         </div>
@@ -132,21 +136,21 @@ const TopHeader: React.FC<TopHeaderProps> = ({
                 <div className="relative" ref={profileRef}>
                     <button
                         onClick={() => setShowProfile(!showProfile)}
-                        className="flex items-center gap-3 p-1.5 pr-4 rounded-2xl bg-white border border-gray-100 hover:bg-gold-50 transition-all shadow-sm group"
+                        className="flex items-center gap-3 p-1.5 pr-4 rounded-2xl bg-white border border-brand-primary/10 hover:bg-brand-light/10 transition-all shadow-sm group"
                     >
                         <div className="text-right hidden sm:block">
-                            <p className="text-xs font-black text-coffee-900 leading-tight">{user?.name}</p>
-                            <p className="text-[10px] text-gray-400 font-bold">{getRoleLabel(user?.role || '')}</p>
+                            <p className="text-xs font-black text-brand-dark leading-tight">{user?.name}</p>
+                            <p className="text-[10px] text-brand-secondary font-bold">{getRoleLabel(user?.role || '')}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-xl bg-coffee-900 text-white flex items-center justify-center font-black shadow-lg group-hover:scale-105 transition-transform">
+                        <div className="w-10 h-10 rounded-xl bg-brand-primary text-white flex items-center justify-center font-black shadow-lg group-hover:scale-105 transition-transform">
                             {user ? getInitials(user.name) : <CircleUser size={24} />}
                         </div>
                     </button>
 
                     {showProfile && (
-                        <div className="absolute top-16 left-0 w-72 bg-white p-6 rounded-3xl shadow-2xl border border-gold-100 animate-in fade-in slide-in-from-top-2 origin-top-left">
+                        <div className="absolute top-16 left-0 w-72 bg-white p-6 rounded-3xl shadow-2xl border border-brand-primary/10 animate-in fade-in slide-in-from-top-2 origin-top-left">
                             <div className="flex items-center gap-4 mb-6 border-b border-gray-100 pb-4">
-                                <div className="w-14 h-14 bg-gold-500 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-xl shadow-gold-500/20">
+                                <div className="w-14 h-14 bg-brand-primary rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-xl shadow-brand-primary/20">
                                     {user ? getInitials(user.name) : <CircleUser size={24} />}
                                 </div>
                                 <div>

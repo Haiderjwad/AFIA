@@ -1,61 +1,70 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Golden POS System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Cairo', 'sans-serif'],
-            },
-            colors: {
-              gold: {
-                100: '#f9f1e0',
-                200: '#eddcb9',
-                300: '#e0c28d',
-                400: '#d4a962',
-                500: '#c59d5f', // Primary Gold
-                600: '#a67c45',
-                700: '#865f33',
-              },
-              coffee: {
-                800: '#4e342e',
-                900: '#3e2723', // Dark Brown
-              },
-              teal: {
-                800: '#2c4c54', // Dark Teal from chart
-                900: '#1a3339',
-              }
-            }
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ألف عافية - نظام المبيعات الرقمي</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Cairo', 'sans-serif'],
           },
+          colors: {
+            brand: {
+              primary: '#2D6A4F', // Dark Green
+              secondary: '#52B788', // Light Green
+              accent: '#F8961E', // Orange
+              light: '#D8F3DC', // Mint
+              cream: '#F8F9FA', // Off-white/Cream
+              dark: '#1B4332', // Deep Green
+            },
+            green: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              800: '#166534',
+            },
+            orange: {
+              500: '#f97316',
+              600: '#ea580c',
+            }
+          }
         },
-      }
-    </script>
-    <style>
-      body {
-        font-family: 'Cairo', sans-serif;
-        background-color: #f8f5f2;
-      }
-      /* Custom Scrollbar */
-      ::-webkit-scrollbar {
-        width: 6px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #f1f1f1; 
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #c59d5f; 
-        border-radius: 3px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #a67c45; 
-      }
-    </style>
+      },
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Cairo', sans-serif;
+      background-color: #F8F9FA;
+      color: #1B4332;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #52B788;
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #2D6A4F;
+    }
+  </style>
   <script type="importmap">
 {
   "imports": {
@@ -68,10 +77,12 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
+  <link rel="stylesheet" href="/index.css">
 </head>
-  <body>
-    <div id="root"></div>
+
+<body>
+  <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
 </body>
+
 </html>

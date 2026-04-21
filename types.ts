@@ -65,6 +65,11 @@ export interface AppSettings {
   lowStockThreshold: number;
   enableNotifications: boolean;
   enableSounds: boolean;
+  receiptType: 'a4' | 'thermal' | 'custom';
+  brandColor?: string;
+  storeLogo?: string; // base64 or URL
+  showLogoOnReceipt: boolean;
+  tablesCount: number;
   paymentMethods: {
     cash: boolean;
     card: boolean;

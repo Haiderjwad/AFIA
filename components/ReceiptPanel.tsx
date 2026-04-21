@@ -33,6 +33,7 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
     const [isProcessing, setIsProcessing] = useState(false);
     const [tableNumber, setTableNumber] = useState<string>('');
     const [orderNote, setOrderNote] = useState<string>('');
+    const [isNoteVisible, setIsNoteVisible] = useState(false);
 
     const currency = settings.currency;
     const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
@@ -60,17 +61,11 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
     const initiateCheckout = () => {
         if (cart.length === 0) return;
 
-        // If sales, just send to kitchen directly
-        if (['sales', 'kitchen'].includes(userRole)) {
-            onCheckout('cash', tableNumber, orderNote);
-            return;
-        }
-
-        // If admin/manager/cashier, show payment modal for direct checkout
-        setShowPaymentModal(true);
-        setSelectedMethod(null);
-        setCashReceived('');
-        setIsProcessing(false);
+        // Bypass payment selection and send directly to kitchen/system
+        onCheckout('cash', tableNumber, orderNote);
+        setTableNumber('');
+        setOrderNote('');
+        setIsNoteVisible(false);
     };
 
     const handleConfirmPayment = async () => {
@@ -83,6 +78,7 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
         setUpsellSuggestion("");
         setTableNumber('');
         setOrderNote('');
+        setIsNoteVisible(false);
     };
 
     // Helper to render payment method button
@@ -101,7 +97,7 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
             onClick={() => setSelectedMethod(method)}
             className={`p-6 rounded-2xl border-2 flex flex-col items-center justify-center gap-3 transition-all ${selectedMethod === method
                 ? `${colorClass} border-transparent text-white shadow-lg scale-105`
-                : `bg-white border-gray-100 text-gray-400 hover:text-gray-800 hover:border-gold-300`
+                : `bg-white border-gray-100 text-gray-400 hover:text-brand-dark hover:border-brand-secondary`
                 }`}
         >
             <Icon size={32} />
@@ -111,43 +107,95 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
 
     return (
         <>
-            <div className="w-[380px] bg-[#fbf8f3] h-full shadow-2xl flex flex-col border-r border-gold-200 relative z-10 transition-colors duration-500">
+            <div className="w-[380px] bg-brand-cream h-full shadow-2xl flex flex-col border-r border-brand-primary/10 relative z-10 transition-colors duration-500">
 
                 {/* Header / Logo */}
-                <div className="pt-10 pb-6 flex flex-col items-center justify-center border-b border-dashed border-gold-300 shrink-0">
-                    <div className="bg-gradient-to-br from-gold-400 to-gold-600 w-20 h-20 rounded-full flex items-center justify-center shadow-lg mb-4 ring-4 ring-gold-100">
-                        <Coffee size={40} className="text-white" />
+                <div className="pt-10 pb-6 flex flex-col items-center justify-center border-b border-dashed border-brand-primary/10 shrink-0">
+                    <div className="w-24 h-24 mb-4 drop-shadow-xl hover:scale-110 transition-transform duration-300">
+                        <img src="/branding/afia_logo.png" alt="Logo" className="w-full h-full object-contain" />
                     </div>
-                    <h2 className="text-3xl font-extrabold text-coffee-900 tracking-wide font-sans mb-1">{settings.storeName}</h2>
-                    <span className="text-gold-600 text-sm tracking-widest uppercase font-bold">Specialty Coffee House</span>
+                    <h2 className="text-3xl font-black text-brand-dark tracking-tight mb-1">{"ألف عافية"}</h2>
+                    <span className="text-brand-accent text-xs tracking-[0.2em] uppercase font-black">Digital POS System</span>
                 </div>
 
-                {/* Cart Items */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {/* Table & Notes Selection - Moved to Top */}
+                <div className="px-4 py-4 border-b border-brand-primary/5 bg-white/50 space-y-3 shrink-0">
+                    <div className="flex items-center gap-2">
+                        {/* Table Selection Dropdown */}
+                        <div className="flex-1 relative group">
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-brand-secondary transition-colors">
+                                <Hash size={18} className="text-brand-primary" />
+                            </div>
+                            <select
+                                value={tableNumber}
+                                onChange={(e) => setTableNumber(e.target.value)}
+                                className="w-full pr-10 pl-10 py-3 bg-white border-2 border-brand-primary/10 rounded-2xl text-sm focus:ring-4 focus:ring-brand-primary/5 border-transparent outline-none font-bold text-brand-dark appearance-none transition-all shadow-sm cursor-pointer"
+                            >
+                                <option value="">تحديد طاولة (سفري)</option>
+                                {Array.from({ length: settings.tablesCount || 0 }).map((_, i) => (
+                                    <option key={i + 1} value={`${i + 1}`}>طاولة {i + 1}</option>
+                                ))}
+                            </select>
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
+                                <ArrowLeft size={16} className="-rotate-90" />
+                            </div>
+                        </div>
+
+                        {/* Note Toggle Button */}
+                        <button
+                            onClick={() => setIsNoteVisible(!isNoteVisible)}
+                            className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${isNoteVisible || orderNote ? 'bg-brand-primary text-white shadow-lg' : 'bg-white border-2 border-brand-primary/10 text-brand-primary/40 hover:border-brand-primary/40 hover:text-brand-primary'}`}
+                            title="إضافة ملاحظة للطلب"
+                        >
+                            <MessageSquare size={20} />
+                        </button>
+                    </div>
+
+                    {/* Expandable Note Area */}
+                    {isNoteVisible && (
+                        <div className="animate-in slide-in-from-top-2 duration-300">
+                            <div className="relative">
+                                <textarea
+                                    placeholder="اكتب ملاحظة الطلب هنا (مثال: بدون سكر، زيادة ثلج...)"
+                                    value={orderNote}
+                                    onChange={(e) => setOrderNote(e.target.value)}
+                                    rows={2}
+                                    className="w-full p-4 bg-white border-2 border-brand-primary/10 rounded-2xl text-xs focus:ring-4 focus:ring-brand-primary/5 outline-none font-bold text-brand-dark resize-none shadow-inner"
+                                />
+                                <div className="absolute bottom-3 left-3 text-[10px] text-brand-primary/30 font-black">NOTE</div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Cart Items Area */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar h-0 min-h-0">
                     {cart.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-2 opacity-50">
-                            <Coffee size={48} />
-                            <p>السلة فارغة</p>
+                        <div className="h-full flex flex-col items-center justify-center text-brand-dark/20 gap-4 opacity-50">
+                            <div className="w-20 h-20 opacity-20 grayscale">
+                                <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
+                            </div>
+                            <p className="font-bold uppercase tracking-widest text-xs">السلة فارغة</p>
                         </div>
                     ) : (
                         cart.map((item) => (
-                            <div key={item.id} className="bg-white border-gold-100 p-3 rounded-xl shadow-sm border flex justify-between items-center group animate-in slide-in-from-right-2">
+                            <div key={item.id} className="bg-white border-brand-primary/5 p-4 rounded-2xl shadow-sm border flex justify-between items-center group animate-in slide-in-from-right-2 hover:shadow-md transition-all">
                                 <div className="flex flex-col">
-                                    <span className="font-bold text-coffee-900 text-sm">{item.name}</span>
-                                    <span className="text-xs text-gray-500">{item.price.toFixed(2)} {currency}</span>
+                                    <span className="font-bold text-brand-dark text-sm">{item.name}</span>
+                                    <span className="text-xs text-brand-dark/40">{item.price.toFixed(2)} {currency}</span>
                                 </div>
 
-                                <div className="flex items-center gap-3 bg-gray-50 rounded-lg px-2 py-1">
+                                <div className="flex items-center gap-3 bg-brand-light/20 rounded-xl px-2 py-1">
                                     <button
                                         onClick={() => decreaseQuantity(item.id)}
-                                        className="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center text-coffee-900 hover:bg-red-50 hover:text-red-500 transition-colors"
+                                        className="w-7 h-7 rounded-lg bg-white border border-brand-primary/10 flex items-center justify-center text-brand-dark hover:bg-red-50 hover:text-red-500 transition-colors shadow-sm"
                                     >
                                         <Minus size={12} />
                                     </button>
-                                    <span className="text-sm font-bold w-4 text-center">{item.quantity}</span>
+                                    <span className="text-sm font-black w-4 text-center">{item.quantity}</span>
                                     <button
                                         onClick={() => addToCart(item)}
-                                        className="w-6 h-6 rounded-full bg-coffee-900 text-white flex items-center justify-center hover:bg-gold-500 transition-colors"
+                                        className="w-7 h-7 rounded-lg bg-brand-primary text-white flex items-center justify-center hover:bg-brand-secondary transition-colors shadow-md"
                                     >
                                         <Plus size={12} />
                                     </button>
@@ -159,39 +207,11 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
 
                 {/* AI Suggestion Area */}
                 {upsellSuggestion && cart.length > 0 && (
-                    <div className="mx-4 mb-2 p-3 bg-gold-100/50 border-gold-200 text-coffee-900 border rounded-xl text-xs flex items-start gap-2 animate-pulse">
-                        <Sparkles size={14} className="mt-0.5 text-gold-600 shrink-0" />
+                    <div className="mx-4 mb-2 p-3 bg-brand-light/20 border-brand-primary/10 text-brand-dark border rounded-xl text-xs flex items-start gap-2 animate-in fade-in slide-in-from-bottom-2">
+                        <Sparkles size={14} className="mt-0.5 text-brand-secondary shrink-0" />
                         <p>{upsellSuggestion}</p>
                     </div>
                 )}
-
-
-
-                {/* Table & Notes Selection */}
-                <div className="px-4 pb-4 space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                         <div className="relative">
-                            <Hash className="absolute right-3 top-1/2 -translate-y-1/2 text-gold-600" size={16} />
-                            <input 
-                                type="text"
-                                placeholder="رقم الطاولة"
-                                value={tableNumber}
-                                onChange={(e) => setTableNumber(e.target.value)}
-                                className="w-full pr-10 pl-3 py-2.5 bg-white border border-gold-200 rounded-xl text-sm focus:ring-2 focus:ring-gold-500 outline-none font-bold text-coffee-900"
-                            />
-                        </div>
-                        <div className="relative">
-                            <MessageSquare className="absolute right-3 top-1/2 -translate-y-1/2 text-gold-600" size={16} />
-                            <input 
-                                type="text"
-                                placeholder="ملاحظة"
-                                value={orderNote}
-                                onChange={(e) => setOrderNote(e.target.value)}
-                                className="w-full pr-10 pl-3 py-2.5 bg-white border border-gold-200 rounded-xl text-sm focus:ring-2 focus:ring-gold-500 outline-none font-bold text-coffee-900"
-                            />
-                        </div>
-                    </div>
-                </div>
 
                 {/* Summary Section */}
                 <div className="bg-white p-6 rounded-t-[2.5rem] shadow-[0_-5px_20px_rgba(0,0,0,0.05)] relative shrink-0">
@@ -200,22 +220,22 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                     <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 w-16 h-1.5 bg-gray-200 rounded-full"></div>
 
                     <div className="space-y-3 text-sm mb-6">
-                        <div className="flex justify-between text-gray-600">
+                        <div className="flex justify-between text-brand-dark/60">
                             <span>المجموع الفرعي</span>
-                            <span className="font-medium text-coffee-900">{subtotal.toFixed(2)} {currency}</span>
+                            <span className="font-bold text-brand-dark">{subtotal.toFixed(2)} {currency}</span>
                         </div>
-                        <div className="flex justify-between text-gray-600">
+                        <div className="flex justify-between text-brand-dark/60">
                             <span>الضريبة ({settings.taxRate}%)</span>
-                            <span className="font-medium text-coffee-900">{tax.toFixed(2)} {currency}</span>
+                            <span className="font-bold text-brand-dark">{tax.toFixed(2)} {currency}</span>
                         </div>
-                        <div className="flex justify-between text-red-400">
+                        <div className="flex justify-between text-red-500 font-bold">
                             <span>الخصم</span>
                             <span>-{discount.toFixed(2)} {currency}</span>
                         </div>
-                        <div className="h-px bg-dashed border-t border-gray-200 my-2"></div>
+                        <div className="h-px bg-dashed border-t border-brand-primary/10 my-4"></div>
                         <div className="flex justify-between items-center">
-                            <span className="text-xl font-bold text-coffee-900">إجمالي</span>
-                            <span className="text-2xl font-bold text-gold-600">{total.toFixed(2)} {currency}</span>
+                            <span className="text-xl font-black text-brand-dark">إجمالي</span>
+                            <span className="text-3xl font-black text-brand-accent drop-shadow-sm">{total.toFixed(2)} {currency}</span>
                         </div>
                     </div>
 
@@ -223,22 +243,10 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                         <button
                             onClick={initiateCheckout}
                             disabled={cart.length === 0}
-                            className={`w-full py-4 text-white rounded-xl font-bold text-lg shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${['sales', 'kitchen'].includes(userRole)
-                                ? 'bg-gradient-to-r from-coffee-800 to-coffee-900 shadow-coffee-900/20'
-                                : 'bg-gradient-to-r from-gold-500 to-gold-600 shadow-gold-500/30'
-                                }`}
+                            className={`w-full py-5 text-white rounded-2xl font-black text-xl shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 bg-gradient-to-r from-brand-primary to-brand-secondary shadow-brand-primary/30`}
                         >
-                            {['sales', 'kitchen'].includes(userRole) ? (
-                                <>
-                                    <Coffee size={20} />
-                                    إرسال للمطبخ
-                                </>
-                            ) : (
-                                <>
-                                    <CreditCard size={20} />
-                                    تأكيد والدفع
-                                </>
-                            )}
+                            <Coffee size={22} />
+                            ارسال الطلب
                         </button>
                     </div>
                 </div>
@@ -246,11 +254,11 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
 
             {/* Payment Modal */}
             {showPaymentModal && (
-                <div className="fixed inset-0 z-[100] bg-coffee-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="fixed inset-0 z-[100] bg-brand-dark/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
                     <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
 
                         {/* Modal Header */}
-                        <div className="bg-coffee-900 text-white p-6 flex justify-between items-center">
+                        <div className="bg-brand-dark text-white p-6 flex justify-between items-center">
                             <h2 className="text-2xl font-bold flex items-center gap-2">
                                 {isProcessing ? 'جاري المعالجة...' : 'اختيار طريقة الدفع'}
                             </h2>
@@ -264,7 +272,7 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                             {/* Amount Display */}
                             <div className="text-center mb-8">
                                 <span className="text-gray-500 block text-sm mb-1">المبلغ الإجمالي المستحق</span>
-                                <span className="text-4xl font-extrabold text-gold-600">{total.toFixed(2)} {currency}</span>
+                                <span className="text-4xl font-extrabold text-brand-primary">{total.toFixed(2)} {currency}</span>
                             </div>
 
                             {!selectedMethod ? (
@@ -313,7 +321,7 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                                                     <Banknote size={24} />
                                                 </div>
                                                 <div>
-                                                    <h4 className="font-bold text-coffee-900">الدفع النقدي</h4>
+                                                    <h4 className="font-bold text-brand-dark">الدفع النقدي</h4>
                                                     <p className="text-xs text-gray-500">أدخل المبلغ المستلم من العميل</p>
                                                 </div>
                                             </div>
@@ -325,15 +333,15 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                                                     autoFocus
                                                     value={cashReceived}
                                                     onChange={(e) => setCashReceived(e.target.value)}
-                                                    className="w-full text-center text-3xl font-bold py-4 rounded-xl border-2 outline-none bg-gray-50 text-coffee-900 border-gold-200 focus:border-gold-500"
+                                                    className="w-full text-center text-3xl font-bold py-4 rounded-xl border-2 outline-none bg-gray-50 text-brand-dark border-brand-primary/20 focus:border-brand-primary"
                                                     placeholder="0.00"
                                                 />
                                             </div>
 
                                             {cashReceived && (
-                                                <div className={`p-4 rounded-xl text-center border-2 ${change >= 0 ? 'bg-gold-50 border-gold-200' : 'bg-red-50 border-red-200'}`}>
+                                                <div className={`p-4 rounded-xl text-center border-2 ${change >= 0 ? 'bg-brand-light/30 border-brand-primary/20' : 'bg-red-50 border-red-200'}`}>
                                                     <span className="block text-sm text-gray-500 mb-1">{change >= 0 ? 'الباقي للعميل' : 'المبلغ الناقص'}</span>
-                                                    <span className={`text-2xl font-bold ${change >= 0 ? 'text-coffee-900' : 'text-red-600'}`}>
+                                                    <span className={`text-2xl font-bold ${change >= 0 ? 'text-brand-dark' : 'text-red-600'}`}>
                                                         {Math.abs(change).toFixed(2)} {currency}
                                                     </span>
                                                 </div>
@@ -352,7 +360,7 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                                                 </div>
                                             </div>
                                             <div>
-                                                <h4 className="font-bold text-xl text-coffee-900">بانتظار الدفع...</h4>
+                                                <h4 className="font-bold text-xl text-brand-dark">بانتظار الدفع...</h4>
                                                 <p className="text-gray-500 text-sm">يرجى توجيه العميل لجهاز الدفع</p>
                                             </div>
                                         </div>
@@ -370,7 +378,7 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                                         <button
                                             onClick={handleConfirmPayment}
                                             disabled={isProcessing || (selectedMethod === 'cash' && change < 0)}
-                                            className="flex-[2] py-4 text-white font-bold rounded-xl transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 bg-coffee-900 hover:bg-gold-600"
+                                            className="flex-[2] py-4 text-white font-bold rounded-xl transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 bg-brand-dark hover:bg-brand-primary"
                                         >
                                             {isProcessing ? <Loader2 className="animate-spin" /> : <Check />}
                                             {selectedMethod === 'cash' ? 'إتمام العملية' : 'تأكيد الاستلام'}

@@ -21,9 +21,9 @@ interface DigitalMenuModalProps {
 
 const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, onClose, storeName }) => {
     const [selectedProducts, setSelectedProducts] = useState<string[]>(products.map(p => p.id));
-    const [theme, setTheme] = useState<'gold' | 'dark' | 'coffee' | 'modern'>('gold');
+    const [theme, setTheme] = useState<'afia' | 'dark' | 'coffee' | 'modern'>('afia');
     const [layout, setLayout] = useState<'grid' | 'list'>('grid');
-    const [storeDescription, setStoreDescription] = useState('أهلاً بكم في متجرنا، نقدّم لكم أجود أنواع المأكولات والمشروبات المحضّرة بحب.');
+    const [storeDescription, setStoreDescription] = useState('نرحب بكم في تجربتنا الرقمية المتميزة. نهدف لتقديم أفضل جودة وأرقى خدمة تليق بذائقتكم.');
     const [activeTab, setActiveTab] = useState<'design' | 'content'>('design');
 
     const previewRef = useRef<HTMLDivElement>(null);
@@ -46,7 +46,7 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-        pdf.save(`Menu_Poster_${storeName}.pdf`);
+        pdf.save(`Menu_Poster_Afia_${storeName}.pdf`);
     };
 
     const toggleProduct = (id: string) => {
@@ -58,116 +58,153 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
     const filteredProducts = products.filter(p => selectedProducts.includes(p.id));
 
     const themeConfig = {
-        gold: { bg: 'bg-[#fdfaf5]', text: 'text-coffee-900', accent: 'bg-gold-500', card: 'bg-white border-gold-100', secondary: 'text-gold-600' },
-        dark: { bg: 'bg-[#0f172a]', text: 'text-white', accent: 'bg-blue-500', card: 'bg-white/5 border-white/10', secondary: 'text-blue-400' },
-        coffee: { bg: 'bg-[#faf7f2]', text: 'text-[#4a3728]', accent: 'bg-[#8c6d46]', card: 'bg-white border-[#e0d6cc]', secondary: 'text-[#8c6d46]' },
-        modern: { bg: 'bg-white', text: 'text-gray-900', accent: 'bg-black', card: 'bg-gray-50 border-gray-100', secondary: 'text-gray-500' }
+        afia: {
+            bg: 'bg-brand-cream',
+            text: 'text-brand-dark',
+            accent: 'bg-brand-primary',
+            card: 'bg-white border-brand-primary/10 shadow-sm',
+            secondary: 'text-brand-secondary',
+            label: 'عافية الفخم'
+        },
+        dark: {
+            bg: 'bg-[#0a0a0a]',
+            text: 'text-white',
+            accent: 'bg-orange-500',
+            card: 'bg-white/5 border-white/10 backdrop-blur-sm',
+            secondary: 'text-orange-400',
+            label: 'الاحترافي المعتم'
+        },
+        coffee: {
+            bg: 'bg-[#faf7f2]',
+            text: 'text-[#4a3728]',
+            accent: 'bg-[#8c6d46]',
+            card: 'bg-white border-[#e0d6cc]',
+            secondary: 'text-[#8c6d46]',
+            label: 'القهوة الكلاسيكي'
+        },
+        modern: {
+            bg: 'bg-white',
+            text: 'text-gray-900',
+            accent: 'bg-brand-dark',
+            card: 'bg-gray-50 border-gray-100',
+            secondary: 'text-gray-500',
+            label: 'العصري الأنيق'
+        }
     };
 
     const currentTheme = themeConfig[theme];
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300" dir="rtl">
-            <div className="bg-white w-full max-w-7xl h-[92vh] rounded-[3.5rem] shadow-3xl overflow-hidden flex flex-col md:flex-row animate-in zoom-in-95 duration-500">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-brand-dark/90 backdrop-blur-2xl animate-in fade-in duration-500" dir="rtl">
+            <div className="bg-white w-full max-w-7xl h-[92vh] rounded-[4rem] shadow-4xl overflow-hidden flex flex-col md:flex-row animate-in zoom-in-95 duration-700 border-4 border-white/20">
 
                 {/* 1. Control Panel (Sidebar) */}
-                <div className="w-full md:w-[450px] bg-[#f8f9fa] border-l border-gray-200 flex flex-col h-full relative">
-                    <div className="p-8 border-b border-gray-200 bg-white">
-                        <div className="flex justify-between items-center mb-6">
-                            <div className="w-12 h-12 bg-gold-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-gold-500/20">
-                                <MonitorSmartphone size={24} />
+                <div className="w-full md:w-[450px] bg-gray-50/50 border-l border-brand-primary/5 flex flex-col h-full relative">
+                    <div className="p-10 border-b border-brand-primary/5 bg-white relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-brand-primary/5 rounded-full -mr-12 -mt-12 blur-2xl"></div>
+                        <div className="flex justify-between items-center mb-8 relative z-10">
+                            <div className="w-14 h-14 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-2xl flex items-center justify-center text-white shadow-xl shadow-brand-primary/20">
+                                <Sparkles size={28} />
                             </div>
-                            <button onClick={onClose} className="p-2 hover:bg-red-50 hover:text-red-500 rounded-full transition-all">
-                                <X size={24} />
+                            <button
+                                onClick={onClose}
+                                className="w-10 h-10 flex items-center justify-center bg-gray-50 hover:bg-red-500 hover:text-white rounded-xl transition-all text-brand-dark/20"
+                            >
+                                <X size={20} />
                             </button>
                         </div>
-                        <h2 className="text-2xl font-black text-coffee-900 mb-1">استوديو المنيو الرقمي</h2>
-                        <p className="text-gray-500 text-sm">خصص تجربة الطلب الرقمي لعملائك</p>
+                        <h2 className="text-3xl font-black text-brand-dark mb-1">سمارت منيو</h2>
+                        <p className="text-[10px] text-brand-secondary font-black uppercase tracking-[0.2em]">Digital Menu Visual Studio</p>
                     </div>
 
                     {/* Tabs */}
-                    <div className="flex px-8 py-4 bg-white border-b border-gray-100 gap-4">
+                    <div className="flex px-10 py-4 bg-white border-b border-brand-primary/5 gap-4">
                         <button
                             onClick={() => setActiveTab('design')}
-                            className={`flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'design' ? 'bg-coffee-900 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100'}`}
+                            className={`flex-1 py-4 rounded-2xl font-black text-xs flex items-center justify-center gap-2 transition-all ${activeTab === 'design' ? 'bg-brand-dark text-white shadow-2xl' : 'text-gray-400 hover:bg-gray-100'}`}
                         >
-                            <Brush size={18} /> التصميم والعرض
+                            <Palette size={16} /> المظهر والهوية
                         </button>
                         <button
                             onClick={() => setActiveTab('content')}
-                            className={`flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${activeTab === 'content' ? 'bg-coffee-900 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-100'}`}
+                            className={`flex-1 py-4 rounded-2xl font-black text-xs flex items-center justify-center gap-2 transition-all ${activeTab === 'content' ? 'bg-brand-dark text-white shadow-2xl' : 'text-gray-400 hover:bg-gray-100'}`}
                         >
-                            <CheckCircle2 size={18} /> قائمة المنتجات
+                            <Layout size={16} /> محتوى القائمة
                         </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-8 no-scrollbar space-y-10">
+                    <div className="flex-1 overflow-y-auto p-10 no-scrollbar space-y-12">
                         {activeTab === 'design' ? (
                             <>
                                 {/* Theme Selection */}
-                                <section>
-                                    <div className="flex items-center gap-2 mb-6 pointer-events-none">
-                                        <div className="w-1.5 h-6 bg-gold-500 rounded-full"></div>
-                                        <h3 className="font-black text-coffee-900 uppercase tracking-widest text-sm">طابع الهاتف المحمول</h3>
-                                    </div>
+                                <section className="space-y-6">
+                                    <h3 className="text-[10px] items-center gap-2 flex font-black text-brand-secondary uppercase tracking-widest">
+                                        <div className="w-2 h-2 bg-brand-primary rounded-full"></div>
+                                        اختيار طابع التصميم (Theme)
+                                    </h3>
                                     <div className="grid grid-cols-2 gap-4">
-                                        {Object.keys(themeConfig).map((t) => (
+                                        {Object.entries(themeConfig).map(([id, config]) => (
                                             <button
-                                                key={t}
-                                                onClick={() => setTheme(t as any)}
-                                                className={`p-4 rounded-3xl border-2 transition-all flex flex-col items-center gap-3 ${theme === t ? 'border-coffee-900 bg-white shadow-xl scale-105' : 'border-transparent bg-white/50 hover:bg-white'}`}
+                                                key={id}
+                                                onClick={() => setTheme(id as any)}
+                                                className={`p-1 rounded-3xl border-3 transition-all ${theme === id ? 'border-brand-primary ring-4 ring-brand-primary/10 scale-105' : 'border-transparent hover:border-brand-primary/30'}`}
                                             >
-                                                <div className={`w-full h-12 rounded-xl shadow-inner ${themeConfig[t as keyof typeof themeConfig].bg}`}></div>
-                                                <span className="text-xs font-black capitalize">{t === 'gold' ? 'الملكي الذهبي' : t === 'dark' ? 'الليلي الاحترافي' : t === 'coffee' ? 'الكلاسيكي' : 'العصري'}</span>
+                                                <div className="bg-white rounded-[1.5rem] p-3 flex flex-col items-center gap-3 shadow-sm">
+                                                    <div className={`w-full h-12 rounded-xl shadow-inner ${config.bg} border border-black/5`}></div>
+                                                    <span className="text-[10px] font-black text-brand-dark">{config.label}</span>
+                                                </div>
                                             </button>
                                         ))}
                                     </div>
                                 </section>
 
                                 {/* Branding Info */}
-                                <section>
-                                    <div className="flex items-center gap-2 mb-6 pointer-events-none">
-                                        <div className="w-1.5 h-6 bg-gold-500 rounded-full"></div>
-                                        <h3 className="font-black text-coffee-900 uppercase tracking-widest text-sm">معلومات العلامة التجارية</h3>
-                                    </div>
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="text-[10px] font-black text-gray-400 mb-2 block uppercase">وصف المتجر (يظهر في المنيو)</label>
-                                            <textarea
-                                                value={storeDescription}
-                                                onChange={(e) => setStoreDescription(e.target.value)}
-                                                className="w-full p-4 bg-white rounded-2xl border border-gray-200 outline-none focus:ring-2 focus:ring-gold-500 text-sm font-bold min-h-[100px] resize-none"
-                                            />
-                                        </div>
+                                <section className="space-y-6">
+                                    <h3 className="text-[10px] items-center gap-2 flex font-black text-brand-secondary uppercase tracking-widest">
+                                        <div className="w-2 h-2 bg-brand-primary rounded-full"></div>
+                                        نص الواجهة الترحيبي
+                                    </h3>
+                                    <div className="relative group">
+                                        <textarea
+                                            value={storeDescription}
+                                            onChange={(e) => setStoreDescription(e.target.value)}
+                                            className="w-full p-6 bg-white rounded-3xl border-2 border-brand-primary/5 outline-none focus:border-brand-primary focus:ring-8 focus:ring-brand-primary/5 text-sm font-bold min-h-[120px] resize-none shadow-inner transition-all no-scrollbar"
+                                            placeholder="اكتب شيئاً جميلاً لعملائك..."
+                                        />
+                                        <div className="absolute bottom-4 left-4 text-[8px] font-black opacity-20 uppercase tracking-widest">Description</div>
                                     </div>
                                 </section>
                             </>
                         ) : (
                             /* Product Selection */
-                            <section>
-                                <div className="flex items-center justify-between mb-6">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-1.5 h-6 bg-gold-500 rounded-full"></div>
-                                        <h3 className="font-black text-coffee-900 uppercase tracking-widest text-sm">اختيار الأصناف</h3>
-                                    </div>
-                                    <span className="text-[10px] font-black bg-gold-100 text-gold-700 px-3 py-1 rounded-full">{selectedProducts.length} مختار</span>
+                            <section className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-[10px] items-center gap-2 flex font-black text-brand-secondary uppercase tracking-widest">
+                                        <div className="w-2 h-2 bg-brand-primary rounded-full"></div>
+                                        تحديد الأصناف المتاحة
+                                    </h3>
+                                    <span className="text-[10px] font-black bg-brand-primary text-white px-3 py-1 rounded-full shadow-lg shadow-brand-primary/30">
+                                        {selectedProducts.length} صنف مفعّل
+                                    </span>
                                 </div>
                                 <div className="space-y-3">
                                     {products.map(p => (
                                         <button
                                             key={p.id}
                                             onClick={() => toggleProduct(p.id)}
-                                            className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${selectedProducts.includes(p.id) ? 'border-coffee-900 bg-white shadow-md' : 'border-transparent bg-white/50 hover:bg-white'}`}
+                                            className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${selectedProducts.includes(p.id) ? 'border-brand-primary bg-brand-primary/5 shadow-md scale-[1.02]' : 'border-gray-50 bg-white hover:border-brand-primary/20'}`}
                                         >
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${selectedProducts.includes(p.id) ? 'bg-gold-500 text-white' : 'bg-gray-100 text-gray-400'}`}>☕</div>
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-xl shadow-sm transition-all ${selectedProducts.includes(p.id) ? 'bg-brand-primary text-white rotate-6' : 'bg-gray-100 text-gray-400'}`}>
+                                                    {p.category === 'Coffee' ? '☕' : p.category === 'Tea' ? '🍵' : '🍔'}
+                                                </div>
                                                 <div className="text-right">
-                                                    <p className="text-sm font-black text-coffee-900">{p.name}</p>
-                                                    <p className="text-[10px] text-gray-400">{p.category}</p>
+                                                    <p className="text-sm font-black text-brand-dark">{p.name}</p>
+                                                    <p className="text-[10px] text-brand-secondary font-bold">{p.category}</p>
                                                 </div>
                                             </div>
-                                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center border-2 transition-all ${selectedProducts.includes(p.id) ? 'bg-coffee-900 border-coffee-900 text-white' : 'border-gray-200'}`}>
-                                                {selectedProducts.includes(p.id) && <CheckCircle2 size={14} />}
+                                            <div className={`w-7 h-7 rounded-full flex items-center justify-center border-2 transition-all ${selectedProducts.includes(p.id) ? 'bg-brand-primary border-brand-primary text-white scale-110 shadow-lg shadow-brand-primary/20' : 'border-gray-200'}`}>
+                                                {selectedProducts.includes(p.id) && <CheckCircle2 size={16} />}
                                             </div>
                                         </button>
                                     ))}
@@ -177,53 +214,65 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
                     </div>
 
                     {/* Sidebar Footer */}
-                    <div className="p-8 bg-white border-t border-gray-200">
+                    <div className="p-10 bg-white border-t border-brand-primary/5">
                         <button
                             onClick={exportProfessionalPDF}
-                            className="w-full bg-gold-500 hover:bg-gold-600 text-coffee-900 py-5 rounded-3xl font-black flex items-center justify-center gap-3 shadow-xl shadow-gold-500/20 transition-all scale-100 hover:scale-[1.02]"
+                            className="w-full bg-brand-dark hover:bg-brand-primary text-white py-6 rounded-[2rem] font-black text-lg flex items-center justify-center gap-4 shadow-3xl shadow-brand-dark/20 transition-all active:scale-95 group"
                         >
-                            <QrCode size={24} />
-                            إنشاء ملصق QR الموحد (PDF)
+                            <QrCode size={28} className="group-hover:rotate-12 transition-transform" />
+                            توليد ملصق QR فخيم (PDF)
                         </button>
                     </div>
                 </div>
 
                 {/* 2. Preview Canvas (Main Area) */}
-                <div className="flex-1 bg-[#121212] p-12 overflow-y-auto no-scrollbar flex flex-col lg:flex-row gap-12">
+                <div className="flex-1 bg-[#0a0a0a] p-12 overflow-y-auto no-scrollbar flex flex-col lg:flex-row gap-12 items-start justify-center relative">
+
+                    {/* Decorative Elements */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-brand-primary/5 rounded-full blur-[100px] pointer-events-none"></div>
 
                     {/* Mobile Preview View */}
-                    <div className="flex flex-col gap-6 items-center">
-                        <div className="flex items-center gap-2 text-white/40 uppercase tracking-[0.2em] text-[10px] font-black">
-                            <Smartphone size={14} /> معاينة واجهة العميل
+                    <div className="flex flex-col gap-8 items-center relative z-10 shrink-0">
+                        <div className="flex items-center gap-3 text-white/30 uppercase tracking-[0.3em] text-[8px] font-black px-4 py-2 bg-white/5 rounded-full backdrop-blur-md border border-white/5 shadow-2xl">
+                            <Smartphone size={12} className="text-brand-primary" /> Live Mobile Preview
                         </div>
-                        <div className="w-[360px] h-[720px] bg-coffee-900 rounded-[3rem] p-4 shadow-2xl relative border-[8px] border-[#222] ring-[12px] ring-white/5 overflow-hidden">
-                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-[#222] rounded-b-3xl z-30"></div>
+                        <div className="w-[340px] h-[680px] bg-brand-dark rounded-[3.5rem] p-3 shadow-4xl relative border-[12px] border-white/5 ring-[1px] ring-white/10 overflow-hidden group">
+                            {/* Phone Speaker/Camera Notch */}
+                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-white/5 rounded-b-3xl z-30 shadow-inner"></div>
+
                             <div
                                 ref={previewRef}
-                                className={`w-full h-full overflow-y-auto no-scrollbar rounded-[2rem] transition-colors duration-700 ${currentTheme.bg} ${currentTheme.text}`}
+                                className={`w-full h-full overflow-y-auto no-scrollbar rounded-[2.8rem] transition-all duration-700 ${currentTheme.bg} ${currentTheme.text} relative`}
                                 dir="rtl">
+
+                                {/* Inner Shadow for depth */}
+                                <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_50px_rgba(0,0,0,0.05)] rounded-[2.8rem]"></div>
+
                                 {/* Preview Content */}
-                                <div className="p-8">
-                                    <div className="text-center mt-10 mb-12">
-                                        <div className={`w-20 h-20 mx-auto rounded-3xl shadow-2xl flex items-center justify-center mb-6 text-3xl ${currentTheme.accent} text-white`}>☕</div>
-                                        <h1 className="text-3xl font-black mb-2">{storeName}</h1>
-                                        <p className="text-xs opacity-60 leading-relaxed px-4">{storeDescription}</p>
+                                <div className="p-10">
+                                    <div className="text-center mt-12 mb-12">
+                                        <div className={`w-24 h-24 mx-auto rounded-[2.5rem] shadow-2xl flex items-center justify-center mb-6 text-4xl transition-all duration-1000 ${currentTheme.accent} text-white border-4 border-white/20 rotate-3`}>
+                                            {storeName.charAt(0)}
+                                        </div>
+                                        <h1 className="text-3xl font-black mb-3 tracking-tighter">{storeName}</h1>
+                                        <div className={`w-12 h-1 bg-current opacity-10 mx-auto rounded-full mb-4`}></div>
+                                        <p className="text-[11px] opacity-60 leading-relaxed font-bold px-4">{storeDescription}</p>
                                     </div>
 
-                                    <div className="space-y-4">
+                                    <div className="space-y-5">
                                         {filteredProducts.map(p => (
-                                            <div key={p.id} className={`p-5 rounded-[2.5rem] border ${currentTheme.card} transition-all`}>
+                                            <div key={p.id} className={`p-6 rounded-[2.5rem] border transition-all duration-500 hover:scale-[1.03] ${currentTheme.card}`}>
                                                 <div className="flex justify-between items-start mb-2">
-                                                    <h4 className="font-black text-base">{p.name}</h4>
-                                                    <span className={`text-lg font-black ${currentTheme.secondary}`}>{p.price} $</span>
+                                                    <h4 className="font-black text-sm">{p.name}</h4>
+                                                    <span className={`text-base font-black ${currentTheme.secondary}`}>{p.price.toFixed(2)} IQD</span>
                                                 </div>
-                                                <p className="text-[10px] opacity-50 line-clamp-2">{p.notes || "وصف هذا المنتج الرائع متوفر هنا لزيادة الرغبة في الطلب."}</p>
+                                                <p className="text-[9px] opacity-50 line-clamp-2 leading-relaxed font-bold">{p.notes || "تذوق الطعم الأصيل والمكونات الطازجة في كل لقمة. محضّر بكل فخر لأصحاب الذوق الرفيع."}</p>
                                             </div>
                                         ))}
                                     </div>
 
-                                    <div className="mt-20 text-center opacity-30 text-[8px] font-black uppercase tracking-widest pb-10">
-                                        Powered by Golden POS System
+                                    <div className="mt-20 text-center opacity-20 text-[7px] font-black uppercase tracking-[0.4em] pb-10">
+                                        &bull; Powered by Al Afia Cloud &bull;
                                     </div>
                                 </div>
                             </div>
@@ -231,37 +280,50 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
                     </div>
 
                     {/* Poster Export Preview */}
-                    <div className="flex-1 flex flex-col gap-6 items-center">
-                        <div className="flex items-center gap-2 text-white/40 uppercase tracking-[0.2em] text-[10px] font-black">
-                            <Printer size={14} /> معاينة الملصق المطبوع (QR)
+                    <div className="flex flex-col gap-8 items-center relative z-10 flex-1">
+                        <div className="flex items-center gap-3 text-white/30 uppercase tracking-[0.3em] text-[8px] font-black px-4 py-2 bg-white/5 rounded-full backdrop-blur-md border border-white/5 shadow-2xl">
+                            <Printer size={12} className="text-brand-secondary" /> Print-Ready Poster Preview (A4)
                         </div>
                         <div
                             ref={posterRef}
-                            className="w-[450px] aspect-[1/1.4] bg-white rounded-3xl shadow-2xl p-12 flex flex-col items-center justify-between text-center overflow-hidden"
+                            className="w-[480px] aspect-[1/1.414] bg-white rounded-[3rem] shadow-4xl p-16 flex flex-col items-center justify-between text-center overflow-hidden relative group/poster"
                             style={{ direction: 'rtl' }}
                         >
-                            <div className="space-y-4">
-                                <div className="w-20 h-20 bg-coffee-900 rounded-[2rem] flex items-center justify-center text-white text-3xl mx-auto shadow-xl">☕</div>
-                                <h2 className="text-4xl font-black text-coffee-900">{storeName}</h2>
-                                <div className="w-20 h-1.5 bg-gold-500 mx-auto rounded-full"></div>
-                                <p className="text-xl font-bold text-gray-400">انضم إلينا في تجربة رقمية فريدة</p>
+                            {/* Luxury Border Box inside */}
+                            <div className="absolute inset-10 border-2 border-brand-primary/5 rounded-[2rem] pointer-events-none"></div>
+
+                            <div className="space-y-6 relative z-10">
+                                <div className="w-24 h-24 bg-brand-dark rounded-[2.5rem] flex items-center justify-center text-white text-4xl mx-auto shadow-2xl border-4 border-white transform -rotate-12 transition-transform group-hover/poster:rotate-0 duration-700">
+                                    {storeName.charAt(0)}
+                                </div>
+                                <div className="space-y-2">
+                                    <h2 className="text-5xl font-black text-brand-dark tracking-tighter">{storeName}</h2>
+                                    <div className="w-24 h-2 bg-brand-secondary mx-auto rounded-full shadow-lg shadow-brand-secondary/20"></div>
+                                    <p className="text-xl font-black text-brand-secondary/60 mt-4 tracking-widest uppercase">Digital Ordering Experience</p>
+                                </div>
                             </div>
 
-                            <div className="relative group">
-                                <div className="absolute inset-0 bg-gold-500 blur-3xl opacity-10 group-hover:opacity-20 transition-all"></div>
-                                <div className="p-8 bg-white rounded-[4rem] border-4 border-coffee-900 shadow-2xl relative z-10 transition-transform group-hover:scale-105 duration-500">
+                            <div className="relative group p-10">
+                                <div className="absolute inset-0 bg-brand-primary/10 blur-[80px] opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
+                                <div className="p-10 bg-white rounded-[5rem] border-8 border-brand-dark shadow-4xl relative z-10 transition-all hover:scale-105 duration-700">
                                     <QRCodeCanvas
-                                        value={`https://menu.goldenpos.com/${storeName.replace(/\s+/g, '-').toLowerCase()}`}
+                                        value={`https://menu.alafia.iq/${storeName.replace(/\s+/g, '-').toLowerCase()}`}
                                         size={220}
                                         level="H"
                                         includeMargin={false}
+                                        fgColor="#1a1a1a"
                                     />
                                 </div>
                             </div>
 
-                            <div className="space-y-3">
-                                <p className="text-2xl font-black text-coffee-900 uppercase tracking-tighter">امسح الكود لفتح القائمة</p>
-                                <p className="text-xs text-gray-400 font-bold">بإمكانك طلب كل ما تحب مباشرة من بريدك</p>
+                            <div className="space-y-4 relative z-10">
+                                <p className="text-3xl font-black text-brand-dark uppercase tracking-tighter">امسح الكود واستمتع بالطلب الذكي</p>
+                                <p className="text-sm text-brand-secondary/40 font-black tracking-widest uppercase">Scan to access the full digital menu</p>
+                            </div>
+
+                            {/* Watermark Logo */}
+                            <div className="absolute -bottom-10 -right-10 opacity-5">
+                                <img src="/branding/afia_logo.png" className="w-64" alt="" />
                             </div>
                         </div>
                     </div>

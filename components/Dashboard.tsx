@@ -43,7 +43,14 @@ const Dashboard: React.FC<DashboardProps> = ({
   onNavigate
 }) => {
   return (
-    <div className="flex-1 p-8 overflow-y-auto animate-in fade-in slide-in-from-bottom-4 bg-[#fcfaf7] pb-20">
+    <div className="flex-1 p-8 overflow-y-auto animate-in fade-in slide-in-from-bottom-4 bg-brand-cream pb-20 relative">
+      {/* Background Leaf Patterns (Subtle) */}
+      <div className="absolute top-0 left-0 w-64 h-64 opacity-5 pointer-events-none -translate-x-1/2 -translate-y-1/2">
+        <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
+      </div>
+      <div className="absolute bottom-0 right-0 w-96 h-96 opacity-5 pointer-events-none translate-x-1/4 translate-y-1/4 rotate-45">
+        <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
+      </div>
 
       {/* Search Bar */}
       <div className="mb-10 relative max-w-md" dir="rtl">
@@ -60,49 +67,49 @@ const Dashboard: React.FC<DashboardProps> = ({
         <DashboardCard
           title="قائمة المنتجات"
           icon={Grid}
-          colorClass="bg-gradient-to-br from-gold-400 to-gold-600"
+          colorClass="bg-gradient-to-br from-brand-primary to-brand-secondary shadow-brand-primary/20"
           onClick={onProductClick}
         />
         <DashboardCard
           title="الفواتير السابقة"
           icon={Receipt}
-          colorClass="bg-gradient-to-br from-coffee-800 to-coffee-900"
+          colorClass="bg-gradient-to-br from-brand-dark to-brand-primary shadow-brand-dark/20"
           onClick={() => onNavigate('invoices')}
         />
         <DashboardCard
           title="طرق الدفع"
           icon={CreditCard}
-          colorClass="bg-gradient-to-br from-coffee-900 to-black"
+          colorClass="bg-gradient-to-br from-brand-accent to-orange-600 shadow-brand-accent/20"
           onClick={() => onNavigate('settings', 'payments')}
         />
         <DashboardCard
           title="الموردين"
           icon={Truck}
-          colorClass="bg-gradient-to-br from-gold-50 to-gold-600"
+          colorClass="bg-gradient-to-br from-brand-secondary to-green-700 shadow-brand-secondary/20"
           onClick={() => onNavigate('suppliers')}
         />
         <DashboardCard
           title="التقارير المفصلة"
           icon={Sparkles}
-          colorClass="bg-gradient-to-br from-teal-600 to-teal-800"
+          colorClass="bg-gradient-to-br from-emerald-600 to-brand-primary shadow-emerald-500/20"
           onClick={() => onNavigate('reports')}
         />
         <DashboardCard
           title="تاريخ الضمان"
           icon={Calendar}
-          colorClass="bg-gradient-to-br from-gold-600 to-gold-700"
+          colorClass="bg-gradient-to-br from-orange-400 to-brand-accent shadow-orange-400/20"
           onClick={() => onNavigate('invoices')}
         />
         <DashboardCard
           title="المخزون"
           icon={Box}
-          colorClass="bg-teal-800"
+          colorClass="bg-gradient-to-br from-brand-secondary to-brand-primary shadow-brand-secondary/20"
           onClick={() => onNavigate('inventory')}
         />
         <DashboardCard
           title="الإعدادات"
           icon={Settings}
-          colorClass="bg-teal-900"
+          colorClass="bg-gradient-to-br from-brand-dark to-black shadow-brand-dark/20"
           onClick={() => onNavigate('settings')}
         />
       </div>
@@ -110,46 +117,50 @@ const Dashboard: React.FC<DashboardProps> = ({
       {/* Analytics Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-0" dir="rtl">
         {/* Line Chart */}
-        <div className="bg-white p-6 rounded-[2.5rem] shadow-xl border border-gold-100 relative overflow-hidden">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-xl text-coffee-900">توجهات المبيعات اليومي</h3>
+        <div className="bg-white/70 backdrop-blur-md p-8 rounded-[3rem] shadow-xl border border-brand-primary/5 relative overflow-hidden group hover:shadow-2xl transition-all duration-500">
+          <div className="flex justify-between items-center mb-8 relative z-10">
+            <h3 className="font-black text-2xl text-brand-dark">توجهات المبيعات اليومي</h3>
             <div className="flex gap-2">
-              <button className="text-[10px] font-black px-3 py-1 rounded-lg text-gold-600 bg-gold-50 hover:bg-gold-100">تحميل</button>
+              <button className="text-[10px] uppercase tracking-widest font-black px-6 py-2.5 rounded-xl text-brand-primary bg-brand-primary/5 hover:bg-brand-primary hover:text-white transition-all shadow-sm">تحميل التقرير الكامل</button>
             </div>
           </div>
-          <div className="h-64 w-full">
+          <div className="h-72 w-full relative z-10">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={SALES_DATA}>
                 <defs>
                   <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#c59d5f" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#c59d5f" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#52B788" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#52B788" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#865f33', fontSize: 10 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#865f33', fontSize: 10 }} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#2D6A4F', fontSize: 10, fontWeight: 'bold' }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#2D6A4F', fontSize: 10, fontWeight: 'bold' }} />
                 <Tooltip
-                  contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', fontFamily: 'Cairo' }}
+                  contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 40px rgba(0,0,0,0.1)', fontFamily: 'Cairo', fontWeight: 'bold' }}
                 />
-                <Area type="monotone" dataKey="value" stroke="#c59d5f" strokeWidth={4} fillOpacity={1} fill="url(#colorValue)" />
+                <Area type="monotone" dataKey="value" stroke="#2D6A4F" strokeWidth={4} fillOpacity={1} fill="url(#colorValue)" />
               </AreaChart>
             </ResponsiveContainer>
+          </div>
+          {/* Decorative watermark inside chart area */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-700">
+            <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
           </div>
         </div>
 
         {/* Bar Chart */}
-        <div className="bg-white p-6 rounded-[2.5rem] shadow-xl border border-gold-100">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-xl text-coffee-900">أداء الموظفين</h3>
-            <button className="text-[10px] font-black px-3 py-1 rounded-lg text-gold-600 bg-gold-50 hover:bg-gold-100">تفاصيل</button>
+        <div className="bg-white/70 backdrop-blur-md p-8 rounded-[3rem] shadow-xl border border-brand-primary/5">
+          <div className="flex justify-between items-center mb-8">
+            <h3 className="font-black text-2xl text-brand-dark">أداء الموظفين</h3>
+            <button className="text-[10px] uppercase tracking-widest font-black px-6 py-2.5 rounded-xl text-brand-accent bg-brand-accent/5 hover:bg-brand-accent hover:text-white transition-all shadow-sm">كشف التفاصيل</button>
           </div>
-          <div className="h-64 w-full">
+          <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={BAR_DATA}>
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#865f33', fontSize: 10 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#865f33', fontSize: 10 }} />
-                <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }} />
-                <Bar dataKey="uv" fill="#1e293b" radius={[10, 10, 0, 0]} barSize={24} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#2D6A4F', fontSize: 10, fontWeight: 'bold' }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#2D6A4F', fontSize: 10, fontWeight: 'bold' }} />
+                <Tooltip cursor={{ fill: 'rgba(82, 183, 136, 0.1)' }} contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 40px rgba(0,0,0,0.1)', fontWeight: 'bold' }} />
+                <Bar dataKey="uv" fill="#F8961E" radius={[12, 12, 0, 0]} barSize={24} />
               </BarChart>
             </ResponsiveContainer>
           </div>

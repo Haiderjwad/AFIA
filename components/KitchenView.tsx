@@ -124,23 +124,23 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, lowStockThreshold =
 
     if (loading) {
         return (
-            <div className="flex-1 flex items-center justify-center bg-[#fdfaf7]">
+            <div className="flex-1 flex items-center justify-center bg-brand-cream">
                 <div className="flex flex-col items-center gap-4">
-                    <div className="w-16 h-16 border-4 border-gold-200 border-t-gold-500 rounded-full animate-spin"></div>
-                    <p className="text-coffee-900 font-bold">جاري تحميل شاشة المطبخ...</p>
+                    <div className="w-16 h-16 border-4 border-brand-primary/20 border-t-brand-primary rounded-full animate-spin"></div>
+                    <p className="text-brand-dark font-black animate-pulse">جاري تحميل شاشة المطبخ...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="flex-1 p-8 bg-[#fdfaf7] overflow-y-auto flex flex-col h-screen" dir="rtl">
+        <div className="flex-1 p-8 bg-brand-cream overflow-y-auto flex flex-col h-screen" dir="rtl">
 
             {/* Toast Notification */}
             {toast && (
                 <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[999] flex items-center gap-3 px-6 py-3 rounded-2xl shadow-2xl text-white font-bold text-sm transition-all animate-in slide-in-from-top-4 duration-300 ${toast.type === 'success'
-                    ? 'bg-gradient-to-r from-green-600 to-emerald-500'
-                    : 'bg-gradient-to-r from-red-600 to-rose-500'
+                    ? 'bg-gradient-to-r from-brand-primary to-brand-secondary'
+                    : 'bg-gradient-to-r from-brand-accent to-orange-600'
                     }`}>
                     {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
                     <span>{toast.message}</span>
@@ -150,26 +150,26 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, lowStockThreshold =
             {/* Header Area */}
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 gap-6">
                 <div className="flex items-center gap-4 text-right">
-                    <div className="bg-coffee-900 p-3 rounded-2xl text-white shadow-xl">
+                    <div className="bg-brand-primary p-4 rounded-[2rem] text-white shadow-xl shadow-brand-primary/20">
                         <ChefHat size={32} />
                     </div>
                     <div>
-                        <h1 className="text-3xl font-bold text-coffee-900">مركز إدارة المطبخ</h1>
-                        <p className="text-gray-500">التحكم في الطلبات والمخزون الحي</p>
+                        <h1 className="text-3xl font-black text-brand-dark mb-1">مركز إدارة المطبخ</h1>
+                        <p className="text-brand-dark/40 font-bold text-sm">التحكم في الطلبات والمخزون الحي</p>
                     </div>
                 </div>
 
                 <div className="flex flex-wrap gap-4 items-center">
-                    <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-gold-100">
+                    <div className="flex bg-white p-2 rounded-[2rem] shadow-sm border border-brand-primary/5">
                         <button
                             onClick={() => setActiveTab('orders')}
-                            className={`px-6 py-2 rounded-xl font-bold transition-all flex items-center gap-2 ${activeTab === 'orders' ? 'bg-coffee-900 text-white shadow-lg' : 'text-gray-400 hover:text-coffee-900'}`}
+                            className={`px-8 py-3 rounded-[1.5rem] font-black transition-all flex items-center gap-2 ${activeTab === 'orders' ? 'bg-brand-primary text-white shadow-brand-primary/20 shadow-xl' : 'text-brand-dark/30 hover:text-brand-primary'}`}
                         >
                             <LayoutDashboard size={18} /> الطلبات
                         </button>
                         <button
                             onClick={() => setActiveTab('inventory')}
-                            className={`px-6 py-2 rounded-xl font-bold transition-all flex items-center gap-2 ${activeTab === 'inventory' ? 'bg-coffee-900 text-white shadow-lg' : 'text-gray-400 hover:text-coffee-900'}`}
+                            className={`px-8 py-3 rounded-[1.5rem] font-black transition-all flex items-center gap-2 ${activeTab === 'inventory' ? 'bg-brand-primary text-white shadow-brand-primary/20 shadow-xl' : 'text-brand-dark/30 hover:text-brand-primary'}`}
                         >
                             <Package size={18} /> المخزون
                         </button>
@@ -214,20 +214,20 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, lowStockThreshold =
                                         <div className="flex justify-between items-start mb-6">
                                             <div className="text-right">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-black text-coffee-900 text-2xl">
+                                                    <span className="font-black text-brand-dark text-3xl">
                                                         {order.tableNumber ? `طاولة ${order.tableNumber}` : `#${order.id.slice(-4)}`}
                                                     </span>
                                                 </div>
-                                                <div className="text-gray-400 text-xs font-bold">{new Date(order.date).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</div>
+                                                <div className="text-brand-dark/30 text-xs font-black">{new Date(order.date).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</div>
                                             </div>
                                             <div className="flex flex-col items-end gap-2">
-                                                <div className="bg-gray-100 px-4 py-1 rounded-full text-[10px] font-black text-gray-500 uppercase">
+                                                <div className="bg-brand-light/30 px-4 py-1 rounded-full text-[10px] font-black text-brand-primary uppercase">
                                                     {order.paymentMethod === 'cash' ? 'نقد' : 'بطاقة'}
                                                 </div>
                                                 {order.notes && (
-                                                    <div className="flex items-center gap-1 text-gold-600 bg-gold-50 px-3 py-1 rounded-lg border border-gold-100 animate-pulse">
+                                                    <div className="flex items-center gap-1 text-brand-accent bg-brand-accent/10 px-3 py-1 rounded-lg border border-brand-accent/10 animate-pulse">
                                                         <MessageSquare size={12} />
-                                                        <span className="text-[10px] font-bold">ملاحظة</span>
+                                                        <span className="text-[10px] font-black tracking-widest uppercase">Special Note</span>
                                                     </div>
                                                 )}
                                             </div>

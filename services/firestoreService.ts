@@ -90,6 +90,37 @@ export const firestoreService = {
         }
     },
 
+    async getEmployees(): Promise<Employee[]> {
+        const snapshot = await getDocs(collection(db, "employees"));
+        // Deduplicate by email if necessary (since we might have both id-based and uid-based docs)
+        const map = new Map<string, Employee>();
+        snapshot.docs.forEach(doc => {
+            const data = doc.data() as Employee;
+            map.set(data.email, data);
+        });
+        return Array.from(map.values());
+    },
+
+    async addEmployee(employee: Employee): Promise<void> {
+        // Use employeeId as doc ID initially if UID is not set
+        const id = employee.uid || `temp-${employee.employeeId}`;
+        await setDoc(doc(db, "employees", id), employee);
+    },
+
+    async updateEmployee(id: string, updates: Partial<Employee>): Promise<void> {
+        const docRef = doc(db, "employees", id);
+        await updateDoc(docRef, updates as any);
+
+        // If we updated by non-UID ID, we might need to sync with UID ID if it exists
+        if (updates.uid) {
+            await setDoc(doc(db, "employees", updates.uid), { ...updates }, { merge: true });
+        }
+    },
+
+    async deleteEmployee(id: string): Promise<void> {
+        await deleteDoc(doc(db, "employees", id));
+    },
+
     // Suppliers
     async getSuppliers(): Promise<Supplier[]> {
         const snapshot = await getDocs(collection(db, "suppliers"));

@@ -1,11 +1,11 @@
-
 import React, { useState } from 'react';
+import { soundService } from '../services/soundService';
 import { Transaction, MenuItem, AppSettings, CartItem } from '../types';
 import {
     FileText, Calendar, Clock, Printer, CreditCard, Banknote,
     Wifi, CheckCircle, Search, AlertCircle, Plus, Minus,
     Trash2, ShoppingCart, Coffee, Eye, X, Receipt,
-    ChevronLeft, ListFilter, History
+    ChevronLeft, ListFilter, History, Check
 } from 'lucide-react';
 import { CURRENCY } from '../constants';
 import { firestoreService } from '../services/firestoreService';
@@ -40,28 +40,90 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
         return matchesSearch;
     });
 
-const completedTransactions = transactions.filter(t => ['completed', 'refunded'].includes(t.status));
+    const completedTransactions = transactions.filter(t => ['completed', 'refunded'].includes(t.status));
 
     const handlePrint = (transaction: Transaction) => {
-        // ═══ ITEMS PER PAGE: 8 items max for premium large-font design ═══
-        const ITEMS_PER_PAGE = 8;
-        const totalPages = Math.ceil(transaction.items.length / ITEMS_PER_PAGE);
+        const curr = settings?.currency || CURRENCY;
+        const receiptType = settings?.receiptType || 'a4';
+        const storeName = settings?.storeName || 'ألف عافية';
+        const taxRate = settings?.taxRate || 11;
 
         const grandSubtotal = transaction.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-        const grandTaxAmount = grandSubtotal * ((settings?.taxRate || 11) / 100);
+        const grandTaxAmount = grandSubtotal * (taxRate / 100);
         const grandTotalAmount = grandSubtotal + grandTaxAmount;
-        const curr = settings?.currency || CURRENCY;
+        const pmtText = transaction.paymentMethod === 'cash' ? 'نقداً' : transaction.paymentMethod === 'card' ? 'بطاقة بنكية' : 'إلكتروني';
+        const dateStr = new Date(transaction.date).toLocaleDateString('ar-EG', { year: 'numeric', month: '2-digit', day: '2-digit' });
+        const timeStr = new Date(transaction.date).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
 
-        const buildPageHTML = (pageItems: typeof transaction.items, pageIndex: number, totalPgs: number): string => {
+        // ════════════════════════════════════════════════════════════════════════
+        // 1. THERMAL RECEIPT LAYOUT (80mm)
+        // ════════════════════════════════════════════════════════════════════════
+        const buildThermalHTML = (): string => {
+            const itemRows = transaction.items.map((item, idx) => `
+                <div class="t-row">
+                    <div class="t-col-name">${item.name}</div>
+                    <div class="t-col-qty">x${item.quantity}</div>
+                    <div class="t-col-total">${(item.price * item.quantity).toFixed(0)}</div>
+                </div>
+            `).join('');
+
+            return `
+                <div class="thermal-receipt">
+                    <div class="t-header">
+                        ${settings?.showLogoOnReceipt && settings?.storeLogo ?
+                    `<img src="${settings.storeLogo}" style="max-width: 80%; max-height: 80px; margin-bottom: 10px; border-radius: 10px" />` :
+                    `<div class="t-logo">A</div>`
+                }
+                        <h1 class="t-store-name">${storeName}</h1>
+                        <p class="t-subtext">وصل مبيعات رقم #${transaction.id.slice(-6)}</p>
+                    </div>
+
+                    <div class="t-info">
+                        <div class="t-info-row"><span>التاريخ:</span> <span>${dateStr}</span></div>
+                        <div class="t-info-row"><span>الوقت:</span> <span>${timeStr}</span></div>
+                        <div class="t-info-row"><span>الدفع:</span> <span>${pmtText}</span></div>
+                        ${transaction.tableNumber ? `<div class="t-info-row"><span>الطاولة:</span> <span>${transaction.tableNumber}</span></div>` : ''}
+                    </div>
+
+                    <div class="t-divider"></div>
+                    <div class="t-items-head">
+                        <span>الصنف</span>
+                        <span>الكمية</span>
+                        <span>السعر</span>
+                    </div>
+                    <div class="t-divider-thin"></div>
+                    <div class="t-items-list">${itemRows}</div>
+                    <div class="t-divider"></div>
+
+                    <div class="t-summary">
+                        <div class="t-sum-row"><span>المجموع:</span> <span>${grandSubtotal.toFixed(0)} ${curr}</span></div>
+                        <div class="t-sum-row"><span>الضريبة (%${taxRate}):</span> <span>${grandTaxAmount.toFixed(0)} ${curr}</span></div>
+                        <div class="t-sum-row t-grand-total"><span>الإجمالي:</span> <span>${grandTotalAmount.toFixed(0)} ${curr}</span></div>
+                    </div>
+
+                    <div class="t-footer">
+                        <p class="t-thanks">شكراً لزيارتكم</p>
+                        <div class="t-qr-placeholder"></div>
+                        <p class="t-system-info">نظام ألف عافية - Al-Afia POS</p>
+                    </div>
+                </div>
+            `;
+        };
+
+        // ════════════════════════════════════════════════════════════════════════
+        // 2. A4 INVOICE LAYOUT (Standard)
+        // ════════════════════════════════════════════════════════════════════════
+        const ITEMS_PER_PAGE_A4 = 10;
+        const totalPagesA4 = Math.ceil(transaction.items.length / ITEMS_PER_PAGE_A4);
+
+        const buildA4PageHTML = (pageItems: typeof transaction.items, pageIndex: number, totalPgs: number): string => {
             const isSubsequent = pageIndex > 0;
             const invLabel = `#${transaction.id.slice(-6)}${isSubsequent ? ` (${pageIndex + 1})` : ''}`;
-            const pmtText = transaction.paymentMethod === 'cash' ? 'نقداً' : transaction.paymentMethod === 'card' ? 'بطاقة بنكية' : 'إلكتروني';
-            const dateStr = new Date(transaction.date).toLocaleDateString('ar-EG', { year: 'numeric', month: '2-digit', day: '2-digit' });
-            const emptyCount = ITEMS_PER_PAGE - pageItems.length;
+            const emptyCount = ITEMS_PER_PAGE_A4 - pageItems.length;
 
             const itemRows = pageItems.map((item, idx) => {
-                const n = (pageIndex * ITEMS_PER_PAGE) + idx + 1;
-                const bg = n % 2 === 0 ? '#f5efe0' : '#ffffff';
+                const n = (pageIndex * ITEMS_PER_PAGE_A4) + idx + 1;
+                const bg = n % 2 === 0 ? '#f0f7f4' : '#ffffff';
                 return `<tr style="background:${bg}">
                   <td class="td-idx">${n}</td>
                   <td class="td-name">${item.name}</td>
@@ -72,353 +134,353 @@ const completedTransactions = transactions.filter(t => ['completed', 'refunded']
             }).join('');
 
             const emptyRows = Array.from({ length: emptyCount }).map((_, i) => {
-                const n = (pageIndex * ITEMS_PER_PAGE) + pageItems.length + i + 1;
-                const bg = n % 2 === 0 ? '#f5efe0' : '#ffffff';
+                const n = (pageIndex * ITEMS_PER_PAGE_A4) + pageItems.length + i + 1;
+                const bg = n % 2 === 0 ? '#f0f7f4' : '#ffffff';
                 return `<tr style="background:${bg}"><td class="td-empty" colspan="5"></td></tr>`;
             }).join('');
 
             return `<div class="invoice-page">
+                <div class="a4-hdr">
+                    <div class="a4-hdr-inner">
+                        <div class="a4-hdr-left">
+                            ${settings?.showLogoOnReceipt && settings?.storeLogo ?
+                    `<img src="${settings.storeLogo}" style="width: 80px; height: 80px; object-fit: contain; border-radius: 15px; background: #f8f9fa; padding: 5px; border: 1px solid #eee" />` :
+                    `<div class="a4-logo-pill">A</div>`
+                }
+                            <div>
+                                <h1 class="a4-store-name">${storeName}</h1>
+                                <p class="a4-sys-name">نظام ألف عافية لإدارة نقاط البيع</p>
+                            </div>
+                        </div>
+                        <div class="a4-hdr-right">
+                             <div class="a4-type-badge">فاتورة مبيعات ضريبية</div>
+                             <div class="a4-inv-no">رقم: ${invLabel}</div>
+                        </div>
+                    </div>
+                </div>
 
-  <!-- HEADER BANNER -->
-  <div class="hdr">
-    <div class="hdr-inner">
-      <div class="hdr-titles">
-        <div class="hdr-store">${settings?.storeName || 'SO CAFE'}</div>
-        <div class="hdr-sub">النظام الذهبي - Golden POS</div>
-      </div>
-      <div class="g-badge">G</div>
-    </div>
-    <div class="hdr-gold-line"></div>
-    <div class="hdr-ornament">
-      <div class="orn-line"></div>
-      <span class="orn-dia">&#10022;</span>
-      <div class="orn-line orn-line-r"></div>
-    </div>
-  </div>
+                <div class="a4-info-grid">
+                    <div class="a4-info-box">
+                        <span class="a4-info-lbl">التاريخ والوقت</span>
+                        <span class="a4-info-val">${dateStr} - ${timeStr}</span>
+                    </div>
+                    <div class="a4-info-box">
+                        <span class="a4-info-lbl">طريقة الدفع</span>
+                        <span class="a4-info-val">${pmtText}</span>
+                    </div>
+                    <div class="a4-info-box">
+                        <span class="a4-info-lbl">رقم الطاولة</span>
+                        <span class="a4-info-val">${transaction.tableNumber || '---'}</span>
+                    </div>
+                </div>
 
-  ${isSubsequent ? `<div class="cont-bar"><span>&#8227; تكملة الفاتورة &mdash; صفحة ${pageIndex + 1} من ${totalPgs} &bull;</span></div>` : ''}
+                <div class="a4-table-container">
+                    <table class="a4-tbl">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px">ت</th>
+                                <th>اسم الصنف / المنتج</th>
+                                <th style="width: 100px">سعر الوحدة</th>
+                                <th style="width: 80px">الكمية</th>
+                                <th style="width: 120px">المجموع</th>
+                            </tr>
+                        </thead>
+                        <tbody>${itemRows}${emptyRows}</tbody>
+                    </table>
+                </div>
 
-  <!-- INFO CARDS -->
-  <div class="info-sec">
-    <div class="ic">
-      <div class="ic-lbl">رقم الفاتورة:</div>
-      <div class="ic-val">${invLabel}</div>
-    </div>
-    <div class="ic">
-      <div class="ic-lbl">التاريخ:</div>
-      <div class="ic-val">${dateStr}</div>
-    </div>
-    <div class="ic">
-      <div class="ic-lbl">طريقة الدفع:</div>
-      <div class="ic-val">${pmtText}</div>
-    </div>
-    ${totalPgs > 1 ? `<div class="ic"><div class="ic-lbl">الصفحة:</div><div class="ic-val">${pageIndex + 1} / ${totalPgs}</div></div>` : ''}
-  </div>
+                <div class="a4-summary-container">
+                    <div class="a4-summary-left">
+                        <div class="a4-total-badge">
+                            <span class="a4-tb-lbl">الإجمالي النهائي</span>
+                            <span class="a4-tb-val">${grandTotalAmount.toFixed(2)} ${curr}</span>
+                        </div>
+                    </div>
+                    <div class="a4-summary-right">
+                        <div class="a4-sum-row"><span>المجموع الفرعي:</span> <span>${grandSubtotal.toFixed(2)}</span></div>
+                        <div class="a4-sum-row"><span>ضريبة القيمة المضافة ${taxRate}%:</span> <span>${grandTaxAmount.toFixed(2)}</span></div>
+                        <div class="a4-sum-row a4-sum-total"><span>الصافي:</span> <span>${grandTotalAmount.toFixed(2)} ${curr}</span></div>
+                    </div>
+                </div>
 
-  <!-- ITEMS TABLE -->
-  <table class="tbl">
-    <thead>
-      <tr class="tbl-hdr">
-        <th class="th th-idx">ت</th>
-        <th class="th th-name">اسم المنتج</th>
-        <th class="th th-num">السعر</th>
-        <th class="th th-num">الكمية</th>
-        <th class="th th-total">الإجمالي</th>
-      </tr>
-    </thead>
-    <tbody>${itemRows}${emptyRows}</tbody>
-  </table>
-
-  <!-- SUMMARY -->
-  <div class="summary-sec">
-    <div class="total-badge">
-      <span class="tb-val">${grandTotalAmount.toFixed(2)}</span>
-      <span class="tb-cur">${curr}</span>
-    </div>
-    <div class="sum-box">
-      <div class="sum-row">
-        <span class="sr-lbl">استحتائج</span>
-        <span class="sr-val">${grandSubtotal.toFixed(2)}</span>
-      </div>
-      <div class="sum-div"></div>
-      <div class="sum-row">
-        <span class="sr-lbl">الضريبة %${settings?.taxRate || 11}</span>
-        <span class="sr-val">${grandTaxAmount.toFixed(2)}</span>
-      </div>
-      <div class="sum-div"></div>
-      <div class="sum-row sum-bold">
-        <span class="sr-lbl-b">الإجمالي</span>
-        <span class="sr-val-b">${grandTotalAmount.toFixed(2)} ${curr}</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- FOOTER -->
-  <div class="footer">
-    <div class="ftr-inner">
-      <div class="ftr-center">
-        <p class="ftr-thanks">شكراً لثقتكم</p>
-        <div class="ftr-orn">
-          <div class="fo-line"></div>
-          <span class="fo-dia">&#10022;</span>
-          <div class="fo-line fo-line-r"></div>
-        </div>
-      </div>
-      <div class="ftr-qr">
-        <div class="qr-box"></div>
-        <span class="qr-lbl">امسح للتحقق</span>
-      </div>
-    </div>
-  </div>
-
-</div>`;
+                <div class="a4-footer">
+                    <p class="a4-footer-thanks">نسعد دائماً بخدمتكم في ${storeName}</p>
+                    <div class="a4-footer-line"></div>
+                    <div class="a4-footer-bottom">
+                        <span>تم إصدارها إلكترونياً</span>
+                        <span>www.alafia.iq</span>
+                        <span>صفحة ${pageIndex + 1} من ${totalPgs}</span>
+                    </div>
+                </div>
+            </div>`;
         };
 
-        let pagesHTML = '';
-        for (let p = 0; p < totalPages; p++) {
-            const slice = transaction.items.slice(p * ITEMS_PER_PAGE, (p + 1) * ITEMS_PER_PAGE);
-            pagesHTML += buildPageHTML(slice, p, totalPages);
-            if (p < totalPages - 1) pagesHTML += `<div class="page-break"></div>`;
+        // ════════════════════════════════════════════════════════════════════════
+        // 3. PREMIUM CUSTOM INVOICE LAYOUT (Luxury/Branded)
+        // ════════════════════════════════════════════════════════════════════════
+        const brandColor = settings?.brandColor || '#2d6a4f';
+        const buildCustomPageHTML = (pageItems: typeof transaction.items, pageIndex: number, totalPgs: number): string => {
+            const invLabel = `#${transaction.id.slice(-6)}${pageIndex > 0 ? ` (${pageIndex + 1})` : ''}`;
+            const itemRows = pageItems.map((item, idx) => {
+                const n = (pageIndex * ITEMS_PER_PAGE_A4) + idx + 1;
+                return `<tr>
+                  <td class="c-idx">${n}</td>
+                  <td class="c-name">${item.name}</td>
+                  <td class="c-price">${item.price.toFixed(2)}</td>
+                  <td class="c-qty">${item.quantity}</td>
+                  <td class="c-total">${(item.price * item.quantity).toFixed(2)}</td>
+                </tr>`;
+            }).join('');
+
+            return `<div class="custom-invoice">
+                <!-- Branding Header -->
+                <div class="c-header" style="border-left: 10px solid ${brandColor}">
+                    <div class="c-header-main">
+                        <div class="c-logos">
+                            ${settings?.storeLogo ?
+                    `<img src="${settings.storeLogo}" class="c-store-logo" />` :
+                    `<div class="c-logo-placeholder" style="background:${brandColor}">A</div>`
+                }
+                            <div class="c-divider-v"></div>
+                            <img src="/branding/afia_logo.png" class="c-system-logo" />
+                        </div>
+                        <div class="c-store-info">
+                            <h1 style="color:${brandColor}">${storeName}</h1>
+                            <span>فاتورة مبيعات فارة &middot; Premium Invoice</span>
+                        </div>
+                    </div>
+                    <div class="c-header-id" style="background:${brandColor}10">
+                        <span style="color:${brandColor}">${invLabel}</span>
+                        <small>${dateStr}</small>
+                    </div>
+                </div>
+
+                <!-- Watermark -->
+                <div class="c-watermark">
+                    <img src="/branding/afia_logo.png" />
+                </div>
+
+                <!-- Transaction Details -->
+                <div class="c-meta-grid">
+                    <div class="c-meta-item"><strong>الوقت:</strong> ${timeStr}</div>
+                    <div class="c-meta-item"><strong>طريقة الدفع:</strong> ${pmtText}</div>
+                    <div class="c-meta-item"><strong>الموقع/الطاولة:</strong> ${transaction.tableNumber || '---'}</div>
+                    <div class="c-meta-item"><strong>رقم العملية:</strong> ${transaction.id}</div>
+                </div>
+
+                <!-- Items Table -->
+                <div class="c-table-wrapper">
+                    <table class="c-table">
+                        <thead style="background:${brandColor}">
+                            <tr>
+                                <th>ت</th>
+                                <th style="text-align:right">الوصف</th>
+                                <th>السعر</th>
+                                <th>الكمية</th>
+                                <th>الإجمالي</th>
+                            </tr>
+                        </thead>
+                        <tbody>${itemRows}</tbody>
+                    </table>
+                </div>
+
+                <!-- Summary -->
+                <div class="c-summary">
+                    <div class="c-summary-row">
+                        <span>المجموع الفرعي</span>
+                        <span>${grandSubtotal.toFixed(2)} ${curr}</span>
+                    </div>
+                    <div class="c-summary-row">
+                        <span>الضريبة (${taxRate}%)</span>
+                        <span>${grandTaxAmount.toFixed(2)} ${curr}</span>
+                    </div>
+                    <div class="c-summary-total" style="color:${brandColor}">
+                        <span>الإجمالي النهائي</span>
+                        <span>${grandTotalAmount.toFixed(2)} ${curr}</span>
+                    </div>
+                </div>
+
+                <div class="c-footer">
+                    <div class="c-footer-decoration" style="background: linear-gradient(to left, ${brandColor}, transparent)"></div>
+                    <div class="c-footer-content">
+                        <span>صدرت بواسطة نظام ألف عافية - AlAfia.iq</span>
+                        <span>صفحة ${pageIndex + 1} من ${totalPgs}</span>
+                    </div>
+                </div>
+            </div>`;
+        };
+
+        let finalPagesHTML = '';
+        if (receiptType === 'thermal') {
+            finalPagesHTML = buildThermalHTML();
+        } else if (receiptType === 'custom') {
+            for (let p = 0; p < totalPagesA4; p++) {
+                const slice = transaction.items.slice(p * ITEMS_PER_PAGE_A4, (p + 1) * ITEMS_PER_PAGE_A4);
+                finalPagesHTML += buildCustomPageHTML(slice, p, totalPagesA4);
+                if (p < totalPagesA4 - 1) finalPagesHTML += `<div class="page-break"></div>`;
+            }
+        } else {
+            for (let p = 0; p < totalPagesA4; p++) {
+                const slice = transaction.items.slice(p * ITEMS_PER_PAGE_A4, (p + 1) * ITEMS_PER_PAGE_A4);
+                finalPagesHTML += buildA4PageHTML(slice, p, totalPagesA4);
+                if (p < totalPagesA4 - 1) finalPagesHTML += `<div class="page-break"></div>`;
+            }
         }
 
-        const receiptHtml = `<!DOCTYPE html>
+        const fullHTML = `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
-<meta charset="UTF-8">
-<title>&#1601;&#1575;&#1578;&#1608;&#1585;&#1577; ${settings?.storeName || 'SO CAFE'} &middot; ${transaction.id.slice(-6)}</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Cairo:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700&display=swap');
+    <meta charset="UTF-8">
+    <title>فاتورة ${storeName} &middot; ${transaction.id.slice(-6)}</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Cairo', sans-serif; background: #eee; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        
+        /* ═════════ A4 STYLES ═════════ */
+        .invoice-page { 
+            width: 210mm; height: 297mm; background: #fff; margin: 20px auto; 
+            padding: 40px; display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .a4-hdr { border-bottom: 4px solid #2d6a4f; padding-bottom: 25px; margin-bottom: 30px; }
+        .a4-hdr-inner { display: flex; justify-content: space-between; align-items: center; }
+        .a4-hdr-left { display: flex; align-items: center; gap: 20px; }
+        .a4-logo-pill { 
+            width: 70px; height: 70px; background: #2d6a4f; color: #fff; 
+            border-radius: 20px; display: flex; items-center justify-center; 
+            font-size: 40px; font-weight: 900; 
+        }
+        .a4-store-name { font-size: 32px; font-weight: 900; color: #1b4332; line-height: 1.2; }
+        .a4-sys-name { font-size: 14px; color: #52b788; font-weight: 700; }
+        .a4-hdr-right { text-align: left; }
+        .a4-type-badge { background: #f8961e; color: #fff; padding: 6px 15px; border-radius: 10px; font-weight: 800; font-size: 14px; margin-bottom: 8px; }
+        .a4-inv-no { font-size: 18px; font-weight: 900; color: #1b4332; }
 
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-@page{size:A4 portrait;margin:0;}
+        .a4-info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+        .a4-info-box { background: #f8f9fa; border: 1px solid #e9ecef; padding: 15px; border-radius: 15px; }
+        .a4-info-lbl { display: block; font-size: 12px; font-weight: 800; color: #52b788; text-transform: uppercase; margin-bottom: 5px; }
+        .a4-info-val { display: block; font-size: 15px; font-weight: 900; color: #1b4332; }
 
-body{
-  font-family:'Cairo','Arial',sans-serif;
-  background:#e4dcd2;
-  -webkit-print-color-adjust:exact;
-  print-color-adjust:exact;
-  color:#3e2723;
-}
+        .a4-table-container { flex: 1; margin-bottom: 30px; }
+        .a4-tbl { width: 100%; border-collapse: collapse; }
+        .a4-tbl th { background: #1b4332; color: #fff; padding: 12px; text-align: right; font-size: 14px; }
+        .a4-tbl td { padding: 12px; border-bottom: 1px solid #e9ecef; font-size: 14px; color: #1b4332; font-weight: 700; }
+        .a4-tbl tr:nth-child(even) { background: #f0f7f4; }
+        .td-idx { font-weight: 900; color: #52b788; text-align: center; }
+        .td-num, .td-total { text-align: center; }
+        .td-empty { height: 40px; }
 
-/* ═════ A4 PAGE ════════════════════════════════════════════ */
-.invoice-page{
-  width:210mm; height:297mm;
-  margin:0 auto 20px;
-  background:#fdfaf5;
-  display:flex; flex-direction:column;
-  overflow:hidden;
-}
-@media print{
-  body{background:#fff;}
-  .invoice-page{margin:0;page-break-after:always;break-after:page;}
-  .page-break{page-break-after:always;break-after:page;height:0;display:block;}
-}
+        .a4-summary-container { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; }
+        .a4-total-badge { background: #1b4332; padding: 30px; border-radius: 25px; color: #fff; text-align: center; min-width: 250px; }
+        .a4-tb-lbl { display: block; font-size: 14px; font-weight: 700; opacity: 0.8; margin-bottom: 10px; }
+        .a4-tb-val { font-size: 36px; font-weight: 900; }
+        .a4-summary-right { width: 300px; padding-top: 10px; }
+        .a4-sum-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px; font-weight: 700; color: #1b4332; }
+        .a4-sum-total { font-size: 18px; font-weight: 900; border-top: 2px solid #2d6a4f; margin-top: 10px; padding-top: 15px; }
 
-/* ═════ HEADER ══════════════════════════════════════════════
-   Dark brown (#3e2723) full-width banner
-   Centered large store name, italic gold subtitle
-   Gold G badge (italic, gradient) on the left (RTL right)
-══════════════════════════════════════════════════════════════ */
-.hdr{background:#3e2723;flex-shrink:0;}
-.hdr-inner{
-  display:flex; align-items:center;
-  justify-content:space-between;
-  padding:22px 26px 16px;
-}
-.hdr-titles{display:flex;flex-direction:column;gap:5px;}
-.hdr-store{
-  font-size:30px; font-weight:900; color:#fff;
-  line-height:1; letter-spacing:0.5px;
-}
-.hdr-sub{
-  font-size:13px; font-weight:600;
-  color:#c9a84c; font-style:italic;
-}
+        .a4-footer { text-align: center; }
+        .a4-footer-thanks { font-size: 20px; font-weight: 900; color: #2d6a4f; margin-bottom: 15px; }
+        .a4-footer-line { height: 4px; background: #f8961e; width: 100px; margin: 0 auto 15px; border-radius: 2px; }
+        .a4-footer-bottom { display: flex; justify-content: space-between; font-size: 12px; color: #999; font-weight: 700; }
 
-/* Gold G badge */
-.g-badge{
-  width:70px; height:70px;
-  background:linear-gradient(145deg,#ecd06e 0%,#c9a84c 45%,#9e7530 100%);
-  color:#3e2723; border-radius:12px;
-  display:flex; align-items:center; justify-content:center;
-  font-size:36px; font-weight:900; font-style:italic;
-  box-shadow:0 6px 20px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.18);
-  border:2px solid rgba(255,255,255,.12);
-  flex-shrink:0;
-}
+        /* ═════════ CUSTOM PREMIUM STYLES ═════════ */
+        .custom-invoice {
+            width: 210mm; height: 297mm; background: #fff; margin: 20px auto; 
+            padding: 50px; display: flex; flex-direction: column; overflow: hidden;
+            position: relative; box-shadow: 0 0 30px rgba(0,0,0,0.15);
+        }
+        .c-header { display: flex; justify-content: space-between; align-items: stretch; margin-bottom: 50px; padding: 20px; background: #fcfcfc; border-radius: 20px; }
+        .c-header-main { display: flex; flex-direction: column; gap: 20px; }
+        .c-logos { display: flex; align-items: center; gap: 20px; }
+        .c-store-logo { height: 80px; width: 80px; object-fit: contain; border-radius: 15px; }
+        .c-system-logo { height: 40px; opacity: 0.8; }
+        .c-divider-v { width: 2px; height: 30px; background: #ddd; }
+        .c-logo-placeholder { width: 80px; height: 80px; display: flex; items-center justify-center; font-size: 40px; font-weight: 900; color: #fff; border-radius: 15px; }
+        .c-store-info h1 { font-size: 36px; font-weight: 900; line-height: 1; }
+        .c-store-info span { font-size: 14px; color: #666; font-weight: 700; margin-top: 5px; display: block; }
+        .c-header-id { padding: 20px; border-radius: 15px; text-align: center; display: flex; flex-direction: column; justify-content: center; min-width: 180px; }
+        .c-header-id span { font-size: 20px; font-weight: 900; display: block; }
+        .c-header-id small { font-size: 12px; font-weight: 700; opacity: 0.6; }
 
-/* Thin gold line */
-.hdr-gold-line{
-  height:2px; margin:0 22px;
-  background:linear-gradient(90deg,transparent,#c9a84c 20%,#ecd06e 50%,#c9a84c 80%,transparent);
-}
+        .c-watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.03; width: 500px; z-index: 0; pointer-events: none; }
+        .c-watermark img { width: 100%; }
 
-/* Diamond ornament row */
-.hdr-ornament{
-  display:flex; align-items:center;
-  justify-content:center; padding:5px 0 7px;
-}
-.orn-line{
-  flex:1; height:1px; margin:0 10px;
-  background:linear-gradient(90deg,transparent,#c9a84c 80%);
-}
-.orn-line-r{background:linear-gradient(90deg,#c9a84c 20%,transparent);}
-.orn-dia{font-size:13px;color:#c9a84c;line-height:1;}
+        .c-meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 40px; position: relative; z-index: 1; }
+        .c-meta-item { background: #fff; border: 1px solid #eee; padding: 12px; border-radius: 12px; font-size: 13px; font-weight: 700; color: #444; }
+        .c-meta-item strong { color: #888; display: block; font-size: 10px; margin-bottom: 3px; text-transform: uppercase; }
 
-/* ═════ CONTINUATION BAR ═══════════════════════════════════ */
-.cont-bar{
-  background:#3e2723; padding:3px 26px;
-  font-size:10px; font-weight:800;
-  color:#c9a84c; letter-spacing:1px;
-  flex-shrink:0;
-}
+        .c-table-wrapper { flex: 1; position: relative; z-index: 1; background: rgba(255,255,255,0.8); backdrop-filter: blur(5px); }
+        .c-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+        .c-table th { color: #fff; padding: 15px; text-align: center; font-size: 14px; font-weight: 900; }
+        .c-table th:first-child { border-radius: 0 12px 12px 0; }
+        .c-table th:last-child { border-radius: 12px 0 0 12px; }
+        .c-table td { padding: 15px; background: #fafafa; font-weight: 800; color: #222; text-align: center; font-size: 14px; border-top: 1px solid #f0f0f0; border-bottom: 1px solid #f0f0f0; }
+        .c-table td:first-child { border-right: 1px solid #f0f0f0; border-radius: 0 12px 12px 0; color: #888; font-size: 12px; }
+        .c-table td:last-child { border-left: 1px solid #f0f0f0; border-radius: 12px 0 0 12px; font-weight: 900; }
+        .c-name { text-align: right !important; }
 
-/* ═════ INFO CARDS ══════════════════════════════════════════
-   Separate rounded boxes, matching image exactly
-══════════════════════════════════════════════════════════════ */
-.info-sec{
-  display:flex; gap:10px;
-  padding:14px 18px 12px;
-  flex-shrink:0; background:#fdfaf5;
-}
-.ic{
-  flex:1; background:#fff;
-  border:1.5px solid #cba97a;
-  border-radius:10px;
-  padding:10px 13px;
-  display:flex; flex-direction:column; gap:4px;
-}
-.ic-lbl{font-size:11px;font-weight:700;color:#7a5230;}
-.ic-val{font-size:15px;font-weight:900;color:#3e2723;}
+        .c-summary { margin-top: 40px; padding: 30px; background: #fcfcfc; border-radius: 25px; border: 1px solid #eee; width: 400px; margin-right: auto; position: relative; z-index: 1; }
+        .c-summary-row { display: flex; justify-content: space-between; padding: 10px 0; color: #666; font-weight: 700; font-size: 15px; }
+        .c-summary-total { display: flex; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 2px dashed #ddd; font-size: 24px; font-weight: 900; }
 
-/* ═════ TABLE ═══════════════════════════════════════════════
-   Coffee-900 dark header, alternating white/warm-cream rows
-   Larger padding + font for premium feel
-══════════════════════════════════════════════════════════════ */
-.tbl{
-  width:100%; border-collapse:collapse;
-  flex:1; min-height:0; table-layout:fixed;
-}
-.th-idx  {width:8%;}
-.th-name {width:42%;}
-.th-num  {width:16%;}
-.th-total{width:18%;}
+        .c-footer { margin-top: 50px; position: relative; z-index: 1; }
+        .c-footer-decoration { height: 10px; border-radius: 5px; margin-bottom: 15px; }
+        .c-footer-content { display: flex; justify-content: space-between; font-size: 12px; color: #aaa; font-weight: 800; }
 
-.tbl-hdr{background:#3e2723;}
-.th{
-  padding:13px 12px; color:#fff;
-  font-size:14px; font-weight:800;
-  text-align:right; border:none;
-}
-.th.th-num  {text-align:center;}
-.th.th-total{text-align:center; border-radius:12px 0 0 0;}
-.th.th-idx  {border-radius:0 12px 0 0;}
+        /* ═════════ THERMAL STYLES ═════════ */
+        @page { margin: 0; }
+        .thermal-receipt { 
+            width: 80mm; background: #fff; margin: 10px auto; padding: 10mm 5mm; 
+            border: 1px solid #ddd; display: flex; flex-direction: column; align-items: center; 
+        }
+        .t-header { text-align: center; margin-bottom: 15px; width: 100%; }
+        .t-logo { width: 40px; height: 40px; background: #000; color: #fff; border-radius: 10px; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 900; }
+        .t-store-name { font-size: 22px; font-weight: 900; margin-bottom: 3px; color: #000; }
+        .t-subtext { font-size: 12px; font-weight: 600; color: #666; }
+        .t-info { width: 100%; margin-bottom: 10px; font-size: 12px; font-weight: 700; color: #222; }
+        .t-info-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+        .t-divider { width: 100%; border-top: 2px dashed #000; margin: 10px 0; }
+        .t-divider-thin { width: 100%; border-top: 1px solid #eee; margin: 5px 0; }
+        .t-items-head { width: 100%; display: flex; justify-content: space-between; font-size: 11px; font-weight: 900; padding: 0 2px; }
+        .t-items-list { width: 100%; }
+        .t-row { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; padding: 5px 2px; border-bottom: 1px dotted #eee; }
+        .t-col-name { flex: 1; text-align: right; }
+        .t-col-qty { width: 40px; text-align: center; }
+        .t-col-total { width: 60px; text-align: left; }
+        .t-summary { width: 100%; margin: 10px 0; font-size: 14px; font-weight: 700; }
+        .t-sum-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .t-grand-total { font-size: 18px; font-weight: 900; padding-top: 5px; border-top: 1px solid #000; }
+        .t-footer { text-align: center; font-size: 10px; font-weight: 700; width: 100%; }
+        .t-thanks { font-size: 14px; font-weight: 900; margin: 15px 0; }
+        .t-qr-placeholder { width: 60px; height: 60px; border: 2px solid #000; background:Repeating-conic-gradient(#000 0% 25%,#fff 0% 50%) 50%/10% 10%; margin: 0 auto 10px; }
+        .t-system-info { font-size: 8px; color: #999; }
 
-.tbl td{
-  padding:0 12px; height:50px;
-  font-size:14px; vertical-align:middle;
-  border-bottom:1.5px solid #ddc9a8;
-}
-.td-idx  {text-align:center;color:#7a4f26;font-weight:800;font-size:15px;}
-.td-name {font-weight:700;color:#3e2723;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.td-num  {text-align:center;color:#4e342e;font-weight:600;}
-.td-total{text-align:center;font-weight:900;color:#3e2723;font-size:15px;}
-.td-empty{height:50px;border-bottom:1px solid #ecddc4;}
-
-/* ═════ SUMMARY ════════════════════════════════════════════
-   Gold pill badge + breakdown boxcard
-══════════════════════════════════════════════════════════════ */
-.summary-sec{
-  flex-shrink:0;
-  padding:12px 18px 10px;
-  background:#fdfaf5;
-}
-
-/* Gold pill badge — matches reference image */
-.total-badge{
-  display:inline-flex; align-items:center; gap:6px;
-  background:linear-gradient(135deg,#ecd06e 0%,#c9a84c 50%,#9e7530 100%);
-  color:#3e2723; border-radius:30px;
-  padding:7px 20px 7px 14px;
-  margin-bottom:10px;
-  box-shadow:0 3px 10px rgba(158,117,48,.38);
-}
-.tb-val{font-size:19px;font-weight:900;color:#3e2723;}
-.tb-cur{font-size:11px;font-weight:800;color:#3e2723;margin-top:2px;}
-
-/* Breakdown card */
-.sum-box{
-  background:#fff; border:1.5px solid #d4b896;
-  border-radius:10px; overflow:hidden;
-}
-.sum-row{
-  display:flex; justify-content:space-between;
-  align-items:center; padding:9px 15px;
-  font-size:13px; font-weight:600; color:#5a3e28;
-}
-.sum-bold{background:#faf3e0;}
-.sum-div{height:1px;background:#d4b896;}
-.sr-lbl {color:#5a3e28; font-weight:700;}
-.sr-val {color:#3e2723; font-weight:700;}
-.sr-lbl-b{color:#3e2723;font-weight:900;font-size:14px;}
-.sr-val-b{color:#3e2723;font-weight:900;font-size:14px;}
-
-/* ═════ FOOTER ══════════════════════════════════════════════
-   "شكراً لثقتكم" large bold centered + diamond + QR
-══════════════════════════════════════════════════════════════ */
-.footer{
-  flex-shrink:0; margin-top:auto;
-  padding:10px 18px 14px; background:#fdfaf5;
-}
-.ftr-inner{
-  display:flex; align-items:center;
-  justify-content:space-between;
-}
-.ftr-center{
-  flex:1; display:flex; flex-direction:column;
-  align-items:center; gap:6px;
-}
-.ftr-thanks{
-  font-size:24px; font-weight:900;
-  color:#3e2723;
-}
-.ftr-orn{
-  display:flex; align-items:center; width:200px;
-}
-.fo-line{
-  flex:1; height:1px; margin:0 8px;
-  background:linear-gradient(90deg,transparent,#c9a84c 70%);
-}
-.fo-line-r{background:linear-gradient(90deg,#c9a84c 30%,transparent);}
-.fo-dia{font-size:11px;color:#c9a84c;line-height:1;}
-
-/* QR code */
-.ftr-qr{display:flex;flex-direction:column;align-items:center;gap:4px;}
-.qr-box{
-  width:52px; height:52px;
-  border:3px solid #3e2723;
-  background:repeating-conic-gradient(#3e2723 0% 25%,#fff 0% 50%) 50%/9px 9px;
-}
-.qr-lbl{font-size:7px;font-weight:800;color:#7a5230;letter-spacing:.4px;}
-</style>
+        @media print {
+            body { background: transparent; }
+            .invoice-page, .thermal-receipt, .custom-invoice { margin: 0; box-shadow: none; border: none; }
+            .page-break { page-break-after: always; break-after: page; }
+            ${receiptType === 'thermal' ? '@page { size: 80mm auto; }' : '@page { size: A4 portrait; }'}
+        }
+    </style>
 </head>
 <body>
-  ${pagesHTML}
-  <script>
-    window.onload=function(){
-      setTimeout(function(){
-        window.print();
-        window.onafterprint=function(){window.close();};
-      },950);
-    };
-  </script>
+    ${finalPagesHTML}
+    <script>
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+                window.onafterprint = function() { window.close(); };
+            }, 500);
+        };
+    </script>
 </body>
 </html>`;
 
         const printWindow = window.open('', '_blank', 'width=900,height=700');
         if (!printWindow) { alert('يرجى السماح للنوافذ المنبثقة لتشغيل الطباعة'); return; }
         printWindow.document.open();
-        printWindow.document.write(receiptHtml);
+        printWindow.document.write(fullHTML);
         printWindow.document.close();
     };
 
@@ -427,6 +489,7 @@ body{
         await onFinalizePayment(selectedForPayment.id, method);
         const updated = { ...selectedForPayment, status: 'completed' as const, paymentMethod: method };
         setSelectedForPayment(null);
+        soundService.playSuccess();
         handlePrint(updated);
     };
 
@@ -463,6 +526,7 @@ body{
         await firestoreService.addTransaction(newTrans);
         setManualCart([]);
         setIsManualModalOpen(false);
+        soundService.playSuccess();
         handlePrint(newTrans);
     };
 
@@ -472,42 +536,42 @@ body{
             {/* Header Section */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
                 <div>
-                    <h1 className="text-4xl font-black text-coffee-900 mb-2">إدارة الفواتير المميزة</h1>
-                    <p className="text-gray-500">نظام ذكي للتحصيل والطباعة المتعددة</p>
+                    <h1 className="text-4xl font-black text-brand-dark mb-2">إدارة الفواتير المميزة</h1>
+                    <p className="text-brand-dark/40 font-bold">نظام ذكي للتحصيل والطباعة المتعددة</p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-4">
                     {/* Log Button */}
                     <button
                         onClick={() => setIsLogOpen(true)}
-                        className="flex items-center gap-2 bg-white text-coffee-900 border-2 border-gold-200 px-6 py-3 rounded-2xl font-bold shadow-sm hover:bg-gold-50 transition-all"
+                        className="group flex items-center gap-3 bg-white text-brand-dark border-2 border-brand-primary/10 px-8 py-3 rounded-2xl font-black shadow-sm hover:border-brand-primary active:scale-95 transition-all"
                     >
-                        <History size={20} className="text-gold-600" />
+                        <History size={20} className="text-brand-primary group-hover:rotate-[-45deg] transition-transform" />
                         سجل الفواتير
                     </button>
 
                     <button
                         onClick={() => setIsManualModalOpen(true)}
-                        className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-red-200 transition-all"
+                        className="flex items-center gap-3 bg-brand-secondary hover:bg-brand-secondary/90 text-white px-8 py-3 rounded-2xl font-black shadow-xl shadow-brand-secondary/20 active:scale-95 transition-all"
                     >
-                        <Plus size={20} /> طلب طارئ
+                        <Plus size={20} /> قيد يدوي
                     </button>
 
-                    <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-gold-100">
+                    <div className="flex bg-white p-1 rounded-3xl shadow-sm border border-brand-primary/10">
                         <button
                             onClick={() => setActiveTab('pending')}
-                            className={`px-6 py-2 rounded-xl font-bold transition-all flex items-center gap-2 ${activeTab === 'pending' ? 'bg-coffee-900 text-white shadow-lg' : 'text-coffee-900 hover:bg-gold-50'}`}
+                            className={`px-8 py-3 rounded-2xl font-black transition-all flex items-center gap-2 ${activeTab === 'pending' ? 'bg-brand-primary text-white shadow-xl shadow-brand-primary/20' : 'text-brand-dark/40 hover:bg-brand-light/30'}`}
                         >
                             <ListFilter size={18} /> العالقة
                             {transactions.filter(t => t.status === 'waiting_payment').length > 0 && (
-                                <span className="bg-red-500 px-2 py-0.5 rounded-full text-[10px] animate-pulse">
+                                <span className="bg-brand-accent px-2 py-0.5 rounded-full text-[10px] animate-bounce">
                                     {transactions.filter(t => t.status === 'waiting_payment').length}
                                 </span>
                             )}
                         </button>
                         <button
                             onClick={() => setActiveTab('all')}
-                            className={`px-6 py-2 rounded-xl font-bold transition-all ${activeTab === 'all' ? 'bg-coffee-900 text-white shadow-lg' : 'text-coffee-900 hover:bg-gold-50'}`}
+                            className={`px-8 py-3 rounded-2xl font-black transition-all ${activeTab === 'all' ? 'bg-brand-primary text-white shadow-xl shadow-brand-primary/20' : 'text-brand-dark/40 hover:bg-brand-light/30'}`}
                         >
                             الكل
                         </button>
@@ -523,7 +587,7 @@ body{
                     placeholder="بحث عن فاتورة، منتج، أو سعر..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pr-12 pl-4 py-3 bg-white rounded-2xl border border-gold-200 outline-none focus:ring-2 focus:ring-gold-500 transition-all font-bold placeholder-gray-300 shadow-sm"
+                    className="w-full pr-12 pl-4 py-3 bg-white rounded-2xl border border-brand-primary/10 outline-none focus:ring-2 focus:ring-brand-primary transition-all font-bold placeholder-gray-300 shadow-sm"
                 />
             </div>
 
@@ -548,7 +612,7 @@ body{
                                     e.stopPropagation();
                                     handlePrint(transaction);
                                 }}
-                                className="absolute top-6 left-6 w-12 h-12 flex items-center justify-center rounded-2xl bg-gold-50 text-gold-600 hover:bg-gold-500 hover:text-white transition-all shadow-sm z-10"
+                                className="absolute top-6 left-6 w-12 h-12 flex items-center justify-center rounded-2xl bg-brand-light/30 text-brand-primary hover:bg-brand-primary hover:text-white transition-all shadow-sm z-10"
                                 title="طباعة فورية"
                             >
                                 <Printer size={22} />
@@ -561,7 +625,7 @@ body{
                             )}
 
                             <div className="flex justify-between items-start mb-8">
-                                <div className={`w-16 h-16 rounded-[1.5rem] flex flex-col items-center justify-center font-bold transition-all transform group-hover:rotate-3 ${transaction.isManual ? 'bg-red-50 text-red-600' : 'bg-coffee-50 text-coffee-900 group-hover:bg-gold-500 group-hover:text-white'}`}>
+                                <div className={`w-16 h-16 rounded-[1.5rem] flex flex-col items-center justify-center font-bold transition-all transform group-hover:rotate-3 ${transaction.isManual ? 'bg-red-50 text-red-600' : 'bg-brand-light/20 text-brand-dark group-hover:bg-brand-primary group-hover:text-white'}`}>
                                     <span className="text-[10px] opacity-60 uppercase">Invoice</span>
                                     <span className="text-xl">#{transaction.id.slice(-4)}</span>
                                 </div>
@@ -585,11 +649,11 @@ body{
                             <div className="space-y-6 flex-1">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="flex items-center gap-3 text-gray-500 text-sm font-bold">
-                                        <Calendar size={16} className="text-gold-500" />
+                                        <Calendar size={16} className="text-brand-primary" />
                                         {new Date(transaction.date).toLocaleDateString('ar-EG')}
                                     </div>
                                     <div className="flex items-center gap-3 text-gray-500 text-sm font-bold">
-                                        <Clock size={16} className="text-gold-500" />
+                                        <Clock size={16} className="text-brand-primary" />
                                         {new Date(transaction.date).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
                                     </div>
                                 </div>
@@ -597,8 +661,8 @@ body{
                                 <div className="bg-gray-50 rounded-[2rem] p-5 space-y-3 border border-gray-100">
                                     {transaction.items.slice(0, 2).map((item, idx) => (
                                         <div key={idx} className="flex justify-between items-center text-sm">
-                                            <span className="text-coffee-900 font-black flex items-center gap-2">
-                                                <div className="w-1.5 h-1.5 bg-gold-400 rounded-full"></div>
+                                            <span className="text-brand-dark font-black flex items-center gap-2">
+                                                <div className="w-1.5 h-1.5 bg-brand-primary rounded-full"></div>
                                                 {item.name}
                                                 <span className="text-gray-400 text-xs font-bold">x{item.quantity}</span>
                                             </span>
@@ -606,7 +670,7 @@ body{
                                         </div>
                                     ))}
                                     {transaction.items.length > 2 && (
-                                        <div className="text-[10px] text-center text-gold-600 font-black uppercase tracking-widest pt-1 border-t border-dashed border-gold-200">
+                                        <div className="text-[10px] text-center text-brand-primary font-black uppercase tracking-widest pt-1 border-t border-dashed border-brand-primary/10">
                                             + {transaction.items.length - 2} عناصر إضافية
                                         </div>
                                     )}
@@ -615,12 +679,12 @@ body{
                                 <div className="flex items-end justify-between pt-4">
                                     <div className="flex flex-col">
                                         <span className="text-gray-400 text-[10px] font-black uppercase tracking-tighter">الإجمالي الكلي</span>
-                                        <span className={`font-black text-3xl leading-none ${transaction.isManual ? 'text-red-600' : 'text-coffee-900'}`}>
+                                        <span className={`font-black text-3xl leading-none ${transaction.isManual ? 'text-red-600' : 'text-brand-dark'}`}>
                                             {transaction.total.toFixed(2)}
                                             <span className="text-xs mr-1 opacity-50">{settings?.currency || CURRENCY}</span>
                                         </span>
                                     </div>
-                                    <div className="bg-gold-50 p-2 rounded-xl text-gold-600 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
+                                    <div className="bg-brand-light/20 p-2 rounded-xl text-brand-primary opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
                                         <Eye size={20} />
                                     </div>
                                 </div>
@@ -632,7 +696,10 @@ body{
                                         e.stopPropagation();
                                         setSelectedForPayment(transaction);
                                     }}
-                                    className={`mt-6 w-full py-5 rounded-[1.5rem] text-white text-md font-black transition-all shadow-xl flex items-center justify-center gap-3 ${transaction.isManual ? 'bg-red-600 hover:bg-red-700' : 'bg-coffee-900 hover:bg-gold-600'}`}
+                                    className={`mt-6 w-full py-5 rounded-[1.5rem] text-white text-md font-black transition-all shadow-xl flex items-center justify-center gap-3 active:scale-[0.98] ${transaction.isManual
+                                        ? 'bg-red-600 hover:bg-red-700 shadow-red-200'
+                                        : 'bg-gradient-to-r from-brand-primary to-brand-secondary hover:from-brand-secondary hover:to-brand-primary shadow-brand-primary/20'
+                                        }`}
                                 >
                                     <CreditCard size={20} /> تحصيل الفاتورة
                                 </button>
@@ -644,16 +711,16 @@ body{
 
             {/* Order Details Modal */}
             {viewingTransaction && (
-                <div className="fixed inset-0 z-[200] bg-coffee-900/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+                <div className="fixed inset-0 z-[200] bg-brand-dark/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
                     <div className="bg-white w-full max-w-2xl rounded-[3.5rem] shadow-3xl overflow-hidden animate-in zoom-in-95 duration-500">
-                        <div className="p-8 bg-coffee-900 text-white flex justify-between items-center relative">
+                        <div className="p-8 bg-brand-dark text-white flex justify-between items-center relative">
                             <div className="flex items-center gap-4">
                                 <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-sm">
-                                    <Receipt size={32} className="text-gold-400" />
+                                    <Receipt size={32} className="text-brand-accent" />
                                 </div>
                                 <div>
                                     <h2 className="text-2xl font-black">تفاصيل العملية #{viewingTransaction.id.slice(-6)}</h2>
-                                    <p className="text-gold-400/60 text-sm font-bold uppercase tracking-widest">Transaction Intelligence Report</p>
+                                    <p className="text-brand-accent/60 text-sm font-bold uppercase tracking-widest">Transaction Intelligence Report</p>
                                 </div>
                             </div>
                             <button
@@ -689,7 +756,7 @@ body{
                             <div className="space-y-4">
                                 <div className="flex items-center gap-2 mb-2">
                                     <div className="w-1.5 h-6 bg-gold-400 rounded-full"></div>
-                                    <h3 className="font-black text-coffee-900 text-lg">قائمة المشتريات</h3>
+                                    <h3 className="font-black text-brand-dark text-lg">قائمة المشتريات</h3>
                                 </div>
                                 <div className="border border-gray-100 rounded-[2.5rem] overflow-hidden">
                                     <table className="w-full text-right">
@@ -703,9 +770,9 @@ body{
                                         <tbody className="divide-y divide-gray-50">
                                             {viewingTransaction.items.map((item, i) => (
                                                 <tr key={i} className="hover:bg-gold-50/10 transition-colors">
-                                                    <td className="px-6 py-4 font-bold text-coffee-900">{item.name}</td>
-                                                    <td className="px-6 py-4 font-black text-gold-600">x{item.quantity}</td>
-                                                    <td className="px-6 py-4 font-black text-coffee-900 text-left">{(item.price * item.quantity).toFixed(2)}</td>
+                                                    <td className="px-6 py-4 font-bold text-brand-dark">{item.name}</td>
+                                                    <td className="px-6 py-4 font-black text-brand-primary">x{item.quantity}</td>
+                                                    <td className="px-6 py-4 font-black text-brand-dark text-left">{(item.price * item.quantity).toFixed(2)}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -715,8 +782,8 @@ body{
 
                             <div className="pt-6 border-t border-dashed border-gray-200">
                                 <div className="flex justify-between items-center text-2xl font-black">
-                                    <span className="text-coffee-900">إجمالي القيمة</span>
-                                    <span className="text-gold-600">{viewingTransaction.total.toFixed(2)} {settings?.currency || CURRENCY}</span>
+                                    <span className="text-brand-dark">إجمالي القيمة</span>
+                                    <span className="text-brand-primary">{viewingTransaction.total.toFixed(2)} {settings?.currency || CURRENCY}</span>
                                 </div>
                             </div>
                         </div>
@@ -724,13 +791,13 @@ body{
                         <div className="p-8 bg-gray-50 flex gap-4">
                             <button
                                 onClick={() => handlePrint(viewingTransaction)}
-                                className="flex-1 bg-coffee-900 text-white font-black py-4 rounded-[1.5rem] flex items-center justify-center gap-2 hover:bg-gold-600 transition-all shadow-xl shadow-coffee-900/10"
+                                className="flex-1 bg-brand-dark text-white font-black py-4 rounded-[1.5rem] flex items-center justify-center gap-2 hover:bg-brand-primary transition-all shadow-xl shadow-brand-dark/10"
                             >
                                 <Printer size={20} /> طباعة الفاتورة الفورية
                             </button>
                             <button
                                 onClick={() => setViewingTransaction(null)}
-                                className="flex-1 bg-white text-gray-400 font-black py-4 rounded-[1.5rem] border-2 border-gray-100 hover:text-coffee-900 transition-all"
+                                className="flex-1 bg-white text-gray-400 font-black py-4 rounded-[1.5rem] border-2 border-gray-100 hover:text-brand-dark transition-all"
                             >
                                 إغلاق المعاينة
                             </button>
@@ -741,15 +808,15 @@ body{
 
             {/* Invoices Log Modal */}
             {isLogOpen && (
-                <div className="fixed inset-0 z-[250] bg-coffee-900/80 backdrop-blur-lg flex items-center justify-center p-4 animate-in fade-in duration-300">
+                <div className="fixed inset-0 z-[250] bg-brand-dark/80 backdrop-blur-lg flex items-center justify-center p-4 animate-in fade-in duration-300">
                     <div className="bg-[#fdfaf7] w-full max-w-5xl h-[90vh] rounded-[4rem] shadow-4xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-10 duration-500">
-                        <div className="p-10 border-b border-gold-200 bg-white flex justify-between items-center">
+                        <div className="p-10 border-b border-brand-primary/10 bg-white flex justify-between items-center">
                             <div className="flex items-center gap-6">
-                                <div className="w-20 h-20 bg-gold-500 text-white rounded-[2rem] flex items-center justify-center shadow-xl shadow-gold-500/20">
+                                <div className="w-20 h-20 bg-brand-accent text-white rounded-[2rem] flex items-center justify-center shadow-xl shadow-brand-accent/20">
                                     <History size={40} />
                                 </div>
                                 <div>
-                                    <h2 className="text-4xl font-black text-coffee-900 mb-1">سجل الفواتير المؤرشفة</h2>
+                                    <h2 className="text-4xl font-black text-brand-dark mb-1">سجل الفواتير المؤرشفة</h2>
                                     <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">ARCHIVED FINANCIAL INTELLIGENCE</p>
                                 </div>
                             </div>
@@ -773,10 +840,10 @@ body{
                                         <div
                                             key={t.id}
                                             onClick={() => { setViewingTransaction(t); setIsLogOpen(false); }}
-                                            className="bg-white p-6 rounded-[2.5rem] border border-gold-100 shadow-sm hover:shadow-xl transition-all flex items-center justify-between cursor-pointer group"
+                                            className="bg-white p-6 rounded-[2.5rem] border border-brand-primary/10 shadow-sm hover:shadow-xl transition-all flex items-center justify-between cursor-pointer group"
                                         >
                                             <div className="flex items-center gap-6">
-                                                <div className="w-16 h-16 bg-gold-50 rounded-2xl flex flex-col items-center justify-center font-black text-gold-600 group-hover:bg-coffee-900 group-hover:text-white transition-all">
+                                                <div className="w-16 h-16 bg-brand-light/30 rounded-2xl flex flex-col items-center justify-center font-black text-brand-primary group-hover:bg-brand-primary group-hover:text-white transition-all">
                                                     <span className="text-[10px] opacity-60">ID</span>
                                                     <span>#{t.id.slice(-4)}</span>
                                                 </div>
@@ -792,11 +859,11 @@ body{
                                             <div className="flex items-center gap-8">
                                                 <div className="text-right">
                                                     <p className="text-xs text-gray-400 font-bold uppercase mb-1">Final Amount</p>
-                                                    <p className="text-2xl font-black text-coffee-900">{t.total.toFixed(2)} {settings?.currency || CURRENCY}</p>
+                                                    <p className="text-2xl font-black text-brand-dark">{t.total.toFixed(2)} {settings?.currency || CURRENCY}</p>
                                                 </div>
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); handlePrint(t); }}
-                                                    className="w-14 h-14 bg-gold-100 text-gold-700 rounded-3xl flex items-center justify-center hover:bg-coffee-900 hover:text-white transition-all"
+                                                    className="w-14 h-14 bg-brand-light/40 text-brand-primary rounded-3xl flex items-center justify-center hover:bg-brand-primary hover:text-white transition-all"
                                                 >
                                                     <Printer size={24} />
                                                 </button>
@@ -807,7 +874,7 @@ body{
                             )}
                         </div>
 
-                        <div className="p-8 bg-white border-t border-gold-100 flex justify-center text-gray-400 text-xs font-bold uppercase tracking-widest">
+                        <div className="p-8 bg-white border-t border-brand-primary/10 flex justify-center text-gray-400 text-xs font-bold uppercase tracking-widest">
                             Golden POS Intelligence System - Secure Financial Log
                         </div>
                     </div>
@@ -816,78 +883,121 @@ body{
 
             {/* Manual Order Emergency Modal */}
             {isManualModalOpen && (
-                <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
-                    <div className="bg-white w-full max-w-5xl h-[85vh] rounded-[3rem] shadow-2xl overflow-hidden flex flex-col">
-                        <div className="p-8 bg-red-600 text-white flex justify-between items-center">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-white/20 p-3 rounded-2xl">
-                                    <AlertCircle size={32} />
+                <div className="fixed inset-0 z-[300] bg-brand-dark/80 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-500">
+                    <div className="bg-white w-full max-w-6xl h-[88vh] rounded-[4rem] shadow-4xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-700 border-4 border-white/20">
+                        <div className="p-10 bg-brand-primary text-white flex justify-between items-center relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+                            <div className="flex items-center gap-6 relative z-10">
+                                <div className="bg-white/20 p-5 rounded-[2rem] backdrop-blur-md shadow-inner">
+                                    <AlertCircle size={40} />
                                 </div>
                                 <div>
-                                    <h2 className="text-2xl font-bold">إنشاء طلب يدوي طارئ</h2>
-                                    <p className="text-white/70 text-sm">يتم استخدام هذه الواجهة في حال وجود خلل في حساب المبيعات فقط</p>
+                                    <h2 className="text-4xl font-black mb-1">واجهة القيد اليدوي</h2>
+                                    <p className="text-white/60 font-black text-xs uppercase tracking-[0.3em]">Direct Transaction Engine</p>
                                 </div>
                             </div>
-                            <button onClick={() => setIsManualModalOpen(false)} className="text-white/60 hover:text-white p-2">إغلاق</button>
+                            <button
+                                onClick={() => setIsManualModalOpen(false)}
+                                className="w-14 h-14 flex items-center justify-center bg-white/10 hover:bg-black/20 rounded-2xl transition-all text-white relative z-10 border border-white/10"
+                            >
+                                <X size={32} />
+                            </button>
                         </div>
 
                         <div className="flex flex-1 overflow-hidden">
                             {/* Products list for manual selection */}
-                            <div className="flex-[2] p-8 overflow-y-auto bg-gray-50 no-scrollbar">
-                                <div className="grid grid-cols-3 gap-4">
+                            <div className="flex-[2] p-10 overflow-y-auto bg-gray-50/50 no-scrollbar relative">
+                                <div className="absolute inset-0 bg-brand-primary/5 opacity-30 pointer-events-none"></div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 relative z-10">
                                     {products.map(p => (
                                         <button
                                             key={p.id}
                                             onClick={() => addToManualCart(p)}
-                                            className="bg-white p-4 rounded-2xl border border-gray-100 hover:border-red-400 hover:shadow-lg transition-all text-right flex flex-col gap-2 group"
+                                            className="bg-white p-6 rounded-[2.5rem] border-2 border-transparent hover:border-brand-primary hover:shadow-2xl transition-all text-right flex items-center gap-4 group active:scale-95"
                                         >
-                                            <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center text-xl group-hover:scale-110 transition-transform">☕</div>
-                                            <h4 className="font-bold text-coffee-900">{p.name}</h4>
-                                            <span className="text-red-600 font-bold text-sm">{p.price} {CURRENCY}</span>
+                                            <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center text-3xl group-hover:bg-brand-primary/10 group-hover:rotate-12 transition-all">
+                                                {p.category === 'Coffee' ? '☕' : p.category === 'Tea' ? '🍵' : '🍰'}
+                                            </div>
+                                            <div className="flex-1">
+                                                <h4 className="font-black text-brand-dark mb-1">{p.name}</h4>
+                                                <span className="text-brand-primary font-black text-sm">{p.price.toFixed(2)} {CURRENCY}</span>
+                                            </div>
+                                            <div className="opacity-0 group-hover:opacity-100 transition-all">
+                                                <Plus className="text-brand-primary" size={20} />
+                                            </div>
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
                             {/* Manual Cart */}
-                            <div className="w-[380px] border-r border-gray-100 flex flex-col bg-white">
-                                <div className="p-6 border-b border-gray-100 flex items-center gap-2">
-                                    <ShoppingCart size={20} className="text-gray-400" />
-                                    <span className="font-bold text-coffee-900">سلة الطوارئ</span>
+                            <div className="w-[420px] border-r border-brand-primary/5 flex flex-col bg-white shadow-2xl relative z-20">
+                                <div className="p-8 border-b border-brand-primary/5 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-brand-primary/10 rounded-lg text-brand-primary">
+                                            <ShoppingCart size={20} />
+                                        </div>
+                                        <span className="font-black text-brand-dark">سلة القيد السريع</span>
+                                    </div>
+                                    <span className="text-[10px] font-black bg-brand-primary/5 text-brand-primary px-3 py-1 rounded-full uppercase">Queue</span>
                                 </div>
-                                <div className="flex-1 overflow-y-auto p-6 space-y-4 no-scrollbar">
+                                <div className="flex-1 overflow-y-auto p-8 space-y-4 no-scrollbar">
                                     {manualCart.length === 0 ? (
-                                        <div className="h-full flex flex-col items-center justify-center text-gray-300 gap-2">
-                                            <Coffee size={48} opacity={0.3} />
-                                            <p>السلة فارغة</p>
+                                        <div className="h-full flex flex-col items-center justify-center text-gray-300 gap-4 opacity-30">
+                                            <div className="w-24 h-24 border-4 border-dashed border-gray-200 rounded-full flex items-center justify-center">
+                                                <Coffee size={40} />
+                                            </div>
+                                            <p className="font-black text-xs uppercase tracking-widest">Cart is empty</p>
                                         </div>
                                     ) : (
                                         manualCart.map(i => (
-                                            <div key={i.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-2xl border border-gray-100">
-                                                <div>
-                                                    <p className="font-bold text-sm text-coffee-900">{i.name}</p>
-                                                    <p className="text-xs text-gray-500">{i.quantity} × {i.price}</p>
+                                            <div key={i.id} className="flex justify-between items-center bg-gray-50 p-5 rounded-[2rem] border border-brand-primary/5 hover:border-brand-primary transition-all group">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-black text-brand-primary shadow-sm">
+                                                        {i.quantity}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-black text-sm text-brand-dark">{i.name}</p>
+                                                        <p className="text-[10px] text-gray-400 font-bold">{(i.price * i.quantity).toFixed(2)} IQD</p>
+                                                    </div>
                                                 </div>
-                                                <button onClick={() => removeFromManualCart(i.id)} className="text-red-400 hover:text-red-600 p-2">
-                                                    <Trash2 size={18} />
+                                                <button
+                                                    onClick={() => removeFromManualCart(i.id)}
+                                                    className="w-10 h-10 flex items-center justify-center bg-white text-gray-300 hover:bg-red-500 hover:text-white rounded-xl transition-all shadow-sm"
+                                                >
+                                                    <Trash2 size={16} />
                                                 </button>
                                             </div>
                                         ))
                                     )}
                                 </div>
-                                <div className="p-8 border-t border-gray-100 bg-gray-50/50">
-                                    <div className="flex justify-between items-center mb-6">
-                                        <span className="text-gray-500 font-bold">الإجمالي</span>
-                                        <span className="text-3xl font-black text-red-600">
-                                            {(manualCart.reduce((acc, i) => acc + (i.price * i.quantity), 0) * (1 + (settings?.taxRate || 0) / 100)).toFixed(2)} {CURRENCY}
-                                        </span>
+
+                                <div className="p-10 border-t border-brand-primary/5 bg-gray-50/50">
+                                    <div className="space-y-4 mb-8">
+                                        <div className="flex justify-between text-xs font-bold text-gray-400 uppercase">
+                                            <span>Subtotal</span>
+                                            <span>{manualCart.reduce((acc, i) => acc + (i.price * i.quantity), 0).toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-xs font-bold text-gray-400 uppercase border-b border-dashed border-gray-200 pb-4">
+                                            <span>Tax Flow</span>
+                                            <span>{((manualCart.reduce((acc, i) => acc + (i.price * i.quantity), 0)) * (settings?.taxRate || 1) / 100).toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-brand-dark/40 font-black uppercase text-xs">Total Amount</span>
+                                            <span className="text-4xl font-black text-brand-dark">
+                                                {(manualCart.reduce((acc, i) => acc + (i.price * i.quantity), 0) * (1 + (settings?.taxRate || 0) / 100)).toFixed(2)}
+                                                <small className="text-xs mr-2 text-brand-primary">{CURRENCY}</small>
+                                            </span>
+                                        </div>
                                     </div>
+
                                     <button
                                         onClick={createManualTransaction}
                                         disabled={manualCart.length === 0}
-                                        className="w-full py-4 bg-red-600 text-white rounded-2xl font-bold shadow-xl shadow-red-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                                        className="w-full bg-brand-primary hover:bg-brand-secondary disabled:opacity-30 disabled:hover:bg-brand-primary text-white py-6 rounded-[2rem] font-black text-lg flex items-center justify-center gap-4 shadow-3xl shadow-brand-primary/20 transition-all active:scale-95 group"
                                     >
-                                        إصدار الفاتورة فوراً
+                                        <Check size={28} className="group-hover:scale-125 transition-transform" />
+                                        تأكيد القيد اليدوي
                                     </button>
                                 </div>
                             </div>
@@ -898,11 +1008,11 @@ body{
 
             {/* Payment Selection Modal for Cashier */}
             {selectedForPayment && (
-                <div className="fixed inset-0 z-[120] bg-coffee-900/40 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+                <div className="fixed inset-0 z-[120] bg-brand-dark/40 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
                     <div className="bg-white w-full max-w-lg rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95">
-                        <div className={`p-8 border-b border-gray-100 flex justify-between items-center ${selectedForPayment.isManual ? 'bg-red-50' : 'bg-gold-50'}`}>
+                        <div className={`p-8 border-b border-gray-100 flex justify-between items-center ${selectedForPayment.isManual ? 'bg-red-50' : 'bg-brand-light/20'}`}>
                             <div>
-                                <h2 className={`text-2xl font-bold ${selectedForPayment.isManual ? 'text-red-600' : 'text-coffee-900'}`}>
+                                <h2 className={`text-2xl font-bold ${selectedForPayment.isManual ? 'text-red-600' : 'text-brand-dark'}`}>
                                     {selectedForPayment.isManual ? 'تحصيل طلب يدوي' : 'تحصيل الفاتورة'}
                                 </h2>
                                 <p className="text-gray-500 text-sm">فاتورة رقم #{selectedForPayment.id.slice(-4)}</p>
@@ -913,7 +1023,7 @@ body{
                         </div>
                         <div className="p-10 text-center">
                             <span className="text-gray-400 block text-sm mb-2 font-bold uppercase tracking-widest">إجمالي المبلغ المطلوب</span>
-                            <span className={`text-5xl font-black mb-10 block ${selectedForPayment.isManual ? 'text-red-600' : 'text-coffee-900'}`}>
+                            <span className={`text-5xl font-black mb-10 block ${selectedForPayment.isManual ? 'text-red-600' : 'text-brand-dark'}`}>
                                 {selectedForPayment.total.toFixed(2)} {CURRENCY}
                             </span>
 

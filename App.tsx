@@ -21,13 +21,23 @@ import { soundService } from './services/soundService';
 import { onSnapshot, collection, query, orderBy, doc, updateDoc, limit } from 'firebase/firestore';
 import { db as firestoreDb, auth } from './firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import SplashScreen from './components/SplashScreen';
 
 const App: React.FC = () => {
   // Authentication State
   const [currentUser, setCurrentUser] = useState<Employee | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    // Show splash for at least 3 seconds
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, []);
   const [showStatusToast, setShowStatusToast] = useState<'none' | 'online' | 'offline'>('none');
 
   useEffect(() => {
@@ -51,7 +61,7 @@ const App: React.FC = () => {
   }, []);
 
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [settingsTab, setSettingsTab] = useState<'general' | 'payments'>('general');
+  const [settingsTab, setSettingsTab] = useState<'general' | 'payments' | 'employees' | 'printing'>('general');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isProductMenuOpen, setIsProductMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -176,6 +186,7 @@ const App: React.FC = () => {
   // Update Settings Handler
   const handleUpdateSettings = async (newSettings: AppSettings) => {
     await firestoreService.updateSettings(newSettings);
+    soundService.playSuccess();
   };
 
   const handleLogin = async (email: string, pass: string): Promise<boolean> => {
@@ -198,7 +209,7 @@ const App: React.FC = () => {
     if (cart.length === 0) return;
 
     // Check if there's an active order for this table to append to
-    const activeTableOrder = tableNumber 
+    const activeTableOrder = tableNumber
       ? transactions.find(t => t.tableNumber === tableNumber && !['completed', 'refunded'].includes(t.status))
       : null;
 
@@ -210,7 +221,7 @@ const App: React.FC = () => {
         if (existing) {
           existing.quantity += cartItem.quantity;
         } else {
-          updatedItems.push({...cartItem});
+          updatedItems.push({ ...cartItem });
         }
       });
 
@@ -220,7 +231,7 @@ const App: React.FC = () => {
       await firestoreService.updateTransaction(activeTableOrder.id, {
         items: updatedItems,
         total: totalValue + taxAmount,
-        status: 'pending', 
+        status: 'pending',
         notes: notes ? (activeTableOrder.notes ? `${activeTableOrder.notes} | ${notes}` : notes) : activeTableOrder.notes
       });
     } else {
@@ -356,7 +367,7 @@ const App: React.FC = () => {
     setActiveTab(view);
     setIsProductMenuOpen(false);
     if (view === 'settings' && subTab) {
-      setSettingsTab(subTab as 'general' | 'payments');
+      setSettingsTab(subTab as 'general' | 'payments' | 'employees' | 'printing');
     } else {
       setSettingsTab('general');
     }
@@ -470,13 +481,8 @@ const App: React.FC = () => {
     />;
   };
 
-  if (isLoading || isAuthLoading) {
-    return (
-      <div className="h-screen w-full flex flex-col items-center justify-center bg-[#f8f5f2] gap-4">
-        <div className="w-16 h-16 border-4 border-gold-200 border-t-gold-500 rounded-full animate-spin"></div>
-        <p className="text-coffee-900 font-bold animate-pulse">جاري التحقق من الهوية الرقمية...</p>
-      </div>
-    );
+  if (showSplash || isLoading || isAuthLoading) {
+    return <SplashScreen />;
   }
 
   if (!isAuthenticated) {
@@ -484,11 +490,12 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className={`flex h-screen w-full bg-[#f8f5f2] font-sans overflow-hidden transition-colors duration-500`}>
+    <div className={`flex h-screen w-full bg-brand-cream font-sans overflow-hidden transition-colors duration-500`}>
       <Sidebar
         activeItem={activeTab}
         setActiveItem={handleSidebarNavigation}
         user={currentUser}
+        settings={settings}
       />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden relative transition-all">
@@ -502,6 +509,7 @@ const App: React.FC = () => {
           onNavigate={handleDashboardNavigate}
           isOnline={isOnline}
           activeTabTitle={getActiveTabTitle()}
+          settings={settings}
         />
         {renderContent()}
 

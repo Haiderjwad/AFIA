@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { MenuItem } from '../types';
-import { Package, Search, Filter, Plus, X, Tag, DollarSign, Coffee, Trash2, AlertTriangle, Edit, Layers, FileText, QrCode } from 'lucide-react';
+import { Package, Search, Filter, Plus, X, Tag, DollarSign, Coffee, Trash2, AlertTriangle, Edit, Layers, FileText, QrCode, ArrowLeft, Check } from 'lucide-react';
 import DigitalMenuModal from './DigitalMenuModal';
 
 interface InventoryViewProps {
@@ -126,20 +126,22 @@ const InventoryView: React.FC<InventoryViewProps> = ({
           <h1 className="text-3xl font-bold text-coffee-900 mb-2">إدارة المخزون</h1>
           <p className="text-gray-500">متابعة المنتجات وحالة المخزون</p>
         </div>
-        <button
-          onClick={openAddModal}
-          className="bg-coffee-900 hover:bg-coffee-800 text-white px-6 py-3 rounded-xl transition-colors shadow-lg flex items-center gap-2"
-        >
-          <Plus size={20} />
-          إضافة منتج جديد
-        </button>
-        <button
-          onClick={() => setIsMenuModalOpen(true)}
-          className="bg-white border-2 border-coffee-900 text-coffee-900 px-6 py-3 rounded-xl transition-all shadow-md flex items-center gap-2 font-bold hover:bg-gold-50"
-        >
-          <QrCode size={20} />
-          إنشاء منيو إلكتروني
-        </button>
+        <div className="flex gap-4">
+          <button
+            onClick={() => setIsMenuModalOpen(true)}
+            className="bg-white border-2 border-brand-primary/20 text-brand-primary px-6 py-3 rounded-2xl transition-all shadow-sm flex items-center gap-2 font-black hover:border-brand-primary hover:bg-brand-primary/5 active:scale-95"
+          >
+            <QrCode size={20} />
+            إنشاء منيو إلكتروني
+          </button>
+          <button
+            onClick={openAddModal}
+            className="bg-brand-primary hover:bg-brand-secondary text-white px-8 py-3 rounded-2xl transition-all shadow-xl shadow-brand-primary/20 flex items-center gap-2 font-black active:scale-95"
+          >
+            <Plus size={20} />
+            إضافة منتج جديد
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-3xl shadow-xl border border-gold-100 overflow-hidden">
@@ -271,75 +273,86 @@ const InventoryView: React.FC<InventoryViewProps> = ({
 
       {/* Add/Edit Product Modal */}
       {isModalOpen && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-            <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gold-50 shrink-0">
-              <h2 className="text-xl font-bold text-coffee-900">
-                {editingId ? 'تعديل المنتج' : 'إضافة منتج جديد'}
-              </h2>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-brand-dark/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-4xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col max-h-[90vh]">
+            <div className="px-10 py-8 border-b border-brand-primary/5 flex justify-between items-center bg-brand-light/20 shrink-0 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+              <div className="relative">
+                <h2 className="text-2xl font-black text-brand-dark">
+                  {editingId ? 'تحديث بيانات المنتج' : 'إضافة منتج للسحابة'}
+                </h2>
+                <p className="text-[10px] text-brand-secondary font-black uppercase tracking-widest mt-1">Inventory Asset Intelligence</p>
+              </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-2 hover:bg-white rounded-full transition-colors text-gray-500"
+                className="w-12 h-12 flex items-center justify-center bg-white hover:bg-red-500 hover:text-white rounded-2xl transition-all shadow-sm text-brand-dark/20 relative z-10"
               >
-                <X size={20} />
+                <X size={24} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-8 space-y-5 overflow-y-auto">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                  <Coffee size={16} className="text-gold-600" />
-                  اسم المنتج
+            <form onSubmit={handleSubmit} className="p-10 space-y-6 overflow-y-auto no-scrollbar">
+              <div className="space-y-3">
+                <label className="text-xs font-black text-brand-dark/40 uppercase tracking-tighter flex items-center gap-2">
+                  <Coffee size={14} className="text-brand-primary" /> الاسم التجاري للمنتج
                 </label>
                 <input
                   type="text"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl bg-coffee-800 text-white placeholder-gray-400 border border-coffee-900 focus:border-transparent focus:ring-2 focus:ring-gold-400 outline-none transition-all"
-                  placeholder="مثال: لاتيه فانيلا"
+                  className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 outline-none transition-all font-bold text-brand-dark"
+                  placeholder="مثال: إسبريسو دوبل"
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                  <Tag size={16} className="text-gold-600" /> التصنيف
+              <div className="space-y-3">
+                <label className="text-xs font-black text-brand-dark/40 uppercase tracking-tighter flex items-center gap-2">
+                  <Tag size={14} className="text-brand-primary" /> تصنيف القائمة
                 </label>
-                <select
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  required
-                  className="w-full px-4 py-3 rounded-xl bg-coffee-800 text-white border border-coffee-900 focus:border-transparent focus:ring-2 focus:ring-gold-400 outline-none transition-all"
-                >
-                  <option value="">اختر التصنيف</option>
-                  <option value="Coffee">قهوة (Coffee)</option>
-                  <option value="Tea">شاي (Tea)</option>
-                  <option value="Dessert">حلى (Dessert)</option>
-                  <option value="Bakery">مخبوزات (Bakery)</option>
-                  <option value="Food">طعام (Food)</option>
-                  <option value="Juice">عصائر (Juice)</option>
-                </select>
+                <div className="relative">
+                  <select
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    required
+                    className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 outline-none transition-all font-bold text-brand-dark appearance-none"
+                  >
+                    <option value="">اختر التصنيف المناسب</option>
+                    <option value="Coffee">☕ قهوة (Coffee)</option>
+                    <option value="Tea">🍵 شاي (Tea)</option>
+                    <option value="Dessert">🍰 حلى (Dessert)</option>
+                    <option value="Bakery">🥐 مخبوزات (Bakery)</option>
+                    <option value="Food">🍔 طعام (Food)</option>
+                    <option value="Juice">🥤 عصائر (Juice)</option>
+                  </select>
+                  <div className="absolute left-6 top-1/2 -translate-y-1/2 pointer-events-none opacity-20">
+                    <ArrowLeft size={16} className="-rotate-90" />
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                    <DollarSign size={16} className="text-gold-600" /> السعر
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <label className="text-xs font-black text-brand-dark/40 uppercase tracking-tighter flex items-center gap-2">
+                    <DollarSign size={14} className="text-brand-primary" /> سعر البيع
                   </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-coffee-800 text-white placeholder-gray-400 border border-coffee-900 focus:border-transparent focus:ring-2 focus:ring-gold-400 outline-none transition-all"
-                    placeholder="0.00"
-                  />
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      value={formData.price}
+                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                      className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 outline-none transition-all font-bold text-brand-dark pr-12"
+                      placeholder="0.00"
+                    />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-primary/30 font-black text-xs">IQD</div>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                    <Layers size={16} className="text-gold-600" /> المخزون
+                <div className="space-y-3">
+                  <label className="text-xs font-black text-brand-dark/40 uppercase tracking-tighter flex items-center gap-2">
+                    <Layers size={14} className="text-brand-primary" /> رصيد المخزن
                   </label>
                   <input
                     type="number"
@@ -347,37 +360,38 @@ const InventoryView: React.FC<InventoryViewProps> = ({
                     required
                     value={formData.stock}
                     onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl bg-coffee-800 text-white placeholder-gray-400 border border-coffee-900 focus:border-transparent focus:ring-2 focus:ring-gold-400 outline-none transition-all"
+                    className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 outline-none transition-all font-bold text-brand-dark"
                     placeholder="0"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                  <FileText size={16} className="text-gold-600" /> ملاحظات المنتج
+              <div className="space-y-3">
+                <label className="text-xs font-black text-brand-dark/40 uppercase tracking-tighter flex items-center gap-2">
+                  <FileText size={14} className="text-brand-primary" /> تفاصيل إضافية
                 </label>
                 <textarea
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl bg-coffee-800 text-white placeholder-gray-400 border border-coffee-900 focus:border-transparent focus:ring-2 focus:ring-gold-400 outline-none transition-all resize-none h-24"
-                  placeholder="أضف وصفاً أو ملاحظات حول المنتج..."
+                  className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 outline-none transition-all font-bold text-brand-dark resize-none h-24 no-scrollbar shadow-inner"
+                  placeholder="أضف وصفاً تسويقياً أو ملاحظات للمطبخ..."
                 />
               </div>
 
-              <div className="pt-4 flex gap-3">
+              <div className="pt-6 flex gap-4">
+                <button
+                  type="submit"
+                  className="flex-[2] py-5 rounded-[1.5rem] text-white font-black text-lg hover:bg-brand-secondary transition-all shadow-xl shadow-brand-primary/20 bg-brand-primary flex items-center justify-center gap-2 group"
+                >
+                  <Check size={24} className="group-hover:scale-125 transition-transform" />
+                  {editingId ? 'تأكيد التعديلات' : 'إدراج المنتج للسحابة'}
+                </button>
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-3 rounded-xl border border-gray-200 font-bold text-gray-600 hover:bg-gray-50 transition-colors"
+                  className="flex-1 py-5 rounded-[1.5rem] bg-gray-50 border-2 border-gray-100 font-black text-gray-400 hover:text-brand-dark hover:bg-white hover:border-brand-primary/10 transition-all"
                 >
-                  إلغاء
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-3 rounded-xl text-white font-bold hover:opacity-90 transition-colors shadow-lg bg-coffee-900 hover:bg-coffee-800"
-                >
-                  {editingId ? 'حفظ التغييرات' : 'حفظ المنتج'}
+                  تراجع
                 </button>
               </div>
             </form>

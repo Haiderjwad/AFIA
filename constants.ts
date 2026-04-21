@@ -76,6 +76,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
   lowStockThreshold: 10,
   enableNotifications: true,
   enableSounds: true,
+  receiptType: 'a4',
+  brandColor: '#2d6a4f',
+  showLogoOnReceipt: true,
+  tablesCount: 15,
   paymentMethods: {
     cash: true,
     card: true,
