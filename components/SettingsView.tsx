@@ -658,11 +658,14 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                             </div>
                           </td>
                           <td className="px-8 py-5">
-                            <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${emp.role === 'admin' ? 'bg-red-50 text-red-600' :
-                              emp.role === 'manager' ? 'bg-brand-accent/20 text-brand-accent' :
+                            <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${emp.role.toLowerCase() === 'admin' ? 'bg-red-50 text-red-600' :
+                              emp.role.toLowerCase() === 'manager' ? 'bg-brand-accent/20 text-brand-accent' :
                                 'bg-brand-light/50 text-brand-primary'
                               }`}>
-                              {emp.role === 'admin' ? 'مدير' : emp.role === 'manager' ? 'مسؤول' : emp.role === 'cashier' ? 'كاشير' : 'مبيعات'}
+                              {['kitchen', 'cook', 'chef'].includes(emp.role.toLowerCase()) ? 'طباخ' :
+                                emp.role.toLowerCase() === 'admin' ? 'مدير النظام' :
+                                  emp.role.toLowerCase() === 'manager' ? 'المدير' :
+                                    emp.role.toLowerCase() === 'cashier' ? 'الكاشير' : 'المبيعات'}
                             </span>
                           </td>
                           <td className="px-8 py-5 text-center font-bold text-brand-dark/40 text-sm">
@@ -774,11 +777,11 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                       onChange={(e) => setEmpForm({ ...empForm, role: e.target.value as UserRole })}
                       className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-brand-primary/10 focus:ring-2 focus:ring-brand-primary outline-none font-bold text-brand-dark appearance-none"
                     >
-                      <option value="sales">مندوب مبيعات</option>
-                      <option value="cashier">كاشير / محاسب</option>
-                      <option value="kitchen">شيف مطبخ</option>
-                      <option value="manager">مدير فرع</option>
-                      <option value="admin">مدير نظام</option>
+                      <option value="sales">المبيعات</option>
+                      <option value="cashier">الكاشير</option>
+                      <option value="kitchen">طباخ</option>
+                      <option value="manager">المدير</option>
+                      <option value="admin">مدير النظام</option>
                     </select>
                   </div>
                   {!editingEmployee && (

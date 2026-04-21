@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Transaction, MenuItem } from '../types';
+import { Transaction, MenuItem, Employee } from '../types';
 import { onSnapshot, collection, query, where, orderBy, doc, updateDoc, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import {
@@ -13,10 +13,11 @@ import { CURRENCY } from '../constants';
 
 interface KitchenViewProps {
     isOnline: boolean;
+    user: Employee | null;
     lowStockThreshold?: number;
 }
 
-const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, lowStockThreshold = 10 }) => {
+const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, user, lowStockThreshold = 10 }) => {
     const [activeTab, setActiveTab] = useState<'orders' | 'inventory'>('orders');
     const [orders, setOrders] = useState<Transaction[]>([]);
     const [products, setProducts] = useState<MenuItem[]>([]);
@@ -64,7 +65,10 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, lowStockThreshold =
         setLoadingOrderId(orderId);
         try {
             const orderRef = doc(db, "transactions", orderId);
-            await updateDoc(orderRef, { status: newStatus });
+            await updateDoc(orderRef, {
+                status: newStatus,
+                kitchenPerson: user?.name || 'Kitchen'
+            });
             const statusLabels: Record<string, string> = {
                 preparing: 'جاري العمل على الطلب',
                 ready: 'الطلب جاهز للتسليم ✓',
@@ -256,6 +260,18 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, lowStockThreshold =
                                                     <span className="text-coffee-900 font-bold">{item.name}</span>
                                                 </div>
                                             ))}
+                                        </div>
+
+                                        <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
+                                            <div className="flex items-center gap-2 text-gray-400">
+                                                <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-[8px] font-black uppercase ring-2 ring-white shadow-sm">
+                                                    {order.salesPerson?.charAt(0) || 'S'}
+                                                </div>
+                                                <span className="text-[10px] font-bold">بواسطة: {order.salesPerson || 'غير معروف'}</span>
+                                            </div>
+                                            <div className="text-[10px] font-black text-brand-dark/20 uppercase tracking-widest">
+                                                Sales Dept
+                                            </div>
                                         </div>
 
                                         {status !== 'ready' && (

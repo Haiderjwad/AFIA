@@ -1,20 +1,23 @@
 
 import React, { useState } from 'react';
-import { Search, Coffee, Sparkles, Filter, Bell, CheckCircle2, PackageCheck, Plus } from 'lucide-react';
-import { MenuItem, AppSettings, Transaction } from '../types';
+import { Search, Coffee, Sparkles, Filter, Bell, CheckCircle2, PackageCheck, Plus, History, X, Clock, UtensilsCrossed } from 'lucide-react';
+import { MenuItem, AppSettings, Transaction, Employee } from '../types';
 
 interface SalesViewProps {
     products: MenuItem[];
     addToCart: (product: MenuItem) => void;
     settings: AppSettings;
     readyOrders: Transaction[];
+    transactions: Transaction[];
+    currentUser: Employee | null;
     onCompleteOrder: (id: string) => void;
 }
 
-const SalesView: React.FC<SalesViewProps> = ({ products, addToCart, settings, readyOrders, onCompleteOrder }) => {
+const SalesView: React.FC<SalesViewProps> = ({ products, addToCart, settings, readyOrders, transactions, currentUser, onCompleteOrder }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [showReadyAlert, setShowReadyAlert] = useState(true);
+    const [showActivityLog, setShowActivityLog] = useState(false);
 
     const categories = ['all', ...Array.from(new Set(products.map(p => p.category)))];
 
@@ -82,6 +85,12 @@ const SalesView: React.FC<SalesViewProps> = ({ products, addToCart, settings, re
                 </div>
 
                 <div className="flex gap-4 w-full md:w-auto">
+                    <button
+                        onClick={() => setShowActivityLog(true)}
+                        className="bg-white px-6 py-4 rounded-2xl border border-brand-primary/10 font-black text-brand-dark flex items-center gap-3 hover:border-brand-primary transition-all shadow-sm"
+                    >
+                        <History size={20} className="text-brand-primary" /> نشاطي اليوم
+                    </button>
                     <div className="relative flex-1 md:w-96">
                         <Search size={22} className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-primary" />
                         <input
@@ -151,6 +160,102 @@ const SalesView: React.FC<SalesViewProps> = ({ products, addToCart, settings, re
                     </div>
                 )}
             </div>
+            {/* Activity Log Modal */}
+            {showActivityLog && (
+                <div className="fixed inset-0 z-[200] bg-brand-dark/40 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+                    <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+                        <div className="p-8 bg-brand-primary text-white flex justify-between items-center">
+                            <div className="flex items-center gap-4">
+                                <div className="bg-white/20 p-3 rounded-2xl">
+                                    <History size={24} />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-black">نشاطي اليومي</h2>
+                                    <p className="text-white/60 text-[10px] font-bold">تتبع الطلبات التي قمت بإرسالها واستلامها</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowActivityLog(false)}
+                                className="hover:bg-white/10 p-2 rounded-full transition-all"
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div className="p-8 overflow-y-auto no-scrollbar space-y-8">
+                            {/* Sent Orders */}
+                            <div>
+                                <h3 className="font-extrabold text-brand-dark mb-4 flex items-center gap-2">
+                                    <Clock size={18} className="text-orange-500" /> طلبات أرسلتها (قيد التحضير)
+                                </h3>
+                                <div className="space-y-3">
+                                    {transactions
+                                        .filter(t => t.salesPerson === currentUser?.name && ['pending', 'preparing'].includes(t.status))
+                                        .map(order => (
+                                            <div key={order.id} className="flex justify-between items-center bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="bg-white w-10 h-10 rounded-xl flex items-center justify-center font-black text-brand-primary shadow-sm border border-brand-primary/5 text-xs">
+                                                        {order.tableNumber === 'Takeaway' ? 'SB' : order.tableNumber || '??'}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-black text-brand-dark text-sm">
+                                                            {order.tableNumber === 'Takeaway' ? 'طلب سفري' : `طاولة ${order.tableNumber}`}
+                                                        </p>
+                                                        <p className="text-[10px] text-gray-400 font-bold">{new Date(order.date).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</p>
+                                                    </div>
+                                                </div>
+                                                <span className="px-3 py-1 bg-orange-100 text-orange-600 rounded-lg text-[10px] font-black uppercase">
+                                                    {order.status === 'pending' ? 'انتظار' : 'تحضير'}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    {transactions.filter(t => t.salesPerson === currentUser?.name && ['pending', 'preparing'].includes(t.status)).length === 0 && (
+                                        <p className="text-center py-4 text-gray-400 text-xs font-bold">لا توجد طلبات قيد التحضير حالياً</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Received Orders */}
+                            <div>
+                                <h3 className="font-extrabold text-brand-dark mb-4 flex items-center gap-2">
+                                    <PackageCheck size={18} className="text-brand-primary" /> طلبات جاهزة للاستلام
+                                </h3>
+                                <div className="space-y-3">
+                                    {transactions
+                                        .filter(t => t.status === 'ready')
+                                        .map(order => (
+                                            <div key={order.id} className="flex justify-between items-center bg-brand-light/5 p-4 rounded-2xl border border-brand-primary/10">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="bg-brand-primary text-white w-10 h-10 rounded-xl flex items-center justify-center font-black shadow-sm text-xs">
+                                                        {order.tableNumber === 'Takeaway' ? 'SB' : order.tableNumber || '??'}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-black text-brand-dark text-sm">
+                                                            {order.tableNumber === 'Takeaway' ? 'طلب سفري' : `طاولة ${order.tableNumber}`}
+                                                        </p>
+                                                        <p className="text-[10px] text-brand-primary/60 font-bold">بواسطة المطبخ: {order.kitchenPerson || '---'}</p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        onCompleteOrder(order.id);
+                                                        setShowActivityLog(false);
+                                                    }}
+                                                    className="bg-brand-primary text-white px-4 py-2 rounded-xl text-[10px] font-black hover:bg-brand-secondary transition-all"
+                                                >
+                                                    تسجيل استلام
+                                                </button>
+                                            </div>
+                                        ))}
+                                    {transactions.filter(t => t.status === 'ready').length === 0 && (
+                                        <p className="text-center py-4 text-gray-400 text-xs font-bold">لا توجد طلبات جاهزة حالياً</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

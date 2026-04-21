@@ -5,7 +5,7 @@ import {
     FileText, Calendar, Clock, Printer, CreditCard, Banknote,
     Wifi, CheckCircle, Search, AlertCircle, Plus, Minus,
     Trash2, ShoppingCart, Coffee, Eye, X, Receipt,
-    ChevronLeft, ListFilter, History, Check
+    ChevronLeft, ListFilter, History, Check, UtensilsCrossed, PackageCheck
 } from 'lucide-react';
 import { CURRENCY } from '../constants';
 import { firestoreService } from '../services/firestoreService';
@@ -793,6 +793,51 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                             ))}
                                         </tbody>
                                     </table>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="w-1.5 h-6 bg-brand-primary rounded-full"></div>
+                                    <h3 className="font-black text-brand-dark text-lg">حوكمة العملية (مسار الطلب)</h3>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="flex items-center gap-4 bg-gray-50/80 p-4 rounded-2xl border border-gray-100">
+                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-brand-primary shadow-sm">
+                                            <ShoppingCart size={20} />
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[10px] text-gray-400 font-black uppercase mb-0.5">بواسطة المبيعات</p>
+                                            <p className="text-sm font-black text-brand-dark">{viewingTransaction.salesPerson || '---'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4 bg-gray-50/80 p-4 rounded-2xl border border-gray-100">
+                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-orange-500 shadow-sm">
+                                            <UtensilsCrossed size={20} />
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[10px] text-gray-400 font-black uppercase mb-0.5">بواسطة المطبخ</p>
+                                            <p className="text-sm font-black text-brand-dark">{viewingTransaction.kitchenPerson || '---'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4 bg-gray-50/80 p-4 rounded-2xl border border-gray-100">
+                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-500 shadow-sm">
+                                            <PackageCheck size={20} />
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[10px] text-gray-400 font-black uppercase mb-0.5">استلام الطلب</p>
+                                            <p className="text-sm font-black text-brand-dark">{viewingTransaction.deliveredBy || '---'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4 bg-gray-50/80 p-4 rounded-2xl border border-gray-100">
+                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-green-600 shadow-sm">
+                                            <Banknote size={20} />
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[10px] text-gray-400 font-black uppercase mb-0.5">بواسطة الكاشير</p>
+                                            <p className="text-sm font-black text-brand-dark">{viewingTransaction.cashierPerson || '---'}</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 

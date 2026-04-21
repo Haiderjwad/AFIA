@@ -13,6 +13,7 @@ interface InventoryViewProps {
   lowStockThreshold: number;
   storeName: string;
   settings: AppSettings;
+  canManage?: boolean;
 }
 
 
@@ -23,7 +24,8 @@ const InventoryView: React.FC<InventoryViewProps> = ({
   onDeleteProduct,
   lowStockThreshold = 10,
   storeName,
-  settings
+  settings,
+  canManage = true
 }) => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -147,13 +149,15 @@ const InventoryView: React.FC<InventoryViewProps> = ({
             <QrCode size={20} />
             إنشاء منيو إلكتروني
           </button>
-          <button
-            onClick={openAddModal}
-            className="bg-brand-primary hover:bg-brand-secondary text-white px-8 py-3 rounded-2xl transition-all shadow-xl shadow-brand-primary/20 flex items-center gap-2 font-black active:scale-95"
-          >
-            <Plus size={20} />
-            إضافة منتج جديد
-          </button>
+          {canManage && (
+            <button
+              onClick={openAddModal}
+              className="bg-brand-primary hover:bg-brand-secondary text-white px-8 py-3 rounded-2xl transition-all shadow-xl shadow-brand-primary/20 flex items-center gap-2 font-black active:scale-95"
+            >
+              <Plus size={20} />
+              إضافة منتج جديد
+            </button>
+          )}
         </div>
       </div>
 
@@ -214,7 +218,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({
                 <th className="px-6 py-4 text-right">السعر</th>
                 <th className="px-6 py-4 text-right">المخزون</th>
                 <th className="px-6 py-4 text-right">الحالة</th>
-                <th className="px-6 py-4 text-right">إجراءات</th>
+                {canManage && <th className="px-6 py-4 text-right">إجراءات</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-5">
@@ -248,24 +252,26 @@ const InventoryView: React.FC<InventoryViewProps> = ({
                           {status}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => openEditModal(product)}
-                            className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
-                            title="تعديل المنتج"
-                          >
-                            <Edit size={18} />
-                          </button>
-                          <button
-                            onClick={() => setItemToDelete(product.id)}
-                            className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors"
-                            title="حذف المنتج"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </td>
+                      {canManage && (
+                        <td className="px-6 py-4">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => openEditModal(product)}
+                              className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                              title="تعديل المنتج"
+                            >
+                              <Edit size={18} />
+                            </button>
+                            <button
+                              onClick={() => setItemToDelete(product.id)}
+                              className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors"
+                              title="حذف المنتج"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   );
                 })

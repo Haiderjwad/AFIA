@@ -40,9 +40,13 @@ export interface Transaction {
   status: 'pending' | 'preparing' | 'ready' | 'waiting_payment' | 'completed' | 'refunded';
   paymentMethod: 'cash' | 'card' | 'online';
   tableNumber?: string;
+  isPaid?: boolean;
   notes?: string;
   isManual?: boolean;
-  isPaid?: boolean;
+  salesPerson?: string;     // Who took the order
+  kitchenPerson?: string;   // Who prepared the order
+  deliveredBy?: string;     // Who delivered it to table
+  cashierPerson?: string;   // Who finalized payment
 }
 
 export interface Supplier {

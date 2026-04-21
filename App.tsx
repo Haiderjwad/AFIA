@@ -8,6 +8,7 @@ import InvoicesView from './components/InvoicesView';
 import SuppliersView from './components/SuppliersView';
 import ReportsView from './components/ReportsView';
 import SettingsView from './components/SettingsView';
+import EmployeePerformanceView from './components/EmployeePerformanceView';
 import LoginView from './components/LoginView';
 import KitchenView from './components/KitchenView';
 import SalesView from './components/SalesView';
@@ -79,6 +80,23 @@ const App: React.FC = () => {
 
     return () => unsubAuth();
   }, []);
+  // 3. Role-based Navigation
+  useEffect(() => {
+    if (currentUser && isAuthenticated) {
+      const role = currentUser.role.toLowerCase();
+      const perms = Array.isArray(currentUser.permissions) ? currentUser.permissions : [];
+
+      const canKitchen = role === 'kitchen' || role === 'cook' || role === 'chef' || perms.includes('kitchen');
+      const canSales = role === 'sales' || perms.includes('sales');
+      const canCashier = role === 'cashier' || perms.includes('invoices');
+
+      if (canKitchen) setActiveTab('kitchen');
+      else if (canSales) setActiveTab('sales');
+      else if (canCashier) setActiveTab('invoices');
+      else setActiveTab('dashboard');
+    }
+  }, [currentUser, isAuthenticated]);
+
   const [showStatusToast, setShowStatusToast] = useState<'none' | 'online' | 'offline'>('none');
 
   useEffect(() => {
@@ -116,8 +134,10 @@ const App: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
 
+  const [employees, setEmployees] = useState<Employee[]>([]);
+
   useEffect(() => {
-    let unsubProducts: any, unsubTransactions: any, unsubSettings: any, unsubNotifications: any;
+    let unsubProducts: any, unsubTransactions: any, unsubSettings: any, unsubNotifications: any, unsubEmployees: any;
 
     if (isAuthenticated) {
       unsubProducts = onSnapshot(collection(firestoreDb, "products"), (snapshot) => {
@@ -147,6 +167,11 @@ const App: React.FC = () => {
           setNotifications(n);
         }
       );
+
+      unsubEmployees = onSnapshot(collection(firestoreDb, "employees"), (snapshot) => {
+        const e = snapshot.docs.map(doc => ({ ...doc.data(), uid: doc.id } as Employee));
+        setEmployees(e);
+      });
     }
 
     return () => {
@@ -154,6 +179,7 @@ const App: React.FC = () => {
       if (unsubTransactions) unsubTransactions();
       if (unsubSettings) unsubSettings();
       if (unsubNotifications) unsubNotifications();
+      if (unsubEmployees) unsubEmployees();
     };
   }, [isAuthenticated]);
 
@@ -250,22 +276,24 @@ const App: React.FC = () => {
         total: subtotal + taxAmount,
         status: 'pending', // Re-send to kitchen for prepare
         notes: notes ? (masterOrder.notes ? `${masterOrder.notes} | ${notes}` : notes) : masterOrder.notes,
-        date: new Date().toISOString() // Update date to show it's active
+        date: new Date().toISOString(), // Update date to show it's active
+        salesPerson: currentUser?.name || 'Unknown'
       });
     } else {
-      // Create a fresh new transaction
+      // Create a fresh new transaction with unique ID
       const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
       const taxAmount = subtotal * (settings.taxRate / 100);
 
       const newTransaction: Transaction = {
-        id: Date.now().toString(),
+        id: `TR-${Math.random().toString(36).substr(2, 9).toUpperCase()}`, // More unique than Date.now()
         date: new Date().toISOString(),
         items: [...cart],
         total: subtotal + taxAmount,
         status: 'pending',
         paymentMethod: method,
         tableNumber,
-        notes
+        notes,
+        salesPerson: currentUser?.name || 'Unknown'
       };
 
       await firestoreService.addTransaction(newTransaction);
@@ -277,19 +305,19 @@ const App: React.FC = () => {
   };
 
   const handleSendToCashier = async (transactionId: string) => {
-    await firestoreService.updateTransactionStatus(transactionId, 'waiting_payment');
+    await firestoreService.updateTransaction(transactionId, {
+      status: 'waiting_payment',
+      deliveredBy: currentUser?.name || 'Unknown'
+    });
   };
 
   const handleFinalizePayment = async (transactionId: string, paymentMethod: 'cash' | 'card' | 'online') => {
-    // 1. Update stock
+    // 1. Update stock atomically
     const transaction = transactions.find(t => t.id === transactionId);
     if (transaction) {
       for (const cartItem of transaction.items) {
-        const product = products.find(p => p.id === cartItem.id);
-        if (product) {
-          const newStock = Math.max(0, product.stock - cartItem.quantity);
-          await firestoreService.updateProduct(product.id, { stock: newStock });
-        }
+        // Atomic decrement avoids race conditions between multiple users
+        await firestoreService.decrementStock(cartItem.id, cartItem.quantity);
       }
     }
 
@@ -306,7 +334,8 @@ const App: React.FC = () => {
       await firestoreService.updateTransaction(transactionId, {
         status: finalStatus,
         paymentMethod: paymentMethod,
-        isPaid: true
+        isPaid: true,
+        cashierPerson: currentUser?.name || 'Unknown'
       });
     }
 
@@ -420,11 +449,13 @@ const App: React.FC = () => {
   const renderContent = () => {
     if (!currentUser) return null;
 
-    const role = currentUser.role;
+    const role = currentUser.role.toLowerCase();
+    const perms = Array.isArray(currentUser.permissions) ? currentUser.permissions : [];
+    const hasAll = perms.includes('all');
 
     switch (activeTab) {
       case 'dashboard':
-        if (['admin', 'manager', 'cashier', 'sales'].includes(role)) {
+        if (['admin', 'manager'].includes(role) || hasAll) {
           return <Dashboard
             onProductClick={() => setActiveTab('sales')}
             onNavigate={handleDashboardNavigate}
@@ -437,24 +468,26 @@ const App: React.FC = () => {
         }
         break;
       case 'sales':
-        if (['admin', 'manager', 'cashier', 'sales'].includes(role)) {
+        if (['admin', 'manager', 'sales'].includes(role)) {
           return <SalesView
             products={products}
             addToCart={addToCart}
             settings={settings}
             readyOrders={transactions.filter(t => t.status === 'ready')}
+            transactions={transactions}
+            currentUser={currentUser}
             onCompleteOrder={handleSendToCashier}
           />;
 
         }
         break;
       case 'kitchen':
-        if (['admin', 'manager', 'kitchen'].includes(role)) {
-          return <KitchenView isOnline={isOnline} />;
+        if (['admin', 'manager', 'kitchen', 'cook', 'chef'].includes(role) || perms.includes('kitchen') || hasAll) {
+          return <KitchenView isOnline={isOnline} user={currentUser} />;
         }
         break;
       case 'inventory':
-        if (['admin', 'manager'].includes(role)) {
+        if (['admin', 'manager', 'sales'].includes(role) || perms.includes('inventory') || hasAll) {
           return <InventoryView
             products={products}
             onAddProduct={handleAddProduct}
@@ -463,29 +496,34 @@ const App: React.FC = () => {
             lowStockThreshold={settings.lowStockThreshold}
             storeName={settings.storeName}
             settings={settings}
+            canManage={['admin', 'manager'].includes(role) || hasAll}
           />;
-
         }
         break;
       case 'invoices':
-        if (['admin', 'manager', 'cashier', 'sales'].includes(role)) {
+        if (['admin', 'manager', 'cashier'].includes(role) || perms.includes('invoices') || hasAll) {
           return <InvoicesView
             transactions={transactions}
             onFinalizePayment={handleFinalizePayment}
-            canFinalize={['admin', 'manager', 'cashier'].includes(role)}
+            canFinalize={['admin', 'manager', 'cashier'].includes(role) || hasAll}
             products={products}
             settings={settings}
           />;
         }
         break;
       case 'suppliers':
-        if (['admin', 'manager'].includes(role)) {
+        if (['admin', 'manager', 'cashier'].includes(role) || perms.includes('suppliers') || hasAll) {
           return <SuppliersView />;
         }
         break;
       case 'reports':
-        if (['admin', 'manager'].includes(role)) {
+        if (['admin', 'manager', 'cashier'].includes(role) || perms.includes('reports') || hasAll) {
           return <ReportsView transactions={transactions} />;
+        }
+        break;
+      case 'performance':
+        if (['admin', 'manager'].includes(role) || hasAll) {
+          return <EmployeePerformanceView employees={employees} transactions={transactions} />;
         }
         break;
       case 'settings':
@@ -501,8 +539,25 @@ const App: React.FC = () => {
         break;
     }
 
-    // Default Fallback
-    if (role === 'kitchen') return <KitchenView isOnline={isOnline} />;
+    // Default Fallback based on role
+    if (['kitchen', 'cook', 'chef'].includes(role)) return <KitchenView isOnline={isOnline} user={currentUser} />;
+    if (role === 'sales') return <SalesView
+      products={products}
+      addToCart={addToCart}
+      settings={settings}
+      readyOrders={transactions.filter(t => t.status === 'ready')}
+      transactions={transactions}
+      currentUser={currentUser}
+      onCompleteOrder={handleSendToCashier}
+    />;
+    if (role === 'cashier') return <InvoicesView
+      transactions={transactions}
+      onFinalizePayment={handleFinalizePayment}
+      canFinalize={true}
+      products={products}
+      settings={settings}
+    />;
+
     return <Dashboard
       onProductClick={() => setActiveTab('sales')}
       onNavigate={handleDashboardNavigate}
@@ -510,6 +565,7 @@ const App: React.FC = () => {
       readyOrders={transactions.filter(t => t.status === 'ready')}
       onCompleteOrder={handleSendToCashier}
       isOnline={isOnline}
+      notifications={notifications}
     />;
   };
 

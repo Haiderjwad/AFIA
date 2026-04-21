@@ -152,7 +152,12 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="bg-white/70 backdrop-blur-md p-8 rounded-[3rem] shadow-xl border border-brand-primary/5">
           <div className="flex justify-between items-center mb-8">
             <h3 className="font-black text-2xl text-brand-dark">أداء الموظفين</h3>
-            <button className="text-[10px] uppercase tracking-widest font-black px-6 py-2.5 rounded-xl text-brand-accent bg-brand-accent/5 hover:bg-brand-accent hover:text-white transition-all shadow-sm">كشف التفاصيل</button>
+            <button
+              onClick={() => onNavigate('performance')}
+              className="text-[10px] uppercase tracking-widest font-black px-6 py-2.5 rounded-xl text-brand-accent bg-brand-accent/5 hover:bg-brand-accent hover:text-white transition-all shadow-sm"
+            >
+              كشف التفاصيل
+            </button>
           </div>
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">

@@ -10,7 +10,9 @@ import {
     orderBy,
     getDoc,
     writeBatch,
-    where
+    where,
+    increment,
+    runTransaction
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { MenuItem, Transaction, Supplier, AppSettings, Employee } from "../types";
@@ -31,6 +33,13 @@ export const firestoreService = {
     async updateProduct(id: string, product: Partial<MenuItem>): Promise<void> {
         const docRef = doc(db, "products", id);
         await updateDoc(docRef, product as any);
+    },
+
+    async decrementStock(id: string, quantity: number): Promise<void> {
+        const docRef = doc(db, "products", id);
+        await updateDoc(docRef, {
+            stock: increment(-quantity)
+        });
     },
 
     async deleteProduct(id: string): Promise<void> {
@@ -73,10 +82,11 @@ export const firestoreService = {
     },
 
     async getEmployeeByEmail(email: string): Promise<Employee | null> {
-        const q = query(collection(db, "employees"), where("email", "==", email));
+        // Query both exact and lowercase to be safe
+        const q = query(collection(db, "employees"), where("email", "in", [email, email.toLowerCase(), email.toUpperCase()]));
         const snapshot = await getDocs(q);
         if (!snapshot.empty) {
-            return { ...snapshot.docs[0].data() } as Employee;
+            return { ...snapshot.docs[0].data(), uid: snapshot.docs[0].id } as Employee;
         }
         return null;
     },

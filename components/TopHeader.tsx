@@ -43,7 +43,15 @@ const TopHeader: React.FC<TopHeaderProps> = ({
     const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
     const getRoleLabel = (role: string) => {
-        const roles: any = { admin: 'مدير النظام', manager: 'مدير فرع', cashier: 'كاشير', kitchen: 'شيف المطبخ' };
+        const roles: any = {
+            admin: 'مدير النظام',
+            manager: 'المدير',
+            cashier: 'الكاشير',
+            kitchen: 'طباخ المطبخ',
+            cook: 'طباخ المطبخ',
+            chef: 'طباخ المطبخ',
+            sales: 'المبيعات'
+        };
         return roles[role] || role;
     };
 

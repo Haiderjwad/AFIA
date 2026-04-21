@@ -1,5 +1,5 @@
 import React from 'react';
-import { Truck, ShoppingCart, Home, UtensilsCrossed, Receipt, Box, FileText, Settings } from 'lucide-react';
+import { Truck, ShoppingCart, Home, UtensilsCrossed, Receipt, Box, FileText, Settings, Users } from 'lucide-react';
 import { AppSettings, Employee } from '../types';
 
 interface SidebarProps {
@@ -11,20 +11,28 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ activeItem, setActiveItem, user, settings }) => {
   const menuItems = [
-    { id: 'dashboard', label: 'الرئيسة', icon: Home, roles: ['admin', 'manager', 'cashier', 'sales'] },
-    { id: 'sales', label: 'المبيعات', icon: ShoppingCart, roles: ['admin', 'manager', 'cashier', 'sales'] },
-    { id: 'kitchen', label: 'المطبخ', icon: UtensilsCrossed, roles: ['admin', 'manager', 'kitchen'] },
+    { id: 'dashboard', label: 'الرئيسة', icon: Home, roles: ['admin', 'manager'] },
+    { id: 'sales', label: 'المبيعات', icon: ShoppingCart, roles: ['admin', 'manager', 'sales'] },
+    { id: 'kitchen', label: 'المطبخ', icon: UtensilsCrossed, roles: ['admin', 'manager', 'kitchen', 'cook', 'chef'] },
     { id: 'invoices', label: 'الفواتير', icon: Receipt, roles: ['admin', 'manager', 'cashier'] },
-    { id: 'inventory', label: 'المخزون', icon: Box, roles: ['admin', 'manager'] },
-    { id: 'suppliers', label: 'الموردين', icon: Truck, roles: ['admin', 'manager'] },
-    { id: 'reports', label: 'التقارير المفصلة', icon: FileText, roles: ['admin', 'manager'] },
+    { id: 'inventory', label: 'المخزون', icon: Box, roles: ['admin', 'manager', 'sales'] },
+    { id: 'suppliers', label: 'الموردين', icon: Truck, roles: ['admin', 'manager', 'cashier'] },
+    { id: 'reports', label: 'التقارير المفصلة', icon: FileText, roles: ['admin', 'manager', 'cashier'] },
+    { id: 'performance', label: 'أداء الموظفين', icon: Users, roles: ['admin', 'manager'] },
     { id: 'settings', label: 'الإعدادات', icon: Settings, roles: ['admin', 'manager'] },
   ];
 
-  // Filter items based on user role
-  const filteredItems = menuItems.filter(item =>
-    !user || item.roles.includes(user.role)
-  );
+  // Filter items based on user role and granular permissions
+  const filteredItems = menuItems.filter(item => {
+    if (!user) return true;
+    const userRole = user.role.toLowerCase();
+    const hasRole = item.roles.includes(userRole);
+    const hasPermission = Array.isArray(user.permissions) && (
+      user.permissions.includes(item.id) ||
+      user.permissions.includes('all')
+    );
+    return hasRole || hasPermission;
+  });
 
   return (
     <div className="w-28 bg-brand-primary h-full flex flex-col items-center py-8 rounded-l-[3.5rem] shadow-2xl z-20 transition-all duration-500 relative">
