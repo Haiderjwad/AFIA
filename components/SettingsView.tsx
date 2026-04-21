@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Settings, Bell, CreditCard, Save, Check, ChevronDown, Coins, Users, UserPlus, Trash2, Edit, Shield, Mail, Key, User, ListChecks, X, Hash, Printer, FileText, Smartphone, Image, Upload, Trash, Sparkles, Palette } from 'lucide-react';
 import { AppSettings, Employee, UserRole } from '../types';
 import { firestoreService } from '../services/firestoreService';
+import ConfirmDeleteModal from './ConfirmDeleteModal';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { db } from '../firebase';
@@ -32,6 +33,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
   const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
   // New Employee Form State
   const [empForm, setEmpForm] = useState({
@@ -133,10 +135,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
   };
 
   const handleDeleteEmployee = async (id: string) => {
-    if (confirm('هل أنت متأكد من حذف هذا الموظف؟')) {
-      await firestoreService.deleteEmployee(id);
-      fetchEmployees();
-    }
+    await firestoreService.deleteEmployee(id);
+    fetchEmployees();
   };
 
   return (
@@ -593,7 +593,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                               <Edit size={18} />
                             </button>
                             <button
-                              onClick={() => handleDeleteEmployee(emp.uid || emp.employeeId)}
+                              onClick={() => setItemToDelete(emp.uid || emp.employeeId)}
                               className="p-2.5 bg-gray-50 text-gray-400 hover:bg-red-500 hover:text-white rounded-xl transition-all"
                             >
                               <Trash2 size={18} />
@@ -749,6 +749,15 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
           </div>
         )}
       </div>
+      {/* Global Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!itemToDelete}
+        onClose={() => setItemToDelete(null)}
+        onConfirm={() => itemToDelete && handleDeleteEmployee(itemToDelete)}
+        title="إنهاء صلاحيات الموظف؟"
+        description="هل أنت متأكد من رغبتك في حذف هذا الموظف من النظام؟ سيؤدي ذلك لإيقاف قدرته على تسجيل الدخول وإزالة كافة صلاحياته فوراً."
+      />
+
     </div>
   );
 };

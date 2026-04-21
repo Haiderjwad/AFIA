@@ -38,30 +38,35 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, setActiveItem, user, sett
         </div>
       </div>
 
-      <nav className="flex-1 flex flex-col gap-6 w-full px-4 overflow-y-auto no-scrollbar pt-4">
-        {filteredItems.map((item) => {
-          const isActive = activeItem === item.id;
-          const Icon = item.icon;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveItem(item.id)}
-              className={`flex flex-col items-center justify-center gap-2 p-4 rounded-[2rem] transition-all duration-500 group relative
-                ${isActive
-                  ? 'bg-brand-cream text-brand-primary shadow-2xl scale-110'
-                  : 'text-white/60 hover:text-white hover:bg-white/10'
-                }`}
-            >
-              {isActive && (
-                <div className="absolute right-[-1rem] w-2 h-12 bg-brand-accent rounded-l-full shadow-[0_0_15px_#F8961E]"></div>
-              )}
-              <Icon size={24} className={isActive ? 'text-brand-primary' : 'text-white/70 group-hover:text-brand-secondary group-hover:scale-110 transition-all shadow-sm'} />
-              <span className={`text-[9px] font-black uppercase tracking-tighter text-center leading-tight ${isActive ? 'text-brand-primary' : ''}`}>
-                {item.label}
-              </span>
-            </button>
-          );
-        })}
+      <nav
+        className="flex-1 w-full overflow-y-auto pt-4 px-2"
+        style={{ direction: 'ltr' }}
+      >
+        <div style={{ direction: 'rtl' }} className="flex flex-col gap-6 w-full items-center">
+          {filteredItems.map((item) => {
+            const isActive = activeItem === item.id;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveItem(item.id)}
+                className={`flex flex-col items-center justify-center gap-2 p-4 rounded-[2rem] transition-all duration-500 group relative w-full max-w-[80px]
+                  ${isActive
+                    ? 'bg-brand-cream text-brand-primary shadow-2xl scale-110'
+                    : 'text-white/60 hover:text-white hover:bg-white/10'
+                  }`}
+              >
+                {isActive && (
+                  <div className="absolute right-[-0.5rem] w-2 h-12 bg-brand-accent rounded-l-full shadow-[0_0_15px_#F8961E]"></div>
+                )}
+                <Icon size={24} className={isActive ? 'text-brand-primary' : 'text-white/70 group-hover:text-brand-secondary group-hover:scale-110 transition-all shadow-sm'} />
+                <span className={`text-[9px] font-black uppercase tracking-tighter text-center leading-tight ${isActive ? 'text-brand-primary' : ''}`}>
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </nav>
 
       <div className="mt-auto opacity-40 text-[10px] font-black text-brand-secondary uppercase tracking-[0.3em] -rotate-90 pb-16">

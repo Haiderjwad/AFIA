@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Transaction, MenuItem, AppSettings } from '../types';
+import { Transaction, MenuItem } from '../types';
 import { onSnapshot, collection, query, where, orderBy, doc, updateDoc, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import {
@@ -134,7 +134,15 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, lowStockThreshold =
     }
 
     return (
-        <div className="flex-1 p-8 bg-brand-cream overflow-y-auto flex flex-col h-screen" dir="rtl">
+        <div className="flex-1 p-8 bg-brand-cream overflow-y-auto no-scrollbar relative flex flex-col h-screen" dir="rtl">
+            {/* Background Patterns (Subtle) */}
+            <div className="absolute top-0 left-0 w-64 h-64 opacity-5 pointer-events-none -translate-x-1/2 -translate-y-1/2">
+                <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
+            </div>
+            <div className="absolute bottom-0 right-0 w-96 h-96 opacity-5 pointer-events-none translate-x-1/4 translate-y-1/4 rotate-45">
+                <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
+            </div>
+
 
             {/* Toast Notification */}
             {toast && (
@@ -215,7 +223,9 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, lowStockThreshold =
                                             <div className="text-right">
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-black text-brand-dark text-3xl">
-                                                        {order.tableNumber ? `طاولة ${order.tableNumber}` : `#${order.id.slice(-4)}`}
+                                                        {order.tableNumber === 'Takeaway' ? 'طلب سفري 🛍️' :
+                                                            order.tableNumber ? `طاولة ${order.tableNumber}` :
+                                                                `#${order.id.slice(-4)}`}
                                                     </span>
                                                 </div>
                                                 <div className="text-brand-dark/30 text-xs font-black">{new Date(order.date).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</div>

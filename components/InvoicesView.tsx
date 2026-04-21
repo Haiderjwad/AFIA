@@ -531,7 +531,15 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
     };
 
     return (
-        <div className="flex-1 p-8 bg-[#fdfaf7] overflow-y-auto no-scrollbar" dir="rtl">
+        <div className="flex-1 p-8 bg-brand-cream overflow-y-auto no-scrollbar relative" dir="rtl">
+            {/* Background Patterns (Subtle) */}
+            <div className="absolute top-0 left-0 w-64 h-64 opacity-5 pointer-events-none -translate-x-1/2 -translate-y-1/2">
+                <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
+            </div>
+            <div className="absolute bottom-0 right-0 w-96 h-96 opacity-5 pointer-events-none translate-x-1/4 translate-y-1/4 rotate-45">
+                <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
+            </div>
+
 
             {/* Header Section */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
@@ -606,28 +614,21 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                             className={`bg-white p-7 rounded-[3rem] shadow-xl border cursor-pointer transition-all hover:shadow-2xl hover:-translate-y-1 group relative overflow-hidden flex flex-col h-full ${transaction.isManual ? 'ring-2 ring-red-100 border-red-100' : 'border-gold-100'}`}
                         >
 
-                            {/* Print Button (External) */}
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePrint(transaction);
-                                }}
-                                className="absolute top-6 left-6 w-12 h-12 flex items-center justify-center rounded-2xl bg-brand-light/30 text-brand-primary hover:bg-brand-primary hover:text-white transition-all shadow-sm z-10"
-                                title="طباعة فورية"
-                            >
-                                <Printer size={22} />
-                            </button>
-
                             {transaction.isManual && (
-                                <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-black px-4 py-1.5 rounded-bl-2xl uppercase tracking-tighter">
+                                <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-black px-4 py-1.5 rounded-bl-2xl uppercase tracking-tighter z-20">
                                     Manual / يدوي
                                 </div>
                             )}
 
                             <div className="flex justify-between items-start mb-8">
-                                <div className={`w-16 h-16 rounded-[1.5rem] flex flex-col items-center justify-center font-bold transition-all transform group-hover:rotate-3 ${transaction.isManual ? 'bg-red-50 text-red-600' : 'bg-brand-light/20 text-brand-dark group-hover:bg-brand-primary group-hover:text-white'}`}>
-                                    <span className="text-[10px] opacity-60 uppercase">Invoice</span>
-                                    <span className="text-xl">#{transaction.id.slice(-4)}</span>
+                                <div className={`h-16 px-5 rounded-[1.5rem] flex flex-col items-center justify-center font-bold transition-all transform group-hover:scale-105 ${transaction.isManual || !transaction.tableNumber ? 'bg-red-50 text-red-600' : 'bg-brand-light/20 text-brand-dark group-hover:bg-brand-primary group-hover:text-white'}`}>
+                                    <span className="text-[10px] opacity-60 uppercase mb-0.5">
+                                        {transaction.tableNumber === 'Takeaway' ? 'طريقة الاستلام' : transaction.tableNumber ? 'رقم الطاولة' : 'نوع الطلب'}
+                                    </span>
+                                    <span className="text-lg whitespace-nowrap font-black">
+                                        {transaction.tableNumber === 'Takeaway' ? 'طلب سفري 🛍️' : transaction.tableNumber ? `طاولة ${transaction.tableNumber}` : 'يدوي طوارئ'}
+                                    </span>
+
                                 </div>
 
                                 <div className="flex flex-col items-end gap-2">
@@ -647,18 +648,22 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                             </div>
 
                             <div className="space-y-6 flex-1">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="flex items-center gap-3 text-gray-500 text-sm font-bold">
-                                        <Calendar size={16} className="text-brand-primary" />
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                                    <div className="flex items-center gap-2 text-gray-500 text-[13px] font-bold bg-gray-50/50 p-2 rounded-xl border border-gray-100/30">
+                                        <Calendar size={14} className="text-brand-primary" />
                                         {new Date(transaction.date).toLocaleDateString('ar-EG')}
                                     </div>
-                                    <div className="flex items-center gap-3 text-gray-500 text-sm font-bold">
-                                        <Clock size={16} className="text-brand-primary" />
+                                    <div className="flex items-center gap-2 text-gray-500 text-[13px] font-bold bg-gray-50/50 p-2 rounded-xl border border-gray-100/30">
+                                        <Clock size={14} className="text-brand-primary" />
                                         {new Date(transaction.date).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-gray-400 text-[11px] font-black col-span-2 px-1">
+                                        <FileText size={14} className="text-brand-primary/40" />
+                                        <span>رقم الفاتورة: #{transaction.id.slice(-12)}</span>
                                     </div>
                                 </div>
 
-                                <div className="bg-gray-50 rounded-[2rem] p-5 space-y-3 border border-gray-100">
+                                <div className="bg-gray-50/50 rounded-[2rem] p-5 space-y-3 border border-gray-100/50">
                                     {transaction.items.slice(0, 2).map((item, idx) => (
                                         <div key={idx} className="flex justify-between items-center text-sm">
                                             <span className="text-brand-dark font-black flex items-center gap-2">
@@ -676,7 +681,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                     )}
                                 </div>
 
-                                <div className="flex items-end justify-between pt-4">
+                                <div className="flex items-end justify-between pt-4 border-t border-gray-50">
                                     <div className="flex flex-col">
                                         <span className="text-gray-400 text-[10px] font-black uppercase tracking-tighter">الإجمالي الكلي</span>
                                         <span className={`font-black text-3xl leading-none ${transaction.isManual ? 'text-red-600' : 'text-brand-dark'}`}>
@@ -684,8 +689,21 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                             <span className="text-xs mr-1 opacity-50">{settings?.currency || CURRENCY}</span>
                                         </span>
                                     </div>
-                                    <div className="bg-brand-light/20 p-2 rounded-xl text-brand-primary opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
-                                        <Eye size={20} />
+
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handlePrint(transaction);
+                                            }}
+                                            className="group/print w-12 h-12 flex items-center justify-center rounded-2xl bg-orange-50 text-orange-500 hover:bg-orange-500 hover:text-white transition-all shadow-sm border border-orange-100 hover:scale-110 active:scale-95"
+                                            title="طباعة"
+                                        >
+                                            <Printer size={20} className="group-hover/print:rotate-[-12deg] transition-transform" />
+                                        </button>
+                                        <div className="w-12 h-12 flex items-center justify-center rounded-2xl bg-brand-light/30 text-brand-primary group-hover:bg-brand-primary group-hover:text-white transition-all shadow-sm">
+                                            <Eye size={20} />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -719,8 +737,12 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                     <Receipt size={32} className="text-brand-accent" />
                                 </div>
                                 <div>
-                                    <h2 className="text-2xl font-black">تفاصيل العملية #{viewingTransaction.id.slice(-6)}</h2>
-                                    <p className="text-brand-accent/60 text-sm font-bold uppercase tracking-widest">Transaction Intelligence Report</p>
+                                    <h2 className="text-2xl font-black">
+                                        {viewingTransaction.tableNumber ? `طاولة ${viewingTransaction.tableNumber}` : 'طلب يدوي طوارئ'}
+                                    </h2>
+                                    <p className="text-brand-accent/60 text-[10px] font-black uppercase tracking-widest">
+                                        معرف العملية: #{viewingTransaction.id}
+                                    </p>
                                 </div>
                             </div>
                             <button
@@ -843,16 +865,20 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                             className="bg-white p-6 rounded-[2.5rem] border border-brand-primary/10 shadow-sm hover:shadow-xl transition-all flex items-center justify-between cursor-pointer group"
                                         >
                                             <div className="flex items-center gap-6">
-                                                <div className="w-16 h-16 bg-brand-light/30 rounded-2xl flex flex-col items-center justify-center font-black text-brand-primary group-hover:bg-brand-primary group-hover:text-white transition-all">
-                                                    <span className="text-[10px] opacity-60">ID</span>
-                                                    <span>#{t.id.slice(-4)}</span>
+                                                <div className={`h-16 px-4 rounded-2xl flex flex-col items-center justify-center font-black transition-all ${t.isManual || !t.tableNumber ? 'bg-red-50 text-red-600' : 'bg-brand-light/30 text-brand-primary group-hover:bg-brand-primary group-hover:text-white'}`}>
+                                                    <span className="text-[10px] opacity-60 uppercase mb-0.5">{t.tableNumber === 'Takeaway' ? 'استلام' : t.tableNumber ? 'طاولة' : 'نوع'}</span>
+                                                    <span className="text-lg">{t.tableNumber === 'Takeaway' ? 'سفري 🛍️' : t.tableNumber ? `#${t.tableNumber}` : 'يدوي'}</span>
                                                 </div>
                                                 <div className="space-y-1">
-                                                    <p className="font-black text-coffee-900 text-lg uppercase tracking-tighter">Order Processing Complete</p>
+                                                    <p className="font-black text-coffee-900 text-lg uppercase tracking-tighter">
+                                                        {t.tableNumber === 'Takeaway' ? 'طلب سفري خارجي' : t.tableNumber ? `طلب الطاولة ${t.tableNumber}` : 'طلب يدوي طوارئ'}
+                                                    </p>
+
                                                     <div className="flex items-center gap-4 text-xs text-gray-400 font-bold">
                                                         <span className="flex items-center gap-1"><Calendar size={12} /> {new Date(t.date).toLocaleDateString()}</span>
                                                         <span className="flex items-center gap-1"><Clock size={12} /> {new Date(t.date).toLocaleTimeString()}</span>
-                                                        <span className="px-2 py-0.5 bg-gray-100 rounded-md text-[8px]">{t.paymentMethod}</span>
+                                                        <span className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 rounded-md text-[10px]">#{t.id.slice(-8)}</span>
+                                                        <span className="px-2 py-0.5 bg-brand-primary/10 text-brand-primary rounded-md text-[10px]">{t.paymentMethod === 'cash' ? 'نقدي' : t.paymentMethod === 'card' ? 'بطاقة' : 'إلكتروني'}</span>
                                                     </div>
                                                 </div>
                                             </div>

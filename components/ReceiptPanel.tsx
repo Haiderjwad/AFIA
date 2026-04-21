@@ -34,6 +34,9 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
     const [tableNumber, setTableNumber] = useState<string>('');
     const [orderNote, setOrderNote] = useState<string>('');
     const [isNoteVisible, setIsNoteVisible] = useState(false);
+    const [isTakeaway, setIsTakeaway] = useState(false);
+    const [showError, setShowError] = useState(false);
+
 
     const currency = settings.currency;
     const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
@@ -61,25 +64,41 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
     const initiateCheckout = () => {
         if (cart.length === 0) return;
 
+        if (!isTakeaway && !tableNumber) {
+            setShowError(true);
+            setTimeout(() => setShowError(false), 3000);
+            return;
+        }
+
         // Bypass payment selection and send directly to kitchen/system
-        onCheckout('cash', tableNumber, orderNote);
+        onCheckout('cash', isTakeaway ? 'Takeaway' : tableNumber, orderNote);
         setTableNumber('');
         setOrderNote('');
         setIsNoteVisible(false);
+        setIsTakeaway(false);
     };
+
 
     const handleConfirmPayment = async () => {
         if (!selectedMethod) return;
 
+        if (!isTakeaway && !tableNumber) {
+            setShowError(true);
+            setTimeout(() => setShowError(false), 3000);
+            return;
+        }
+
         setIsProcessing(true);
-        await onCheckout(selectedMethod, tableNumber, orderNote);
+        await onCheckout(selectedMethod, isTakeaway ? 'Takeaway' : tableNumber, orderNote);
         setIsProcessing(false);
         setShowPaymentModal(false);
         setUpsellSuggestion("");
         setTableNumber('');
         setOrderNote('');
         setIsNoteVisible(false);
+        setIsTakeaway(false);
     };
+
 
     // Helper to render payment method button
     const PaymentMethodButton = ({
@@ -118,20 +137,48 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                     <span className="text-brand-accent text-xs tracking-[0.2em] uppercase font-black">Digital POS System</span>
                 </div>
 
-                {/* Table & Notes Selection - Moved to Top */}
+                {/* Takeaway Toggle */}
+                <div className="px-4 py-2 shrink-0">
+                    <label className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer group ${isTakeaway ? 'bg-brand-primary/10 border-brand-primary' : 'bg-white border-brand-primary/5 hover:border-brand-primary/20'}`}>
+                        <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${isTakeaway ? 'bg-brand-primary text-white shadow-lg' : 'bg-brand-primary/10 text-brand-primary'}`}>
+                                <Coffee size={20} />
+                            </div>
+                            <span className={`font-black text-sm ${isTakeaway ? 'text-brand-dark' : 'text-brand-dark/40'}`}>طلب سفري (Takeaway)</span>
+                        </div>
+                        <div className="relative">
+                            <input
+                                type="checkbox"
+                                checked={isTakeaway}
+                                onChange={(e) => {
+                                    setIsTakeaway(e.target.checked);
+                                    if (e.target.checked) setTableNumber('');
+                                }}
+                                className="sr-only peer"
+                            />
+                            <div className="w-12 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-primary"></div>
+                        </div>
+                    </label>
+                </div>
+
+                {/* Table & Notes Selection */}
                 <div className="px-4 py-4 border-b border-brand-primary/5 bg-white/50 space-y-3 shrink-0">
                     <div className="flex items-center gap-2">
                         {/* Table Selection Dropdown */}
-                        <div className="flex-1 relative group">
+                        <div className={`flex-1 relative group transition-all ${isTakeaway ? 'opacity-50 grayscale' : 'opacity-100'}`}>
                             <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-brand-secondary transition-colors">
                                 <Hash size={18} className="text-brand-primary" />
                             </div>
                             <select
-                                value={tableNumber}
-                                onChange={(e) => setTableNumber(e.target.value)}
-                                className="w-full pr-10 pl-10 py-3 bg-white border-2 border-brand-primary/10 rounded-2xl text-sm focus:ring-4 focus:ring-brand-primary/5 border-transparent outline-none font-bold text-brand-dark appearance-none transition-all shadow-sm cursor-pointer"
+                                disabled={isTakeaway}
+                                value={isTakeaway ? "" : tableNumber}
+                                onChange={(e) => {
+                                    setTableNumber(e.target.value);
+                                    setShowError(false);
+                                }}
+                                className={`w-full pr-10 pl-10 py-3 bg-white border-2 rounded-2xl text-sm outline-none font-bold text-brand-dark appearance-none transition-all shadow-sm ${!isTakeaway && showError ? 'border-red-500 ring-4 ring-red-500/10' : 'border-brand-primary/10 focus:ring-4 focus:ring-brand-primary/5 focus:border-brand-primary'} ${isTakeaway ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                             >
-                                <option value="">تحديد طاولة (سفري)</option>
+                                <option value="" disabled>{isTakeaway ? 'طلب سفري نشط' : 'اختر رقم الطاولة (إجباري)'}</option>
                                 {Array.from({ length: settings.tablesCount || 0 }).map((_, i) => (
                                     <option key={i + 1} value={`${i + 1}`}>طاولة {i + 1}</option>
                                 ))}
@@ -140,6 +187,7 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                                 <ArrowLeft size={16} className="-rotate-90" />
                             </div>
                         </div>
+
 
                         {/* Note Toggle Button */}
                         <button

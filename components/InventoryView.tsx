@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { MenuItem } from '../types';
 import { Package, Search, Filter, Plus, X, Tag, DollarSign, Coffee, Trash2, AlertTriangle, Edit, Layers, FileText, QrCode, ArrowLeft, Check } from 'lucide-react';
 import DigitalMenuModal from './DigitalMenuModal';
+import ConfirmDeleteModal from './ConfirmDeleteModal';
 
 interface InventoryViewProps {
   products: MenuItem[];
@@ -120,7 +121,15 @@ const InventoryView: React.FC<InventoryViewProps> = ({
   };
 
   return (
-    <div className="flex-1 p-8 overflow-y-auto animate-in fade-in slide-in-from-bottom-4 relative">
+    <div className="flex-1 p-8 bg-brand-cream overflow-y-auto animate-in fade-in slide-in-from-bottom-4 relative no-scrollbar">
+      {/* Background Patterns (Subtle) */}
+      <div className="absolute top-0 left-0 w-64 h-64 opacity-5 pointer-events-none -translate-x-1/2 -translate-y-1/2">
+        <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
+      </div>
+      <div className="absolute bottom-0 right-0 w-96 h-96 opacity-5 pointer-events-none translate-x-1/4 translate-y-1/4 rotate-45">
+        <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
+      </div>
+
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-coffee-900 mb-2">إدارة المخزون</h1>
@@ -399,32 +408,14 @@ const InventoryView: React.FC<InventoryViewProps> = ({
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
-      {itemToDelete && (
-        <div className="absolute inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden p-6 text-center animate-in zoom-in-95">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
-              <AlertTriangle size={32} />
-            </div>
-            <h3 className="text-xl font-bold text-coffee-900 mb-2">حذف المنتج؟</h3>
-            <p className="text-gray-500 mb-6">هل أنت متأكد من رغبتك في حذف هذا المنتج؟ لا يمكن التراجع عن هذا الإجراء.</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setItemToDelete(null)}
-                className="flex-1 py-3 rounded-xl border border-gray-200 font-bold text-gray-600 hover:bg-gray-50 transition-colors"
-              >
-                إلغاء
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="flex-1 py-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 transition-colors shadow-lg shadow-red-200"
-              >
-                حذف
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Global Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!itemToDelete}
+        onClose={() => setItemToDelete(null)}
+        onConfirm={confirmDelete}
+        title="حذف المنتج نهائياً؟"
+        description="هل أنت متأكد من رغبتك في حذف هذا المنتج من المخزون؟ سيؤدي ذلك لإزالته من القائمة ومنيو العرض الإلكتروني فوراً."
+      />
 
       <DigitalMenuModal
         isOpen={isMenuModalOpen}

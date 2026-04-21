@@ -95,7 +95,15 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions }) => {
     };
 
     return (
-        <div className="flex-1 p-8 bg-[#fdfaf7] overflow-y-auto" dir="rtl">
+        <div className="flex-1 p-8 bg-brand-cream overflow-y-auto no-scrollbar relative" dir="rtl">
+            {/* Background Patterns (Subtle) */}
+            <div className="absolute top-0 left-0 w-64 h-64 opacity-5 pointer-events-none -translate-x-1/2 -translate-y-1/2">
+                <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
+            </div>
+            <div className="absolute bottom-0 right-0 w-96 h-96 opacity-5 pointer-events-none translate-x-1/4 translate-y-1/4 rotate-45">
+                <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
+            </div>
+
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
                 <div>
@@ -109,8 +117,8 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions }) => {
                             key={p}
                             onClick={() => setPeriod(p)}
                             className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl font-bold transition-all ${period === p
-                                    ? 'bg-coffee-900 text-gold-200 shadow-lg'
-                                    : 'text-gray-400 hover:text-coffee-900'
+                                ? 'bg-coffee-900 text-gold-200 shadow-lg'
+                                : 'text-gray-400 hover:text-coffee-900'
                                 }`}
                         >
                             {periodLabels[p]}

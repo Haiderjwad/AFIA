@@ -28,9 +28,14 @@ const SalesView: React.FC<SalesViewProps> = ({ products, addToCart, settings, re
     return (
         <div className="flex-1 flex flex-col h-screen overflow-hidden bg-brand-cream p-6 text-right relative" dir="rtl">
             {/* Background Leaf Patterns */}
-            <div className="absolute top-0 left-0 w-64 h-64 opacity-[0.03] pointer-events-none -translate-x-1/2 -translate-y-1/2">
+            <div className="absolute top-0 left-0 w-64 h-64 opacity-5 pointer-events-none -translate-x-1/2 -translate-y-1/2">
                 <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
             </div>
+            <div className="absolute bottom-0 right-0 w-96 h-96 opacity-5 pointer-events-none translate-x-1/4 translate-y-1/4 rotate-45">
+                <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
+            </div>
+
+
 
             {/* Ready Orders Notification */}
             {readyOrders.length > 0 && showReadyAlert && (
@@ -53,8 +58,11 @@ const SalesView: React.FC<SalesViewProps> = ({ products, addToCart, settings, re
                                 className="bg-white/10 hover:bg-brand-accent px-4 py-2 rounded-xl text-xs font-black border border-white/20 transition-all flex items-center gap-2 shadow-sm"
                             >
                                 <PackageCheck size={14} />
-                                #{order.id.slice(-4)}
+                                {order.tableNumber === 'Takeaway' ? 'سفري 🛍️' :
+                                    order.tableNumber ? `طاولة ${order.tableNumber}` :
+                                        `#${order.id.slice(-4)}`}
                             </button>
+
                         ))}
                     </div>
                     <button
