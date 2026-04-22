@@ -290,33 +290,43 @@ const App: React.FC = () => {
   const handleSendToKitchen = async (method: 'cash' | 'card' | 'online', tableNumber?: string, notes?: string) => {
     if (cart.length === 0) return;
 
-    // -- SMART TABLE MANAGEMENT --
+    // ════════════════════════════════════════════════════════════════
+    // SMART TABLE ORDER MANAGEMENT — Stage-Aware Merging
+    //
+    // Rules:
+    //   1. Find active (non-completed, non-paid) orders for this table.
+    //   2. Among those, find orders that are STILL IN EARLY STAGES
+    //      (pending / preparing) — these can absorb new items without
+    //      disrupting the kitchen flow.
+    //   3. If a "mergeable" early-stage order exists → append cart items
+    //      to it and update. The kitchen sees updated items instantly.
+    //   4. If all existing orders are in ADVANCED stages (ready, waiting_payment)
+    //      → create a brand-new independent transaction. Those advanced
+    //      orders are NOT touched, so they keep their current status.
+    //   5. Takeaway orders always create a fresh transaction (no merging).
+    // ════════════════════════════════════════════════════════════════
+
+    const EARLY_STAGES = ['pending', 'preparing'];
+    const ADVANCED_STAGES = ['ready', 'waiting_payment'];
+
     const activeTableOrders = (tableNumber && tableNumber !== 'Takeaway')
-      ? transactions.filter(t => t.tableNumber === tableNumber && !['completed', 'refunded'].includes(t.status) && !t.isPaid)
+      ? transactions.filter(t =>
+        t.tableNumber === tableNumber &&
+        !['completed', 'refunded'].includes(t.status) &&
+        !t.isPaid
+      )
       : [];
 
-    if (activeTableOrders.length > 0) {
-      // 1. Pick the first one as our "Master" transaction
-      const masterOrder = activeTableOrders[0];
-      const otherOrders = activeTableOrders.slice(1);
+    // Find an early-stage order we can safely merge into
+    const mergeCandidates = activeTableOrders.filter(t => EARLY_STAGES.includes(t.status));
 
-      // 2. Consolidate items from all "other" open orders into the Master's item list
-      let consolidatedItems = [...masterOrder.items];
+    if (mergeCandidates.length > 0) {
+      // ── PATH A: Merge into the earliest in-kitchen order ──────────
+      // Pick the one closest to completion within early stages (prefer 'preparing')
+      const masterOrder = mergeCandidates.find(t => t.status === 'preparing') || mergeCandidates[0];
 
-      for (const other of otherOrders) {
-        other.items.forEach(otherItem => {
-          const existing = consolidatedItems.find(ci => ci.id === otherItem.id);
-          if (existing) {
-            existing.quantity += otherItem.quantity;
-          } else {
-            consolidatedItems.push({ ...otherItem });
-          }
-        });
-        // Delete the redundant "extra" transaction from Firestore
-        await firestoreService.deleteTransaction(other.id);
-      }
-
-      // 3. Finally, merge the CURRENT cart items into the consolidated Master list
+      // Merge cart into master
+      const consolidatedItems = [...masterOrder.items];
       cart.forEach(cartItem => {
         const existing = consolidatedItems.find(ci => ci.id === cartItem.id);
         if (existing) {
@@ -326,25 +336,43 @@ const App: React.FC = () => {
         }
       });
 
-      // 4. Calculate new total and update the Master transaction
       const subtotal = consolidatedItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
       const taxAmount = subtotal * (settings.taxRate / 100);
 
+      // Keep the master's current status — do NOT reset to 'pending'
+      // But if it was 'pending', re-trigger kitchen view with updated items
       await firestoreService.updateTransaction(masterOrder.id, {
         items: consolidatedItems,
         total: subtotal + taxAmount,
-        status: 'pending', // Re-send to kitchen for prepare
-        notes: notes ? (masterOrder.notes ? `${masterOrder.notes} | ${notes}` : notes) : masterOrder.notes,
-        date: new Date().toISOString(), // Update date to show it's active
+        // Preserve existing status: a 'preparing' order stays 'preparing'
+        // A 'pending' order stays 'pending' — kitchen picks it naturally
+        notes: notes
+          ? (masterOrder.notes ? `${masterOrder.notes} | ${notes}` : notes)
+          : masterOrder.notes,
         salesPerson: currentUser?.name || 'Unknown'
       });
+
+      // Clean up any OTHER early-stage duplicates for the same table
+      // (edge case: multiple pending orders for same table)
+      const otherEarlyOrders = mergeCandidates.filter(t => t.id !== masterOrder.id);
+      for (const dup of otherEarlyOrders) {
+        const dupItems = dup.items;
+        dupItems.forEach(dupItem => {
+          const existing = consolidatedItems.find(ci => ci.id === dupItem.id);
+          if (!existing) consolidatedItems.push({ ...dupItem }); // already merged above
+        });
+        await firestoreService.deleteTransaction(dup.id);
+      }
+
     } else {
-      // Create a fresh new transaction with unique ID
+      // ── PATH B: All existing orders are advanced (ready/waiting_payment)
+      //    OR there are no existing orders at all.
+      //    → Create an independent new transaction. Advanced orders are untouched.
       const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
       const taxAmount = subtotal * (settings.taxRate / 100);
 
       const newTransaction: Transaction = {
-        id: `TR-${Math.random().toString(36).substr(2, 9).toUpperCase()}`, // More unique than Date.now()
+        id: `TR-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
         date: new Date().toISOString(),
         items: [...cart],
         total: subtotal + taxAmount,
@@ -363,6 +391,7 @@ const App: React.FC = () => {
     soundService.playSuccess();
     setTimeout(() => setShowSuccessModal(false), 2000);
   };
+
 
   const handleSendToCashier = async (transactionId: string) => {
     await firestoreService.updateTransaction(transactionId, {

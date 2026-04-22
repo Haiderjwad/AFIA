@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Transaction, MenuItem, Employee } from '../types';
-import { onSnapshot, collection, query, where, orderBy, doc, updateDoc, addDoc } from 'firebase/firestore';
+import { onSnapshot, collection, query, where, orderBy, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import {
     ChefHat, Clock, CheckCircle2, AlertTriangle,
@@ -69,9 +69,65 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, user, lowStockThres
                 status: newStatus,
                 kitchenPerson: user?.name || 'Kitchen'
             });
+
+            // ════════════════════════════════════════════════════════════════
+            // SAME-STAGE AUTO-MERGE LOGIC
+            //
+            // After updating this order's status, check if another order for
+            // the SAME table is already sitting in the SAME new stage.
+            // If yes → merge both into the older one and delete this newer one.
+            // This handles the case: Order A is 'ready', new Order B reaches
+            // 'ready' → they belong to the same table → merge cleanly.
+            // ════════════════════════════════════════════════════════════════
+            const currentOrder = orders.find(o => o.id === orderId);
+            if (
+                currentOrder?.tableNumber &&
+                currentOrder.tableNumber !== 'Takeaway' &&
+                (newStatus === 'ready' || newStatus === 'preparing')
+            ) {
+                // Find other orders for the same table that are ALREADY in this exact stage
+                const sameStageOrders = orders.filter(o =>
+                    o.id !== orderId &&
+                    o.tableNumber === currentOrder.tableNumber &&
+                    o.status === newStatus // already there — same stage
+                );
+
+                if (sameStageOrders.length > 0) {
+                    // Pick the oldest as master (the one that arrived first)
+                    const masterOrder = sameStageOrders.sort(
+                        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+                    )[0];
+
+                    // Merge current order's items into master
+                    const merged = [...masterOrder.items];
+                    currentOrder.items.forEach(item => {
+                        const existing = merged.find(m => m.id === item.id);
+                        if (existing) {
+                            existing.quantity += item.quantity;
+                        } else {
+                            merged.push({ ...item });
+                        }
+                    });
+
+                    // Update master with merged items
+                    await updateDoc(doc(db, "transactions", masterOrder.id), {
+                        items: merged,
+                        notes: currentOrder.notes
+                            ? (masterOrder.notes ? `${masterOrder.notes} | ${currentOrder.notes}` : currentOrder.notes)
+                            : masterOrder.notes,
+                    });
+
+                    // Delete the current order (it's been absorbed into master)
+                    await deleteDoc(doc(db, "transactions", orderId));
+
+                    showToast(`تم دمج الطلبات المتشابهة للطاولة ${currentOrder.tableNumber} ✓`);
+                    return; // Exit early — status already updated above, then merged
+                }
+            }
+
             const statusLabels: Record<string, string> = {
-                preparing: 'جاري العمل على الطلب',
-                ready: 'الطلب جاهز للتسليم ✓',
+                preparing: 'جاري العمل على الطلب 👨‍🍳',
+                ready: 'الطلب جاهز للتسليم ✅',
                 completed: 'تم تسليم الطلب',
             };
             showToast(statusLabels[newStatus] || 'تم تحديث الحالة');
@@ -82,6 +138,7 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, user, lowStockThres
             setLoadingOrderId(null);
         }
     };
+
 
 
     const handleUpdateStock = async (id: string, newStock: number) => {
@@ -377,8 +434,8 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, user, lowStockThres
                                             <button
                                                 onClick={() => handleManualWarning(p)}
                                                 className={`col-span-3 py-4 rounded-2xl text-[10px] font-black transition-all flex items-center justify-center gap-2 border-2 active:scale-95 shadow-lg ${isLow
-                                                        ? 'bg-red-600 text-white border-red-600 shadow-red-200 animate-pulse'
-                                                        : 'bg-white text-brand-dark border-brand-dark/10 hover:border-brand-primary hover:text-brand-primary'
+                                                    ? 'bg-red-600 text-white border-red-600 shadow-red-200 animate-pulse'
+                                                    : 'bg-white text-brand-dark border-brand-dark/10 hover:border-brand-primary hover:text-brand-primary'
                                                     }`}
                                             >
                                                 <Bell size={14} /> تنبيه الإدارة للمبيعات

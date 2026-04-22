@@ -62,7 +62,21 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
                 logging: false,
                 allowTaint: true,
                 imageTimeout: 15000,
-                removeContainer: true
+                removeContainer: true,
+                onclone: (clonedDoc) => {
+                    // Fix for html2canvas oklch/oklab unsupported error
+                    const elementsWithModernColors = clonedDoc.querySelectorAll('*');
+                    elementsWithModernColors.forEach((el: any) => {
+                        const style = window.getComputedStyle(el);
+                        ['backgroundColor', 'color', 'borderColor', 'outlineColor'].forEach(prop => {
+                            const value = style[prop as any];
+                            if (value && (value.includes('oklch') || value.includes('oklab'))) {
+                                // Fallback to a safe color if modern color functions are detected
+                                el.style[prop] = 'rgb(45, 106, 79)'; // Default to brand primary
+                            }
+                        });
+                    });
+                }
             });
 
             // Stage 3: PDF Assembly

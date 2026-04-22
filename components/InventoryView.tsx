@@ -103,13 +103,10 @@ const InventoryView: React.FC<InventoryViewProps> = ({
   };
 
   const openEditModal = (product: MenuItem) => {
-    const isIQD = settings.currency === 'د.ع' || settings.currency === 'IQD';
-    const factor = isIQD ? 1000 : 1;
-
     setEditingId(product.id);
     setFormData({
       name: product.name,
-      price: (product.price * factor).toString(),
+      price: product.price.toString(),
       category: product.category,
       stock: product.stock.toString(),
       notes: product.notes || ''
@@ -129,9 +126,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({
       message: 'يتم الآن مزامنة البيانات مع الخادم السحابي وتحديث قواعد البيانات، يرجى الانتظار...'
     });
 
-    const isIQD = settings.currency === 'د.ع' || settings.currency === 'IQD';
-    const factor = isIQD ? 1000 : 1;
-    const priceVal = parseFloat(formData.price) / factor;
+    const priceVal = parseFloat(formData.price);
     const stockVal = parseInt(formData.stock);
 
     try {
@@ -154,7 +149,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({
       } else {
         // Add new
         await onAddProduct({
-          id: Date.now().toString(),
+          id: '', // Firestore will assign this
           name: formData.name,
           price: priceVal,
           category: formData.category,
@@ -234,59 +229,64 @@ const InventoryView: React.FC<InventoryViewProps> = ({
         <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
       </div>
 
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6 transition-all relative z-10">
         <div>
-          <h1 className="text-3xl font-bold text-coffee-900 mb-2">إدارة المخزون</h1>
-          <p className="text-gray-500">متابعة المنتجات وحالة المخزون</p>
+          <h1 className="text-4xl font-black text-brand-dark mb-2 tracking-tighter flex items-center gap-3">
+            <div className="w-2 h-10 bg-brand-primary rounded-full"></div>
+            حوكمة الأصول والمخزون
+          </h1>
+          <p className="text-brand-dark/40 font-bold text-sm">نظام تتبع المنتجات الرقمية والمخزون السحابي</p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
           <button
             onClick={() => setIsMenuModalOpen(true)}
-            className="bg-white border-2 border-brand-primary/20 text-brand-primary px-6 py-3 rounded-2xl transition-all shadow-sm flex items-center gap-2 font-black hover:border-brand-primary hover:bg-brand-primary/5 active:scale-95"
+            className="bg-white border-2 border-brand-primary/10 text-brand-dark px-8 py-3.5 rounded-[1.8rem] transition-all shadow-sm flex items-center gap-3 font-black hover:border-brand-primary hover:bg-brand-primary/5 active:scale-95 group"
           >
-            <QrCode size={20} />
-            إنشاء منيو إلكتروني
+            <QrCode size={20} className="text-brand-primary group-hover:rotate-12 transition-transform" />
+            توليد المنيو الذكي
           </button>
           {canManage && (
             <button
               onClick={openAddModal}
-              className="bg-brand-primary hover:bg-brand-secondary text-white px-8 py-3 rounded-2xl transition-all shadow-xl shadow-brand-primary/20 flex items-center gap-2 font-black active:scale-95"
+              className="bg-brand-primary hover:bg-brand-secondary text-white px-10 py-3.5 rounded-[1.8rem] transition-all shadow-2xl shadow-brand-primary/20 flex items-center gap-3 font-black active:scale-95"
             >
               <Plus size={20} />
-              إضافة منتج جديد
+              إدراج أصل جديد
             </button>
           )}
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-xl border border-gold-100 overflow-hidden">
+      <div className="bg-white/80 backdrop-blur-xl rounded-[3.5rem] shadow-2xl border border-brand-primary/5 overflow-hidden transition-all duration-700 relative z-10">
         {/* Toolbar */}
-        <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+        <div className="p-10 border-b border-gray-50 flex flex-col xl:flex-row gap-6 bg-gray-50/20">
+          <div className="flex-1 relative group">
+            <div className="absolute inset-y-0 right-0 pr-6 flex items-center pointer-events-none">
+              <Search className="text-gray-300 group-focus-within:text-brand-primary transition-colors" size={24} />
+            </div>
             <input
               type="text"
-              placeholder="بحث عن منتج..."
+              placeholder="ابحث عن اسم المنتج، التصنيف، أو كود المعرف..."
               value={searchQuery}
               onChange={(e) => {
                 const val = e.target.value;
                 setSearchQuery(val);
                 if (onSearchChange) onSearchChange(val);
               }}
-              className="w-full pl-4 pr-12 py-3 bg-gray-50 rounded-xl border-none focus:ring-2 focus:ring-gold-400 outline-none transition-all text-coffee-900 font-medium placeholder-gray-400"
+              className="w-full pr-16 pl-8 py-5 bg-white rounded-[2rem] border-2 border-transparent focus:border-brand-primary/20 focus:ring-8 focus:ring-brand-primary/5 outline-none transition-all text-brand-dark font-black placeholder-gray-200 shadow-inner"
             />
           </div>
 
-          <div className="flex gap-4 overflow-x-auto pb-1 md:pb-0">
+          <div className="flex flex-wrap gap-4">
             {/* Category Filter */}
-            <div className="relative shrink-0">
-              <Filter className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" size={18} />
+            <div className="relative group">
+              <Filter className="absolute right-5 top-1/2 -translate-y-1/2 text-brand-primary/30 group-hover:text-brand-primary transition-colors pointer-events-none" size={20} />
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="h-full pl-4 pr-10 py-3 bg-gray-50 rounded-xl text-coffee-900 font-bold border-none outline-none focus:ring-2 focus:ring-gold-400 appearance-none cursor-pointer min-w-[160px]"
+                className="h-full pr-14 pl-10 py-5 bg-white rounded-[1.8rem] text-brand-dark font-black border-2 border-transparent hover:border-brand-primary/10 outline-none focus:ring-8 focus:ring-brand-primary/5 appearance-none cursor-pointer min-w-[200px] shadow-sm transition-all"
               >
-                <option value="All">جميع التصنيفات</option>
+                <option value="All">جميع الأقسام</option>
                 {categories.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
@@ -294,86 +294,93 @@ const InventoryView: React.FC<InventoryViewProps> = ({
             </div>
 
             {/* Stock Status Filter */}
-            <div className="relative shrink-0">
-              <AlertTriangle className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" size={18} />
+            <div className="relative group">
+              <AlertTriangle className="absolute right-5 top-1/2 -translate-y-1/2 text-brand-primary/30 group-hover:text-brand-primary transition-colors pointer-events-none" size={20} />
               <select
                 value={stockStatus}
                 onChange={(e) => setStockStatus(e.target.value)}
-                className="h-full pl-4 pr-10 py-3 bg-gray-50 rounded-xl text-coffee-900 font-bold border-none outline-none focus:ring-2 focus:ring-gold-400 appearance-none cursor-pointer min-w-[160px]"
+                className="h-full pr-14 pl-10 py-5 bg-white rounded-[1.8rem] text-brand-dark font-black border-2 border-transparent hover:border-brand-primary/10 outline-none focus:ring-8 focus:ring-brand-primary/5 appearance-none cursor-pointer min-w-[200px] shadow-sm transition-all"
               >
-                <option value="All">جميع الحالات</option>
-                <option value="Low">مخزون منخفض</option>
-                <option value="In Stock">متوفر</option>
+                <option value="All">وضعية المخزون</option>
+                <option value="Low">مخزون حرج ⚠️</option>
+                <option value="In Stock">متوفر بالمخازن ✅</option>
               </select>
             </div>
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gold-50 text-coffee-900">
-              <tr>
-                <th className="px-6 py-4 text-right">المعرف</th>
-                <th className="px-6 py-4 text-right">المنتج</th>
-                <th className="px-6 py-4 text-right">التصنيف</th>
-                <th className="px-6 py-4 text-right">السعر</th>
-                <th className="px-6 py-4 text-right">المخزون</th>
-                <th className="px-6 py-4 text-right">الحالة</th>
-                {canManage && <th className="px-6 py-4 text-right">إجراءات</th>}
+        {/* Table Container */}
+        <div className="overflow-x-auto premium-scrollbar px-2">
+          <table className="w-full text-right border-collapse">
+            <thead>
+              <tr className="bg-brand-dark/5 border-b border-brand-primary/10">
+                <th className="px-8 py-6 text-[10px] font-black text-brand-secondary uppercase tracking-widest">المعرف</th>
+                <th className="px-8 py-6 text-[10px] font-black text-brand-secondary uppercase tracking-widest">المنتج</th>
+                <th className="px-8 py-6 text-[10px] font-black text-brand-secondary uppercase tracking-widest">التصنيف</th>
+                <th className="px-8 py-6 text-[10px] font-black text-brand-secondary uppercase tracking-widest text-center">السعر</th>
+                <th className="px-8 py-6 text-[10px] font-black text-brand-secondary uppercase tracking-widest text-center">المخزون</th>
+                <th className="px-8 py-6 text-[10px] font-black text-brand-secondary uppercase tracking-widest text-center">الحالة</th>
+                {canManage && <th className="px-8 py-6 text-[10px] font-black text-brand-secondary uppercase tracking-widest text-left">إجراءات</th>}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-5">
+            <tbody className="divide-y divide-gray-50">
               {filteredProducts.length > 0 ? (
                 filteredProducts.map((product) => {
                   const stock = product.stock;
                   const isLowStock = stock <= lowStockThreshold;
-                  const status = isLowStock ? 'منخفض' : 'متوفر';
-                  const statusColor = isLowStock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
-
-                  // Professional Highlight logic
-                  const isHighlighted = initialSearchQuery && product.name.toLowerCase() === initialSearchQuery.toLowerCase();
+                  const statusLabel = isLowStock ? 'مخزون حرج' : 'متوفر بالمخزن';
+                  const isHighlighted = initialSearchQuery && product.name.toLowerCase().includes(initialSearchQuery.toLowerCase());
 
                   return (
                     <tr
                       key={product.id}
-                      className={`hover:bg-gray-50 transition-all duration-700 ${isHighlighted ? 'bg-brand-primary/5 ring-2 ring-brand-primary ring-inset' : ''}`}
+                      className={`group transition-all duration-300 hover:bg-brand-primary/5 ${isHighlighted ? 'bg-brand-primary/5' : ''}`}
                     >
-                      <td className="px-6 py-4 text-gray-500">#{product.id.slice(-4)}</td>
-                      <td className="px-6 py-4 font-bold text-coffee-900 flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg transition-transform ${isHighlighted ? 'scale-110 bg-brand-primary text-white shadow-lg' : 'bg-gold-100 text-gold-800'}`}>
-                          ☕
-                        </div>
-                        <div>
-                          <div className={isHighlighted ? 'text-brand-primary' : ''}>{product.name}</div>
-                          {product.notes && <div className="text-xs text-gray-400 font-normal truncate max-w-[150px]">{product.notes}</div>}
+                      <td className="px-8 py-6">
+                        <span className="font-mono text-xs text-gray-400 opacity-50">#{product.id.slice(-6)}</span>
+                      </td>
+                      <td className="px-8 py-6">
+                        <div className="flex items-center gap-4">
+                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-inner transition-transform group-hover:scale-110 group-hover:rotate-6 bg-brand-light/30 text-brand-primary ${isHighlighted ? 'ring-4 ring-brand-primary/20' : ''}`}>
+                            {product.category === 'Coffee' ? '☕' : product.category === 'Tea' ? '🍵' : product.category === 'Dessert' ? '🍰' : '🍔'}
+                          </div>
+                          <div>
+                            <div className="font-black text-brand-dark group-hover:text-brand-primary transition-colors">{product.name}</div>
+                            <div className="text-[10px] text-gray-400 font-bold opacity-60">أصول مخزنية معتمدة</div>
+                          </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-gray-600">
-                        <span className="bg-gray-100 px-3 py-1 rounded-full text-xs font-bold">{product.category}</span>
+                      <td className="px-8 py-6">
+                        <span className="bg-gray-100 text-gray-500 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider">{product.category}</span>
                       </td>
-                      <td className="px-6 py-4 font-bold text-coffee-900">{formatCurrency(product.price, settings.currency)}</td>
-                      <td className="px-6 py-4 font-bold text-coffee-900">{stock} وحدة</td>
-                      <td className="px-6 py-4">
-                        <span className={`${statusColor} px-3 py-1 rounded-full text-xs font-bold flex w-fit items-center gap-1`}>
-                          {isLowStock && <AlertTriangle size={12} />}
-                          {status}
-                        </span>
+                      <td className="px-8 py-6 text-center">
+                        <span className="font-black text-brand-dark text-lg">{formatCurrency(product.price, settings.currency)}</span>
+                      </td>
+                      <td className="px-8 py-6 text-center">
+                        <span className={`font-black text-md ${isLowStock ? 'text-red-500' : 'text-brand-primary'}`}>{stock} قطعة</span>
+                      </td>
+                      <td className="px-8 py-6">
+                        <div className="flex justify-center">
+                          <span className={`px-4 py-1.5 rounded-full text-[10px] font-black flex items-center gap-2 border shadow-sm ${isLowStock ? 'bg-red-50 text-red-600 border-red-100 animate-pulse' : 'bg-green-50 text-green-700 border-green-100'}`}>
+                            <div className={`w-1.5 h-1.5 rounded-full ${isLowStock ? 'bg-red-600' : 'bg-green-600'}`}></div>
+                            {statusLabel}
+                          </span>
+                        </div>
                       </td>
                       {canManage && (
-                        <td className="px-6 py-4">
-                          <div className="flex gap-2">
+                        <td className="px-8 py-6">
+                          <div className="flex justify-start gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={() => openEditModal(product)}
-                              className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
-                              title="تعديل المنتج"
+                              className="w-10 h-10 flex items-center justify-center bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                              title="تعديل"
                             >
                               <Edit size={18} />
                             </button>
                             <button
                               onClick={() => setItemToDelete(product.id)}
-                              className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors"
-                              title="حذف المنتج"
+                              className="w-10 h-10 flex items-center justify-center bg-red-50 text-red-500 rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-sm"
+                              title="حذف"
                             >
                               <Trash2 size={18} />
                             </button>
@@ -385,10 +392,15 @@ const InventoryView: React.FC<InventoryViewProps> = ({
                 })
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-400">
-                    <div className="flex flex-col items-center gap-2">
-                      <Search size={32} className="opacity-30" />
-                      <p>لا توجد نتائج مطابقة لبحثك</p>
+                  <td colSpan={7} className="px-8 py-32 text-center text-gray-300">
+                    <div className="flex flex-col items-center gap-6">
+                      <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center">
+                        <Package size={48} className="opacity-20" />
+                      </div>
+                      <div>
+                        <p className="font-black text-xl text-gray-400">لا توجد أصول مخزنية مطابقة</p>
+                        <p className="text-sm font-bold opacity-60 mt-1">حاول استخدام كلمات بحث أخرى أو تصنيف مختلف</p>
+                      </div>
                     </div>
                   </td>
                 </tr>

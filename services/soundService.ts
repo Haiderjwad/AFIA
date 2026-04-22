@@ -40,9 +40,13 @@ class SoundService {
             }
         }
 
-        // Ensure it's resumed even if initialized later
+        // Silent resume check - don't log a warning if it fails early
         if (this.audioCtx && this.audioCtx.state === 'suspended') {
-            this.audioCtx.resume().catch(err => console.warn("AudioContext resume failed:", err));
+            // We only attempt to resume, but we don't catch/log if it's blocked by the browser 
+            // since that's expected until the first interaction.
+            this.audioCtx.resume().catch(() => {
+                /* Expected behavior before interaction */
+            });
         }
     }
 

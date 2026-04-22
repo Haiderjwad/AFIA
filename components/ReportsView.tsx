@@ -128,16 +128,14 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
                 useCORS: true,
                 backgroundColor: '#ffffff',
                 onclone: (clonedDoc) => {
-                    // Fix for html2canvas oklch unsupported error
-                    const elementsWithOklch = clonedDoc.querySelectorAll('*');
-                    elementsWithOklch.forEach((el: any) => {
+                    // Fix for html2canvas oklch/oklab unsupported error
+                    const elementsWithModernColors = clonedDoc.querySelectorAll('*');
+                    elementsWithModernColors.forEach((el: any) => {
                         const style = window.getComputedStyle(el);
                         ['backgroundColor', 'color', 'borderColor', 'outlineColor'].forEach(prop => {
                             const value = style[prop as any];
-                            if (value && value.includes('oklch')) {
-                                // Fallback to a safe color if oklch is detected
-                                // In a real scenario we'd parse it, but for a quick fix 
-                                // we can just strip the modern function or force a property
+                            if (value && (value.includes('oklch') || value.includes('oklab'))) {
+                                // Fallback to a safe color if modern color functions are detected
                                 el.style[prop] = 'rgb(45, 106, 79)'; // Default to brand primary
                             }
                         });

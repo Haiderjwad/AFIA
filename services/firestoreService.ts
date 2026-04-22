@@ -26,7 +26,9 @@ export const firestoreService = {
     },
 
     async addProduct(product: MenuItem): Promise<string> {
-        const docRef = await addDoc(collection(db, "products"), product);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { id, ...data } = product; // Remove empty id before saving
+        const docRef = await addDoc(collection(db, "products"), data);
         return docRef.id;
     },
 
@@ -44,7 +46,8 @@ export const firestoreService = {
                 stock: increment(-quantity)
             });
         } else {
-            console.warn(`Attempted to decrement stock for non-existent product: ${id}`);
+            // Silently fail or log as info to avoid cluttering console with expected data drift
+            console.info(`Stock adjustment skipped: Product ${id} no longer exists.`);
         }
     },
 

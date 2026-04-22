@@ -82,10 +82,10 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
         const timeStr = new Date(transaction.date).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
 
         // ════════════════════════════════════════════════════════════════════════
-        // 1. THERMAL RECEIPT LAYOUT (80mm)
+        // 1. THERMAL RECEIPT LAYOUT (High Fidelity 80mm)
         // ════════════════════════════════════════════════════════════════════════
         const buildThermalHTML = (): string => {
-            const itemRows = transaction.items.map((item, idx) => `
+            const itemRows = transaction.items.map((item) => `
                     <div class="t-row">
                         <div class="t-col-name">${item.name}</div>
                         <div class="t-col-qty">x${item.quantity}</div>
@@ -96,149 +96,216 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
             return `
                 <div class="thermal-receipt">
                     <div class="t-header">
-                        <img src="${settings?.storeLogo || '/branding/afia_logo.png'}" style="max-width: 60px; max-height: 60px; margin-bottom: 8px; object-fit: contain" />
-
+                        <img src="${settings?.storeLogo || '/branding/afia_logo.png'}" class="t-logo" />
                         <h1 class="t-store-name">${storeName}</h1>
-                        <p class="t-subtext">وصل مبيعات رقم #${transaction.id.slice(-6)}</p>
+                        <div class="t-badge">وصل مبيعات رقم #${transaction.id.slice(-6)}</div>
+                        <div class="t-date-time">${dateStr} &nbsp; | &nbsp; ${timeStr}</div>
                     </div>
 
-                    <div class="t-info">
-                        <div class="t-info-row"><span>التاريخ:</span> <span>${dateStr}</span></div>
-                        <div class="t-info-row"><span>الوقت:</span> <span>${timeStr}</span></div>
-                        <div class="t-info-row"><span>الدفع:</span> <span>${pmtText}</span></div>
-                        ${transaction.tableNumber ? `<div class="t-info-row"><span>الطاولة:</span> <span>${transaction.tableNumber}</span></div>` : ''}
+                    <div class="t-meta">
+                        <div class="t-meta-row"><span>طريقة الدفع:</span> <strong>${pmtText}</strong></div>
+                        ${transaction.tableNumber ? `<div class="t-meta-row"><span>رقم الطاولة:</span> <strong>${transaction.tableNumber}</strong></div>` : ''}
+                        <div class="t-meta-row"><span>الموظف:</span> <span>${transaction.salesPerson || 'نظام ألف عافية'}</span></div>
                     </div>
 
                     <div class="t-divider"></div>
-                    <div class="t-items-head">
-                        <span>الصنف</span>
-                        <span>الكمية</span>
-                        <span>السعر</span>
+                    <div class="t-items">
+                        <div class="t-items-head">
+                            <span style="flex:2">الصنف</span>
+                            <span style="flex:0.5; text-align:center">كمية</span>
+                            <span style="flex:1; text-align:left">المجموع</span>
+                        </div>
+                        <div class="t-items-list">${itemRows}</div>
                     </div>
-                    <div class="t-divider-thin"></div>
-                    <div class="t-items-list">${itemRows}</div>
                     <div class="t-divider"></div>
 
                     <div class="t-summary">
                         <div class="t-sum-row"><span>المجموع:</span> <span>${formatCurrency(grandSubtotal, curr)}</span></div>
                         <div class="t-sum-row"><span>الضريبة (%${taxRate}):</span> <span>${formatCurrency(grandTaxAmount, curr)}</span></div>
-                        <div class="t-sum-row t-grand-total"><span>الإجمالي:</span> <span>${formatCurrency(grandTotalAmount, curr)}</span></div>
+                        <div class="t-sum-row t-grand-total">
+                           <span>الإجمالي النهائي</span>
+                           <span>${formatCurrency(grandTotalAmount, curr)}</span>
+                        </div>
                     </div>
 
                     <div class="t-footer">
-                        <p class="t-thanks">شكراً لزيارتكم</p>
-                        <div class="t-qr-placeholder"></div>
-                        <p class="t-system-info">نظام ألف عافية - Al-Afia POS</p>
+                        <svg class="t-barcode" viewBox="0 0 100 20">
+                            <rect x="0" y="0" width="2" height="20" fill="black" />
+                            <rect x="5" y="0" width="1" height="20" fill="black" />
+                            <rect x="8" y="0" width="3" height="20" fill="black" />
+                            <rect x="15" y="0" width="2" height="20" fill="black" />
+                            <rect x="20" y="0" width="1" height="20" fill="black" />
+                            <rect x="25" y="0" width="4" height="20" fill="black" />
+                            <rect x="35" y="0" width="1" height="20" fill="black" />
+                            <rect x="40" y="0" width="2" height="20" fill="black" />
+                            <rect x="45" y="0" width="3" height="20" fill="black" />
+                            <rect x="55" y="0" width="2" height="20" fill="black" />
+                            <rect x="62" y="0" width="1" height="20" fill="black" />
+                            <rect x="68" y="0" width="3" height="20" fill="black" />
+                            <rect x="75" y="0" width="4" height="20" fill="black" />
+                            <rect x="85" y="0" width="1" height="20" fill="black" />
+                            <rect x="92" y="0" width="3" height="20" fill="black" />
+                            <rect x="98" y="0" width="2" height="20" fill="black" />
+                        </svg>
+                        <p class="t-thanks text-bold">نسعد دائماً بخدمتكم</p>
+                        <p class="t-sys-info">Powered by <strong>Al-Afia POS</strong></p>
+                        <p class="t-web">www.alafia.iq</p>
                     </div>
                 </div>
             `;
         };
 
         // ════════════════════════════════════════════════════════════════════════
-        // 2. A4 INVOICE LAYOUT (Standard)
+        // 2. A4 PROFESSIONAL INVOICE LAYOUT — REBUILT
         // ════════════════════════════════════════════════════════════════════════
         const ITEMS_PER_PAGE_A4 = 10;
         const totalPagesA4 = Math.ceil(transaction.items.length / ITEMS_PER_PAGE_A4);
 
         const buildA4PageHTML = (pageItems: typeof transaction.items, pageIndex: number, totalPgs: number): string => {
             const isSubsequent = pageIndex > 0;
-            const invLabel = `#${transaction.id.slice(-6)}${isSubsequent ? ` (${pageIndex + 1})` : ''}`;
+            const invLabel = `INV-${transaction.id.slice(-8).toUpperCase()}${isSubsequent ? `-P${pageIndex + 1}` : ''}`;
             const emptyCount = ITEMS_PER_PAGE_A4 - pageItems.length;
 
             const itemRows = pageItems.map((item, idx) => {
                 const n = (pageIndex * ITEMS_PER_PAGE_A4) + idx + 1;
                 const bg = n % 2 === 0 ? '#f0f7f4' : '#ffffff';
                 return `<tr style="background:${bg}">
-                  <td class="td-idx">${n}</td>
-                  <td class="td-name">${item.name}</td>
-                  <td class="td-num">${formatCurrency(item.price, curr)}</td>
-                  <td class="td-num">${item.quantity}</td>
-                  <td class="td-total">${formatCurrency(item.price * item.quantity, curr)}</td>
+                  <td style="text-align:center;color:#f8961e;font-weight:900;width:40px">${n}</td>
+                  <td style="text-align:right;font-weight:700;color:#1b4332">${item.name}</td>
+                  <td style="text-align:center;color:#555">${formatCurrency(item.price, curr)}</td>
+                  <td style="text-align:center;font-weight:800;color:#2d6a4f">${item.quantity}</td>
+                  <td style="text-align:center;font-weight:900;color:#1b4332">${formatCurrency(item.price * item.quantity, curr)}</td>
                 </tr>`;
             }).join('');
 
             const emptyRows = Array.from({ length: emptyCount }).map((_, i) => {
                 const n = (pageIndex * ITEMS_PER_PAGE_A4) + pageItems.length + i + 1;
                 const bg = n % 2 === 0 ? '#f0f7f4' : '#ffffff';
-                return `<tr style="background:${bg}"><td class="td-empty" colspan="5"></td></tr>`;
+                return `<tr style="background:${bg};height:28px"><td colspan="5"></td></tr>`;
             }).join('');
 
-            return `<div class="invoice-page">
-                <div class="a4-hdr">
-                    <div class="a4-hdr-inner">
-                        <div class="a4-hdr-left">
-                            <img src="${settings?.storeLogo || '/branding/afia_logo.png'}" style="width: 70px; height: 70px; object-fit: contain; border-radius: 15px; background: #fff; padding: 5px; border: 1px solid rgba(45, 106, 79, 0.1)" />
+            return `<div class="a4-page">
 
-                            <div>
-                                <h1 class="a4-store-name">${storeName}</h1>
-                                <p class="a4-sys-name">نظام ألف عافية لإدارة نقاط البيع</p>
-                            </div>
-                        </div>
-                        <div class="a4-hdr-right">
-                             <div class="a4-type-badge">فاتورة مبيعات ضريبية</div>
-                             <div class="a4-inv-no">رقم: ${invLabel}</div>
-                        </div>
-                    </div>
-                </div>
+  <!-- ░░ WATERMARK ░░ -->
+  <div class="a4-wm"><img src="/branding/afia_logo.png"/></div>
 
-                <div class="a4-info-grid">
-                    <div class="a4-info-box">
-                        <span class="a4-info-lbl">التاريخ والوقت</span>
-                        <span class="a4-info-val">${dateStr} - ${timeStr}</span>
-                    </div>
-                    <div class="a4-info-box">
-                        <span class="a4-info-lbl">طريقة الدفع</span>
-                        <span class="a4-info-val">${pmtText}</span>
-                    </div>
-                    <div class="a4-info-box">
-                        <span class="a4-info-lbl">رقم الطاولة</span>
-                        <span class="a4-info-val">${transaction.tableNumber || '---'}</span>
-                    </div>
-                </div>
+  <!-- ░░ HEADER ░░ -->
+  <div class="a4-hdr">
+    <div class="a4-hdr-left">
+      <img src="${settings?.storeLogo || '/branding/afia_logo.png'}" class="a4-logo" />
+      <div>
+        <div class="a4-biz-name">${storeName}</div>
+        <div class="a4-biz-sub">التميز في خدمة الضيافة &nbsp;|&nbsp; Excellence in Hospitality</div>
+      </div>
+    </div>
+    <div class="a4-hdr-right">
+      <div class="a4-inv-badge">فاتورة ضريبية رسمية</div>
+      <div class="a4-inv-id">${invLabel}</div>
+      <div class="a4-inv-date">${dateStr}</div>
+    </div>
+  </div>
 
-                <div class="a4-table-container">
-                    <table class="a4-tbl">
-                        <thead>
-                            <tr>
-                                <th style="width: 50px">ت</th>
-                                <th>اسم الصنف / المنتج</th>
-                                <th style="width: 100px">سعر الوحدة</th>
-                                <th style="width: 80px">الكمية</th>
-                                <th style="width: 120px">المجموع</th>
-                            </tr>
-                        </thead>
-                        <tbody>${itemRows}${emptyRows}</tbody>
-                    </table>
-                </div>
+  <!-- ░░ META BAR ░░ -->
+  <div class="a4-meta">
+    <div class="a4-meta-cell">
+      <span class="a4-meta-k">التاريخ</span>
+      <span class="a4-meta-v">${dateStr}</span>
+    </div>
+    <div class="a4-meta-sep"></div>
+    <div class="a4-meta-cell">
+      <span class="a4-meta-k">الوقت</span>
+      <span class="a4-meta-v">${timeStr}</span>
+    </div>
+    <div class="a4-meta-sep"></div>
+    <div class="a4-meta-cell">
+      <span class="a4-meta-k">طريقة الدفع</span>
+      <span class="a4-meta-v">${pmtText}</span>
+    </div>
+    <div class="a4-meta-sep"></div>
+    <div class="a4-meta-cell">
+      <span class="a4-meta-k">الطاولة / الموقع</span>
+      <span class="a4-meta-v">${transaction.tableNumber || 'سفري / Takeaway'}</span>
+    </div>
+    <div class="a4-meta-sep"></div>
+    <div class="a4-meta-cell">
+      <span class="a4-meta-k">الموظف</span>
+      <span class="a4-meta-v">${transaction.salesPerson || 'ألف عافية'}</span>
+    </div>
+  </div>
 
-                <div class="a4-summary-container">
-                    <div class="a4-summary-left">
-                        <div class="a4-total-badge">
-                            <span class="a4-tb-lbl">الإجمالي النهائي</span>
-                            <span class="a4-tb-val">${formatCurrency(grandTotalAmount, curr)}</span>
-                        </div>
-                    </div>
-                    <div class="a4-summary-right">
-                        <div class="a4-sum-row"><span>المجموع الفرعي:</span> <span>${formatCurrency(grandSubtotal, curr)}</span></div>
-                        <div class="a4-sum-row"><span>ضريبة القيمة المضافة ${taxRate}%:</span> <span>${formatCurrency(grandTaxAmount, curr)}</span></div>
-                        <div class="a4-sum-row a4-sum-total"><span>الصافي:</span> <span>${formatCurrency(grandTotalAmount, curr)}</span></div>
-                    </div>
-                </div>
+  <!-- ░░ TABLE SECTION LABEL ░░ -->
+  <div class="a4-tbl-label">
+    <span class="a4-tbl-label-bar"></span>
+    تفاصيل المشتريات
+  </div>
 
-                <div class="a4-footer">
-                    <p class="a4-footer-thanks">نسعد دائماً بخدمتكم في ${storeName}</p>
-                    <div class="a4-footer-line"></div>
-                    <div class="a4-footer-bottom">
-                        <span>تم إصدارها إلكترونياً</span>
-                        <span>www.alafia.iq</span>
-                        <span>صفحة ${pageIndex + 1} من ${totalPgs}</span>
-                    </div>
-                </div>
-            </div>`;
+  <!-- ░░ ITEMS TABLE ░░ -->
+  <table class="a4-tbl">
+    <thead>
+      <tr>
+        <th style="width:40px">#</th>
+        <th style="text-align:right">اسم الصنف / المنتج</th>
+        <th style="width:110px">سعر الوحدة</th>
+        <th style="width:70px">الكمية</th>
+        <th style="width:120px">الإجمالي</th>
+      </tr>
+    </thead>
+    <tbody>${itemRows}${emptyRows}</tbody>
+  </table>
+
+  <!-- ░░ BOTTOM SECTION ░░ -->
+  <div class="a4-bottom">
+
+    <!-- Signature + notes -->
+    <div class="a4-bottom-left">
+      <div class="a4-note-box">
+        <div class="a4-note-title">ملاحظات:</div>
+        <div class="a4-note-lines">
+          <div class="a4-note-line"></div>
+          <div class="a4-note-line"></div>
+          <div class="a4-note-line"></div>
+        </div>
+      </div>
+      <div class="a4-sig-area">
+        <div class="a4-sig-line"></div>
+        <div class="a4-sig-label">توقيع المستلم</div>
+      </div>
+    </div>
+
+    <!-- Financial summary -->
+    <div class="a4-summary">
+      <div class="a4-sum-row">
+        <span>المجموع الفرعي (قبل الضريبة)</span>
+        <span>${formatCurrency(grandSubtotal, curr)}</span>
+      </div>
+      <div class="a4-sum-row">
+        <span>الضريبة (%${taxRate})</span>
+        <span>${formatCurrency(grandTaxAmount, curr)}</span>
+      </div>
+      <div class="a4-sum-divider"></div>
+      <div class="a4-sum-total-row">
+        <span>الإجمالي النهائي</span>
+        <span>${formatCurrency(grandTotalAmount, curr)}</span>
+      </div>
+      <div class="a4-sum-words">فقط: ${formatCurrency(grandTotalAmount, curr)} لا غير</div>
+    </div>
+
+  </div>
+
+  <!-- ░░ FOOTER ░░ -->
+  <div class="a4-footer">
+    <div class="a4-footer-bar"></div>
+    <div class="a4-footer-content">
+      <span>نظام ألف عافية للمطاعم &middot; Al-Afia POS &middot; www.alafia.iq</span>
+      <span>صفحة ${pageIndex + 1} من ${totalPgs} &nbsp;&mdash;&nbsp; تم الإصدار إلكترونياً</span>
+    </div>
+  </div>
+
+</div>`;
         };
 
         // ════════════════════════════════════════════════════════════════════════
-        // 3. PREMIUM CUSTOM INVOICE LAYOUT (Luxury/Branded)
+        // 3. LUXURY BRANDED INVOICE LAYOUT
         // ════════════════════════════════════════════════════════════════════════
         const brandColor = settings?.brandColor || '#2d6a4f';
         const buildCustomPageHTML = (pageItems: typeof transaction.items, pageIndex: number, totalPgs: number): string => {
@@ -247,57 +314,53 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                 const n = (pageIndex * ITEMS_PER_PAGE_A4) + idx + 1;
                 return `<tr>
                   <td class="c-idx">${n}</td>
-                  <td class="c-name">${item.name}</td>
+                  <td class="c-name">
+                    <strong>${item.name}</strong>
+                    <small>أصل مالي رقم #${item.id.slice(-4)}</small>
+                  </td>
                   <td class="c-price">${formatCurrency(item.price, curr)}</td>
                   <td class="c-qty">${item.quantity}</td>
                   <td class="c-total">${formatCurrency(item.price * item.quantity, curr)}</td>
                 </tr>`;
             }).join('');
 
-            return `<div class="custom-invoice">
-                <!-- Branding Header -->
-                <div class="c-header" style="border-left: 10px solid ${brandColor}">
-                    <div class="c-header-main">
-                        <div class="c-logos">
-                            <img src="${settings?.storeLogo || '/branding/afia_logo.png'}" class="c-store-logo" />
-                            ${settings?.storeLogo ? `
-                                <div class="c-divider-v"></div>
-                                <img src="/branding/afia_logo.png" class="c-system-logo" />
-                            ` : ''}
-                        </div>
-
-                        <div class="c-store-info">
-                            <h1 style="color:${brandColor}">${storeName}</h1>
-                            <span>فاتورة مبيعات فارة &middot; Premium Invoice</span>
-                        </div>
+            return `<div class="luxury-invoice">
+                <div class="l-accent-bar" style="background:${brandColor}"></div>
+                
+                <div class="l-header">
+                    <div class="l-brand-info">
+                        <img src="${settings?.storeLogo || '/branding/afia_logo.png'}" class="l-logo" />
+                        <h1 style="color:${brandColor}">${storeName}</h1>
+                        <p>فاتورة مبيعات فخمة - Luxury Sales Record</p>
                     </div>
-                    <div class="c-header-id" style="background:${brandColor}10">
-                        <span style="color:${brandColor}">${invLabel}</span>
-                        <small>${dateStr}</small>
+                    <div class="l-invoice-meta">
+                        <div class="l-id-box" style="background:${brandColor}10; border-right: 5px solid ${brandColor}">
+                            <span class="l-id-lbl">رقم القيد</span>
+                            <span class="l-id-val" style="color:${brandColor}">${invLabel}</span>
+                        </div>
+                        <div class="l-date-box">
+                            <span>${dateStr}</span>
+                            <span>${timeStr}</span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Watermark -->
-                <div class="c-watermark">
-                    <img src="/branding/afia_logo.png" />
+                <div class="l-divider-dashed"></div>
+
+                <div class="l-customer-panel">
+                    <div class="l-panel-item"><strong>مكان الطلب:</strong> <span>${transaction.tableNumber || 'توصيل / سفري'}</span></div>
+                    <div class="l-panel-item"><strong>الموظف:</strong> <span>${transaction.salesPerson || 'نظام ألف عافية'}</span></div>
+                    <div class="l-panel-item"><strong>طريقة السداد:</strong> <span>${pmtText}</span></div>
+                    <div class="l-panel-item"><strong>حالة القيد:</strong> <span style="color:${brandColor}">مكتمل ومرحل</span></div>
                 </div>
 
-                <!-- Transaction Details -->
-                <div class="c-meta-grid">
-                    <div class="c-meta-item"><strong>الوقت:</strong> ${timeStr}</div>
-                    <div class="c-meta-item"><strong>طريقة الدفع:</strong> ${pmtText}</div>
-                    <div class="c-meta-item"><strong>الموقع/الطاولة:</strong> ${transaction.tableNumber || '---'}</div>
-                    <div class="c-meta-item"><strong>رقم العملية:</strong> ${transaction.id}</div>
-                </div>
-
-                <!-- Items Table -->
-                <div class="c-table-wrapper">
-                    <table class="c-table">
+                <div class="l-items-section">
+                    <table class="l-table">
                         <thead style="background:${brandColor}">
                             <tr>
                                 <th>ت</th>
-                                <th style="text-align:right">الوصف</th>
-                                <th>السعر</th>
+                                <th style="text-align:right">وصف الصنف</th>
+                                <th>سعر الوحدة</th>
                                 <th>الكمية</th>
                                 <th>الإجمالي</th>
                             </tr>
@@ -306,27 +369,29 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                     </table>
                 </div>
 
-                <!-- Summary -->
-                <div class="c-summary">
-                    <div class="c-summary-row">
-                        <span>المجموع الفرعي</span>
-                        <span>${formatCurrency(grandSubtotal, curr)}</span>
+                <div class="l-bottom-area">
+                    <div class="l-notes">
+                        <h4>ملاحظات هامة:</h4>
+                        <p>يرجى الاحتفاظ بهذه الفاتورة في حال الرغبة في الاستبدال أو الاسترجاع خلال المدة المحددة من قبل إدارة الموقع.</p>
                     </div>
-                    <div class="c-summary-row">
-                        <span>الضريبة (${taxRate}%)</span>
-                        <span>${formatCurrency(grandTaxAmount, curr)}</span>
-                    </div>
-                    <div class="c-summary-total" style="color:${brandColor}">
-                        <span>الإجمالي النهائي</span>
-                        <span>${formatCurrency(grandTotalAmount, curr)}</span>
+                    <div class="l-summary-luxury" style="border-top: 2px solid ${brandColor}">
+                        <div class="l-sum-row"><span>المجموع الفرعي</span> <span>${formatCurrency(grandSubtotal, curr)}</span></div>
+                        <div class="l-sum-row"><span>الضريبة (%${taxRate})</span> <span>${formatCurrency(grandTaxAmount, curr)}</span></div>
+                        <div class="l-total-row" style="color:${brandColor}">
+                            <span>المبلغ المستحق</span>
+                            <span>${formatCurrency(grandTotalAmount, curr)}</span>
+                        </div>
                     </div>
                 </div>
 
-                <div class="c-footer">
-                    <div class="c-footer-decoration" style="background: linear-gradient(to left, ${brandColor}, transparent)"></div>
-                    <div class="c-footer-content">
-                        <span>صدرت بواسطة نظام ألف عافية - AlAfia.iq</span>
-                        <span>صفحة ${pageIndex + 1} من ${totalPgs}</span>
+                <div class="l-footer">
+                    <div class="l-footer-inner">
+                        <div class="l-qr-sim">
+                            <div class="l-qr-sq"></div>
+                            <span>التحقق الرقمي</span>
+                        </div>
+                        <div class="l-thanks-msg">شكراً لكم لاختياركم ${storeName}</div>
+                        <div class="l-sys-tag">صفحة ${pageIndex + 1} &middot; الف ألف عافية</div>
                     </div>
                 </div>
             </div>`;
@@ -356,11 +421,370 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
     <title>فاتورة ${storeName} &middot; ${transaction.id.slice(-6)}</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Cairo', sans-serif; background: #eee; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         
-        /* ... styles ... */
-        ${receiptType === 'thermal' ? '@page { size: 80mm auto; }' : '@page { size: A4 portrait; }'}
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background: #f0f0f0; 
+            color: #1a1c1e;
+            -webkit-print-color-adjust: exact; 
+            print-color-adjust: exact; 
+        }
+
+        .page-break { page-break-after: always; }
+
+        /* ════════════════════════════════════════════════
+           THERMAL RECEIPT STYLES
+           ════════════════════════════════════════════════ */
+        .thermal-receipt {
+            background: #fff;
+            width: 80mm;
+            padding: 10mm 5mm;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .t-header { text-align: center; margin-bottom: 8mm; }
+        .t-logo { max-width: 65px; height: auto; margin-bottom: 4mm; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); }
+        .t-store-name { font-size: 18pt; font-weight: 900; color: #2d6a4f; margin-bottom: 2mm; text-transform: uppercase; }
+        .t-badge { background: #f8961e; color: #fff; display: inline-block; padding: 1mm 4mm; border-radius: 4mm; font-size: 8pt; font-weight: 800; margin-bottom: 3mm; }
+        .t-date-time { font-size: 8pt; color: #666; font-weight: 600; }
+
+        .t-meta { font-size: 9pt; margin-bottom: 6mm; color: #333; }
+        .t-meta-row { display: flex; justify-content: space-between; margin-bottom: 1mm; border-bottom: 0.1mm dashed #eee; padding-bottom: 1mm; }
+        
+        .t-divider { height: 1.5mm; border-top: 0.5mm solid #333; border-bottom: 0.2mm solid #333; margin: 4mm 0; }
+        
+        .t-items-head { display: flex; font-weight: 900; font-size: 9pt; color: #2d6a4f; padding-bottom: 2mm; border-bottom: 0.1mm solid #eee; }
+        .t-items-list { font-size: 9pt; margin-top: 2mm; }
+        .t-row { display: flex; align-items: start; margin-bottom: 2.5mm; line-height: 1.2; }
+        .t-col-name { flex: 2; font-weight: 700; }
+        .t-col-qty { flex: 0.5; text-align: center; font-weight: 800; }
+        .t-col-total { flex: 1; text-align: left; font-weight: 800; }
+
+        .t-summary { margin-top: 6mm; }
+        .t-sum-row { display: flex; justify-content: space-between; font-size: 9pt; margin-bottom: 1.5mm; }
+        .t-grand-total { border-top: 0.5mm double #eee; padding-top: 3mm; font-size: 13pt; font-weight: 900; color: #1b4332; }
+
+        .t-footer { text-align: center; margin-top: 10mm; }
+        .t-barcode { width: 40mm; height: 10mm; margin: 4mm auto; opacity: 0.3; }
+        .t-thanks { font-size: 10pt; font-weight: 800; color: #2d6a4f; margin-bottom: 2mm; }
+        .t-sys-info { font-size: 7pt; color: #aaa; margin-top: 5mm; }
+        .t-web { font-size: 7pt; color: #f8961e; font-weight: 700; }
+
+        /* ════════════════════════════════════════════════
+           A4 PROFESSIONAL INVOICE — REBUILT CSS
+           ════════════════════════════════════════════════ */
+
+        /* PAGE SHELL */
+        .a4-page {
+            width: 210mm;
+            height: 297mm;
+            background: #fff;
+            margin: 8mm auto;
+            padding: 12mm 14mm;
+            box-sizing: border-box;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            box-shadow: 0 4px 40px rgba(0,0,0,0.15);
+            border-top: 8px solid #2d6a4f;
+            font-size: 9pt;
+            line-height: 1.4;
+        }
+
+        /* WATERMARK */
+        .a4-wm {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%,-50%) rotate(-25deg);
+            width: 130mm;
+            opacity: 0.025;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .a4-wm img { width: 100%; }
+
+        /* HEADER */
+        .a4-hdr {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 6mm;
+            border-bottom: 2px solid #2d6a4f;
+            margin-bottom: 5mm;
+            position: relative;
+            z-index: 1;
+        }
+        .a4-hdr-left { display: flex; align-items: center; gap: 5mm; }
+        .a4-logo {
+            width: 60px; height: 60px;
+            object-fit: contain;
+            border-radius: 12px;
+            border: 1.5px solid #d8f3dc;
+            padding: 3px;
+            background: #fff;
+        }
+        .a4-biz-name { font-size: 18pt; font-weight: 900; color: #1b4332; line-height: 1; }
+        .a4-biz-sub { font-size: 7.5pt; color: #888; margin-top: 1.5mm; font-weight: 600; }
+
+        .a4-hdr-right { text-align: left; }
+        .a4-inv-badge {
+            background: #2d6a4f; color: #fff;
+            font-size: 8pt; font-weight: 800;
+            padding: 1mm 5mm;
+            border-radius: 20px;
+            display: inline-block;
+            letter-spacing: 0.5px;
+            margin-bottom: 2mm;
+        }
+        .a4-inv-id { font-size: 14pt; font-weight: 900; color: #1b4332; direction: ltr; text-align: left; }
+        .a4-inv-date { font-size: 8pt; color: #888; font-weight: 600; }
+
+        /* META BAR */
+        .a4-meta {
+            display: flex;
+            align-items: stretch;
+            background: #f5f9f7;
+            border: 1px solid #d8f3dc;
+            border-radius: 5mm;
+            margin-bottom: 5mm;
+            padding: 3mm 0;
+            position: relative;
+            z-index: 1;
+        }
+        .a4-meta-cell { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2mm 3mm; }
+        .a4-meta-sep { width: 1px; background: #d8f3dc; margin: 1mm 0; flex-shrink: 0; }
+        .a4-meta-k { font-size: 7pt; font-weight: 800; color: #2d6a4f; opacity: 0.6; text-transform: uppercase; margin-bottom: 1mm; }
+        .a4-meta-v { font-size: 9pt; font-weight: 800; color: #1b4332; }
+
+        /* TABLE SECTION LABEL */
+        .a4-tbl-label {
+            display: flex;
+            align-items: center;
+            gap: 3mm;
+            font-size: 9pt;
+            font-weight: 900;
+            color: #1b4332;
+            margin-bottom: 2mm;
+            position: relative;
+            z-index: 1;
+        }
+        .a4-tbl-label-bar {
+            display: inline-block;
+            width: 4px; height: 16px;
+            background: #f8961e;
+            border-radius: 2px;
+        }
+
+        /* ITEMS TABLE */
+        .a4-tbl {
+            width: 100%;
+            border-collapse: collapse;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+        }
+        .a4-tbl thead tr {
+            background: #1b4332;
+        }
+        .a4-tbl thead th {
+            color: #fff;
+            padding: 3mm 4mm;
+            font-size: 8.5pt;
+            font-weight: 800;
+            text-align: center;
+            border: none;
+        }
+        .a4-tbl thead th:nth-child(2) { text-align: right; }
+        .a4-tbl tbody td {
+            padding: 2.8mm 4mm;
+            font-size: 9pt;
+            border-bottom: 1px solid #e8f4ee;
+            vertical-align: middle;
+        }
+        .a4-tbl tbody tr:last-child td { border-bottom: 2px solid #2d6a4f; }
+
+        /* BOTTOM AREA */
+        .a4-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-top: 5mm;
+            gap: 6mm;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+            flex: 1;
+        }
+
+        /* NOTES + SIGNATURE */
+        .a4-bottom-left {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4mm;
+        }
+        .a4-note-box {
+            border: 1px dashed #ccc;
+            border-radius: 3mm;
+            padding: 3mm 4mm;
+        }
+        .a4-note-title { font-size: 8pt; font-weight: 800; color: #aaa; margin-bottom: 3mm; }
+        .a4-note-line { height: 1px; background: #eee; margin-bottom: 4mm; }
+
+        .a4-sig-area { margin-top: auto; }
+        .a4-sig-line {
+            width: 70%;
+            border-top: 1.5px dashed #bbb;
+            margin-bottom: 2mm;
+        }
+        .a4-sig-label { font-size: 8pt; color: #888; font-weight: 700; }
+
+        /* FINANCIAL SUMMARY BOX */
+        .a4-summary {
+            width: 80mm;
+            background: #1b4332;
+            color: #fff;
+            border-radius: 5mm;
+            padding: 5mm 6mm;
+            flex-shrink: 0;
+            box-shadow: 0 8px 24px rgba(27,67,50,0.25);
+        }
+        .a4-sum-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9pt;
+            padding: 2mm 0;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            opacity: 0.85;
+        }
+        .a4-sum-divider {
+            height: 1.5px;
+            background: rgba(255,255,255,0.25);
+            margin: 3mm 0;
+        }
+        .a4-sum-total-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14pt;
+            font-weight: 900;
+            color: #edca76;
+            padding: 2mm 0;
+        }
+        .a4-sum-words {
+            font-size: 7.5pt;
+            color: rgba(255,255,255,0.4);
+            margin-top: 3mm;
+            font-style: italic;
+            text-align: left;
+        }
+
+        /* FOOTER */
+        .a4-footer {
+            margin-top: auto;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+        }
+        .a4-footer-bar {
+            height: 3px;
+            background: linear-gradient(to left, #2d6a4f 0%, #f8961e 50%, #2d6a4f 100%);
+            border-radius: 2px;
+            margin-bottom: 3mm;
+        }
+        .a4-footer-content {
+            display: flex;
+            justify-content: space-between;
+            font-size: 7.5pt;
+            color: #888;
+            font-weight: 600;
+        }
+
+        /* ════════════════════════════════════════════════
+           LUXURY/CUSTOM BRANDED STYLES
+           ════════════════════════════════════════════════ */
+        .luxury-invoice {
+            width: 210mm;
+            height: 297mm;
+            background: #fff;
+            padding: 15mm;
+            margin: 10mm auto;
+            position: relative;
+            background: linear-gradient(135deg, #fff, #fdfaf7);
+            border: 1px solid #eee;
+        }
+
+        .l-accent-bar { position: absolute; top: 0; left: 0; right: 0; height: 10px; }
+        .l-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12mm; }
+        .l-logo { width: 90px; height: auto; margin-bottom: 4mm; }
+        .l-brand-info h1 { font-size: 26pt; font-weight: 900; line-height: 1; }
+        .l-brand-info p { font-size: 10pt; color: #666; font-weight: 700; margin-top: 1mm; }
+
+        .l-invoice-meta { display: flex; gap: 6mm; }
+        .l-id-box { padding: 5mm 8mm; text-align: left; }
+        .l-id-lbl { display: block; font-size: 9pt; font-weight: 800; opacity: 0.5; text-transform: uppercase; }
+        .l-id-val { font-size: 16pt; font-weight: 900; }
+        .l-date-box { display: flex; flex-direction: column; justify-content: center; font-size: 9pt; font-weight: 700; color: #aaa; text-align: right; }
+
+        .l-divider-dashed { height: 1px; border-top: 1px dashed #ddd; margin: 8mm 0; }
+
+        .l-customer-panel { 
+            display: grid; 
+            grid-template-columns: repeat(4, 1fr); 
+            gap: 5mm; 
+            margin-bottom: 12mm; 
+            background: white; 
+            padding: 8mm; 
+            border-radius: 4mm; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.03); 
+        }
+        .l-panel-item { font-size: 9pt; display: flex; flex-direction: column; gap: 1mm; }
+        .l-panel-item strong { color: #aaa; font-weight: 800; font-size: 8pt; text-transform: uppercase; }
+        .l-panel-item span { font-weight: 800; color: #333; }
+
+        .l-table { width: 100%; border-collapse: collapse; }
+        .l-table thead th { color: #fff; padding: 5mm; font-size: 10pt; text-align: center; }
+        .l-table tbody td { padding: 8mm 5mm; border-bottom: 1px solid #f0f0f0; font-size: 11pt; text-align: center; }
+        .l-idx { font-family: monospace; font-weight: 900; color: #ccc; }
+        .l-name { text-align: right !important; }
+        .l-name strong { display: block; font-size: 12pt; color: #1b4332; }
+        .l-name small { display: block; font-size: 8pt; color: #aaa; font-weight: 800; margin-top: 1mm; }
+        .l-qty, .l-price { font-weight: 800; color: #777; }
+        .l-total { font-weight: 900; color: #1b4332; }
+
+        .l-bottom-area { margin-top: 10mm; display: flex; justify-content: space-between; }
+        .l-notes { width: 50%; }
+        .l-notes h4 { font-size: 10pt; font-weight: 900; margin-bottom: 3mm; color: #aaa; }
+        .l-notes p { font-size: 9pt; color: #888; font-weight: 700; line-height: 1.6; }
+        
+        .l-summary-luxury { width: 40%; padding-top: 5mm; }
+        .l-sum-row { display: flex; justify-content: space-between; padding: 2mm 0; font-size: 11pt; font-weight: 800; color: #666; }
+        .l-total-row { display: flex; justify-content: space-between; margin-top: 4mm; padding-top: 4mm; font-size: 20pt; font-weight: 900; }
+
+        .l-footer { margin-top: auto; padding-top: 20mm; }
+        .l-footer-inner { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; padding-top: 10mm; }
+        .l-qr-sim { display: flex; align-items: center; gap: 3mm; }
+        .l-qr-sq { width: 12mm; height: 12mm; border: 3px solid #eee; border-radius: 2mm; }
+        .l-qr-sim span { font-size: 8pt; font-weight: 800; color: #aaa; text-transform: uppercase; }
+        .l-thanks-msg { font-size: 13pt; font-weight: 900; font-style: italic; color: #ddd; }
+        .l-sys-tag { font-size: 8pt; font-weight: 800; color: #aaa; }
+
+
+        @media print {
+            body { background: none; }
+            .a4-page { margin: 0; box-shadow: none; border-top: 8px solid #2d6a4f !important; }
+            .luxury-invoice, .thermal-receipt { margin: 0; box-shadow: none; }
+            .luxury-invoice .l-accent-bar { display: block !important; }
+            .no-print { display: none; }
+            header, footer, nav { display: none !important; }
+            @page { size: A4 portrait; margin: 0; }
+        }
     </style>
 </head>
 <body>
@@ -370,7 +794,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
             setTimeout(function() {
                 window.print();
                 window.onafterprint = function() { window.close(); };
-            }, 500);
+            }, 800);
         };
     </script>
 </body>
