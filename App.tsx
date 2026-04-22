@@ -16,7 +16,7 @@ import TopHeader from './components/TopHeader';
 import LowStockAlert from './components/LowStockAlert';
 import { CartItem, MenuItem, Transaction, AppSettings, Employee } from './types';
 import { CURRENCY, DEFAULT_SETTINGS } from './constants';
-import { X, CheckCircle, Wifi, WifiOff, Globe } from 'lucide-react';
+import { X, CheckCircle, Wifi, WifiOff, Globe, ShoppingCart } from 'lucide-react';
 import { firestoreService } from './services/firestoreService';
 import { soundService } from './services/soundService';
 import { onSnapshot, collection, query, orderBy, doc, updateDoc, limit } from 'firebase/firestore';
@@ -135,6 +135,8 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isReceiptPanelOpen, setIsReceiptPanelOpen] = useState(false);
 
   useEffect(() => {
     let unsubProducts: any, unsubTransactions: any, unsubSettings: any, unsubNotifications: any, unsubEmployees: any;
@@ -388,6 +390,10 @@ const App: React.FC = () => {
       }
       return [...prev, { ...product, quantity: 1 }];
     });
+    // Optional: Open panel on mobile when adding first item
+    if (cart.length === 0 && window.innerWidth < 1280) {
+      setIsReceiptPanelOpen(true);
+    }
   };
 
   const removeFromCart = (id: string) => {
@@ -584,6 +590,8 @@ const App: React.FC = () => {
         setActiveItem={handleSidebarNavigation}
         user={currentUser}
         settings={settings}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
       />
 
       <div className="flex-1 flex flex-col h-full overflow-hidden relative transition-all">
@@ -598,6 +606,7 @@ const App: React.FC = () => {
           isOnline={isOnline}
           activeTabTitle={getActiveTabTitle()}
           settings={settings}
+          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         />
         {renderContent()}
 
@@ -660,7 +669,25 @@ const App: React.FC = () => {
           onCheckout={handleSendToKitchen}
           settings={settings}
           userRole={currentUser?.role || 'sales'}
+          isOpen={isReceiptPanelOpen}
+          onClose={() => setIsReceiptPanelOpen(false)}
         />
+      )}
+
+      {/* Floating Cart Button for Mobile/Tablet */}
+      {activeTab === 'sales' && !isReceiptPanelOpen && cart.length > 0 && (
+        <button
+          onClick={() => setIsReceiptPanelOpen(true)}
+          className="fixed bottom-6 left-6 z-[70] xl:hidden bg-brand-primary text-white p-5 rounded-full shadow-2xl animate-in slide-in-from-bottom-10 flex items-center gap-3 active:scale-90 transition-transform"
+        >
+          <div className="relative">
+            <ShoppingCart size={24} />
+            <span className="absolute -top-3 -right-3 w-6 h-6 bg-brand-accent text-white rounded-full flex items-center justify-center text-[10px] font-black ring-2 ring-white">
+              {cart.reduce((acc, item) => acc + item.quantity, 0)}
+            </span>
+          </div>
+          <span className="font-black text-sm">عرض السلة</span>
+        </button>
       )}
 
       {showStatusToast !== 'none' && (

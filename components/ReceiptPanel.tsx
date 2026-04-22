@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CartItem, MenuItem, AppSettings } from '../types';
-import { Plus, Minus, Sparkles, Coffee, CreditCard, Loader2, Banknote, Wifi, ArrowLeft, Check, AlertCircle, Hash, MessageSquare } from 'lucide-react';
+import { Plus, Minus, Sparkles, Coffee, CreditCard, Loader2, Banknote, Wifi, ArrowLeft, Check, AlertCircle, Hash, MessageSquare, X } from 'lucide-react';
 import { suggestUpsell } from '../services/geminiService';
 
 interface ReceiptPanelProps {
@@ -12,6 +12,8 @@ interface ReceiptPanelProps {
     onCheckout: (method: 'cash' | 'card' | 'online', tableNumber: string, orderNote: string) => Promise<void>;
     settings: AppSettings;
     userRole: string;
+    onClose?: () => void;
+    isOpen?: boolean;
 }
 
 const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
@@ -22,7 +24,9 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
     onClear,
     onCheckout,
     settings,
-    userRole
+    userRole,
+    onClose,
+    isOpen
 }) => {
     const [upsellSuggestion, setUpsellSuggestion] = useState<string>("");
 
@@ -76,6 +80,8 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
         setOrderNote('');
         setIsNoteVisible(false);
         setIsTakeaway(false);
+        // On mobile, close after sending
+        if (window.innerWidth < 1280 && onClose) onClose();
     };
 
 
@@ -97,6 +103,8 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
         setOrderNote('');
         setIsNoteVisible(false);
         setIsTakeaway(false);
+        // On mobile, close after sending
+        if (window.innerWidth < 1280 && onClose) onClose();
     };
 
 
@@ -126,7 +134,23 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
 
     return (
         <>
-            <div className="w-[380px] bg-brand-cream h-full shadow-2xl flex flex-col border-r border-brand-primary/10 relative z-10 transition-colors duration-500">
+            {/* Mobile Overlay */}
+            {isOpen && (
+                <div
+                    className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[80] xl:hidden transition-opacity duration-300"
+                    onClick={onClose}
+                />
+            )}
+
+            <div className={`fixed xl:relative inset-y-0 left-0 z-[85] xl:z-10 w-full max-w-[400px] xl:w-[380px] bg-brand-cream h-full shadow-2xl flex flex-col border-r border-brand-primary/10 transition-all duration-500 transform ${isOpen ? 'translate-x-0' : '-translate-x-full xl:translate-x-0'}`}>
+
+                {/* Close button for mobile */}
+                <button
+                    onClick={onClose}
+                    className="xl:hidden absolute top-6 left-6 p-2 bg-brand-primary text-white rounded-full shadow-lg z-20"
+                >
+                    <X size={20} />
+                </button>
 
                 {/* Header / Logo */}
                 <div className="pt-10 pb-6 flex flex-col items-center justify-center border-b border-dashed border-brand-primary/10 shrink-0">
@@ -236,16 +260,16 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                                 <div className="flex items-center gap-3 bg-brand-light/20 rounded-xl px-2 py-1">
                                     <button
                                         onClick={() => decreaseQuantity(item.id)}
-                                        className="w-7 h-7 rounded-lg bg-white border border-brand-primary/10 flex items-center justify-center text-brand-dark hover:bg-red-50 hover:text-red-500 transition-colors shadow-sm"
+                                        className="w-10 h-10 rounded-lg bg-white border border-brand-primary/10 flex items-center justify-center text-brand-dark hover:bg-red-50 hover:text-red-500 transition-colors shadow-sm"
                                     >
-                                        <Minus size={12} />
+                                        <Minus size={16} />
                                     </button>
-                                    <span className="text-sm font-black w-4 text-center">{item.quantity}</span>
+                                    <span className="text-sm font-black w-6 text-center">{item.quantity}</span>
                                     <button
                                         onClick={() => addToCart(item)}
-                                        className="w-7 h-7 rounded-lg bg-brand-primary text-white flex items-center justify-center hover:bg-brand-secondary transition-colors shadow-md"
+                                        className="w-10 h-10 rounded-lg bg-brand-primary text-white flex items-center justify-center hover:bg-brand-secondary transition-colors shadow-md"
                                     >
-                                        <Plus size={12} />
+                                        <Plus size={16} />
                                     </button>
                                 </div>
                             </div>

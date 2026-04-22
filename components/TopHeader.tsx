@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, CircleUser, LogOut, PackageCheck, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
+import { Bell, CircleUser, LogOut, PackageCheck, AlertTriangle, Wifi, WifiOff, Menu } from 'lucide-react';
 import { Employee, Transaction, MenuItem, AppSettings } from '../types';
 
 interface TopHeaderProps {
@@ -14,11 +14,13 @@ interface TopHeaderProps {
     isOnline: boolean;
     activeTabTitle: string;
     settings?: AppSettings;
+    onToggleSidebar?: () => void;
 }
 
 const TopHeader: React.FC<TopHeaderProps> = ({
     user, onLogout, notifications, readyOrders, lowStockItems,
-    onCompleteOrder, onNavigate, isOnline, activeTabTitle, settings
+    onCompleteOrder, onNavigate, isOnline, activeTabTitle, settings,
+    onToggleSidebar
 }) => {
     const [showProfile, setShowProfile] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
@@ -58,10 +60,16 @@ const TopHeader: React.FC<TopHeaderProps> = ({
     const notificationCount = readyOrders.length + lowStockItems.length;
 
     return (
-        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-brand-primary/10 px-8 flex items-center justify-between z-40 sticky top-0" dir="rtl">
+        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-brand-primary/10 px-4 md:px-8 flex items-center justify-between z-40 sticky top-0" dir="rtl">
 
             {/* Title / Brand Section */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 md:gap-4">
+                <button
+                    onClick={onToggleSidebar}
+                    className="lg:hidden p-2 text-brand-dark/60 hover:text-brand-primary hover:bg-brand-light/20 rounded-xl transition-all"
+                >
+                    <Menu size={24} />
+                </button>
                 <div className="flex flex-col">
                     <h1 className="text-xs font-black text-brand-primary uppercase tracking-widest">{settings?.storeName || 'ألف عافية'}</h1>
                     <h2 className="text-xl font-black text-brand-dark">{activeTabTitle}</h2>

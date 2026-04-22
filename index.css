@@ -72,3 +72,32 @@
     backdrop-filter: blur(15px);
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* Touch & Responsiveness Polish */
+* {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+.smooth-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+}
+
+/* Add custom scrollbar for touch devices that feel native but premium */
+.touch-ready-scroll {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 1024px) {
+    .hide-scrollbar-tablet {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .hide-scrollbar-tablet::-webkit-scrollbar {
+        display: none;
+    }
+}
