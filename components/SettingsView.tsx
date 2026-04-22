@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Bell, CreditCard, Save, Check, ChevronDown, Coins, Users, UserPlus, Trash2, Edit, Shield, Mail, Key, User, ListChecks, X, Hash, Printer, FileText, Smartphone, Image, Upload, Trash, Sparkles, Palette } from 'lucide-react';
+import { Settings, Bell, CreditCard, Save, Check, ChevronDown, Coins, Users, UserPlus, Trash2, Edit, Shield, Mail, Key, User, ListChecks, X, Hash, Printer, FileText, Smartphone, Image, Upload, Trash, Sparkles, Palette, DollarSign } from 'lucide-react';
 import { AppSettings, Employee, UserRole } from '../types';
 import { firestoreService } from '../services/firestoreService';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
@@ -16,12 +16,7 @@ interface SettingsViewProps {
 
 const CURRENCY_OPTIONS = [
   { code: 'IQD', symbol: 'د.ع', name: 'دينار عراقي' },
-  { code: 'SAR', symbol: 'ر.س', name: 'ريال سعودي' },
   { code: 'USD', symbol: '$', name: 'دولار أمريكي' },
-  { code: 'AED', symbol: 'د.إ', name: 'درهم إماراتي' },
-  { code: 'KWD', symbol: 'د.ك', name: 'دينار كويتي' },
-  { code: 'EGP', symbol: 'ج.م', name: 'جنيه مصري' },
-  { code: 'JOD', symbol: 'د.أ', name: 'دينار أردني' },
 ];
 
 const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings, initialTab = 'general' }) => {
@@ -44,7 +39,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
     password: '',
     role: 'sales' as UserRole,
     employeeId: '',
-    permissions: [] as string[]
+    permissions: [] as string[],
+    salary: ''
   });
 
   const [statusModal, setStatusModal] = useState<{
@@ -128,12 +124,13 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
         role: empForm.role,
         permissions: empForm.permissions.length > 0 ? empForm.permissions : [empForm.role],
         employeeId: empForm.employeeId || `EMP-${Date.now().toString().slice(-4)}`,
-        joinedAt: new Date().toISOString()
+        joinedAt: new Date().toISOString(),
+        salary: parseFloat(empForm.salary) || 0
       };
 
       await firestoreService.addEmployee(newEmployee);
 
-      setEmpForm({ name: '', email: '', password: '', role: 'sales', employeeId: '', permissions: [] });
+      setEmpForm({ name: '', email: '', password: '', role: 'sales', employeeId: '', permissions: [], salary: '' });
       setIsEmployeeModalOpen(false);
       fetchEmployees();
       setStatusModal({
@@ -174,12 +171,13 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
         email: empForm.email,
         role: empForm.role,
         employeeId: empForm.employeeId,
-        permissions: empForm.permissions
+        permissions: empForm.permissions,
+        salary: parseFloat(empForm.salary) || 0
       });
 
       setIsEmployeeModalOpen(false);
       setEditingEmployee(null);
-      setEmpForm({ name: '', email: '', password: '', role: 'sales', employeeId: '', permissions: [] });
+      setEmpForm({ name: '', email: '', password: '', role: 'sales', employeeId: '', permissions: [], salary: '' });
       fetchEmployees();
 
       setStatusModal({
@@ -325,7 +323,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                     >
                       {CURRENCY_OPTIONS.map((curr) => (
                         <option key={curr.code} value={curr.symbol}>
-                          {curr.name} ({curr.code}) - {curr.symbol}
+                          {curr.name} ({curr.symbol})
                         </option>
                       ))}
                     </select>
@@ -610,7 +608,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                 <button
                   onClick={() => {
                     setEditingEmployee(null);
-                    setEmpForm({ name: '', email: '', password: '', role: 'sales', employeeId: '', permissions: [] });
+                    setEmpForm({ name: '', email: '', password: '', role: 'sales', employeeId: '', permissions: [], salary: '' });
                     setIsEmployeeModalOpen(true);
                   }}
                   className="flex items-center gap-2 bg-brand-primary text-white px-6 py-3 rounded-2xl font-black hover:bg-brand-secondary transition-all shadow-lg shadow-brand-primary/20 shrink-0"
@@ -627,6 +625,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                     <th className="px-8 py-5 text-sm font-black text-brand-dark uppercase tracking-tighter">الموظف</th>
                     <th className="px-8 py-5 text-sm font-black text-brand-dark uppercase tracking-tighter">الدور الوظيفي</th>
                     <th className="px-8 py-5 text-sm font-black text-brand-dark uppercase tracking-tighter text-center">كود التعريف</th>
+                    <th className="px-8 py-5 text-sm font-black text-brand-dark uppercase tracking-tighter text-center">الراتب</th>
                     <th className="px-8 py-5 text-sm font-black text-brand-dark uppercase tracking-tighter text-left">التحكم</th>
                   </tr>
                 </thead>
@@ -671,6 +670,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                           <td className="px-8 py-5 text-center font-bold text-brand-dark/40 text-sm">
                             {emp.employeeId}
                           </td>
+                          <td className="px-8 py-5 text-center font-bold text-green-600 text-sm">
+                            {(emp.salary || 0).toLocaleString()} {settings.currency}
+                          </td>
                           <td className="px-8 py-5 text-left">
                             <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button
@@ -682,7 +684,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                                     role: emp.role || 'sales',
                                     employeeId: emp.employeeId || '',
                                     password: '',
-                                    permissions: Array.isArray(emp.permissions) ? emp.permissions : []
+                                    permissions: Array.isArray(emp.permissions) ? emp.permissions : [],
+                                    salary: (emp.salary || 0).toString()
                                   });
                                   setIsEmployeeModalOpen(true);
                                 }}
@@ -800,6 +803,21 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                   )}
                 </div>
 
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black text-gray-400 uppercase flex items-center gap-2">
+                      <DollarSign size={14} /> الراتب الشهري ({settings.currency})
+                    </label>
+                    <input
+                      type="number"
+                      value={empForm.salary}
+                      onChange={(e) => setEmpForm({ ...empForm, salary: e.target.value })}
+                      className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-brand-primary/10 focus:ring-2 focus:ring-brand-primary outline-none font-bold text-brand-dark"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
                 <div className="p-6 bg-brand-light/10 rounded-3xl border border-dashed border-brand-primary/20">
                   <h4 className="text-sm font-black text-brand-dark mb-4 flex items-center gap-2">
                     <ListChecks size={18} className="text-brand-primary" /> صلاحيات الوصول المخصصة
@@ -891,7 +909,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
         message={statusModal.message}
       />
 
-    </div>
+    </div >
   );
 };
 

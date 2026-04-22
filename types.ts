@@ -92,4 +92,15 @@ export interface Employee {
   permissions: string[];
   employeeId: string;
   joinedAt: string;
+  salary?: number;
+}
+
+export interface SystemNotification {
+  id: string;
+  type: 'kitchen_warning' | 'low_stock_auto' | 'order_ready' | 'system_update';
+  message: string;
+  productName?: string;
+  timestamp: string;
+  read: boolean;
+  sender?: string;
 }

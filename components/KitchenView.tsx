@@ -109,15 +109,16 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, user, lowStockThres
         try {
             await addDoc(collection(db, "notifications"), {
                 type: 'kitchen_warning',
-                message: `تنبيه من المطبخ: المنتج ${p.name} على وشك النفاد!`,
+                message: `تنبيه حرج من المطبخ: المنتج ${p.name} شارف على الانتهاء!`,
                 productName: p.name,
                 timestamp: new Date().toISOString(),
                 read: false,
-                sender: 'المطبخ'
+                sender: 'الشيف: ' + (user?.name || 'المطبخ')
             });
-            alert(`تم إرسال تنبيه لقسم المبيعات بخصوص: ${p.name}`);
+            showToast(`تم إرسال تنذير عاجل بخصوص ${p.name}`, 'success');
         } catch (error) {
             console.error("Error sending warning:", error);
+            showToast('فشل في إرسال التنبيه', 'error');
         }
     };
 
@@ -323,43 +324,64 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, user, lowStockThres
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-8">
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+                    <div className="flex-1 overflow-y-auto p-8 premium-scrollbar">
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-8">
                             {filteredProducts.map(p => {
                                 const isLow = p.stock <= lowStockThreshold;
                                 return (
-                                    <div key={p.id} className={`p-6 rounded-[2.5rem] border-2 transition-all flex flex-col justify-between ${isLow ? 'bg-red-50/30 border-red-100' : 'bg-white border-gray-50 hover:border-gold-200'}`}>
+                                    <div key={p.id} className={`group bg-white rounded-[3rem] p-8 shadow-xl border border-transparent hover:border-brand-primary/20 transition-all hover:shadow-2xl hover:-translate-y-2 relative overflow-hidden flex flex-col justify-between ${isLow ? 'ring-2 ring-red-500/20 bg-red-50/10' : ''}`}>
+
+                                        {/* Decorative Background for Urgency */}
+                                        {isLow && (
+                                            <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-bl-[5rem] -mr-8 -mt-8 animate-pulse"></div>
+                                        )}
+
                                         <div>
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div className="w-12 h-12 bg-coffee-50 rounded-2xl flex items-center justify-center text-xl">🥗</div>
+                                            <div className="flex justify-between items-start mb-6">
+                                                <div className={`w-16 h-16 rounded-[1.8rem] flex items-center justify-center text-2xl shadow-lg transform group-hover:rotate-6 transition-transform ${isLow ? 'bg-red-500 text-white' : 'bg-brand-light/30 text-brand-primary'}`}>
+                                                    {p.category.toLowerCase().includes('قهوة') ? '☕' :
+                                                        p.category.toLowerCase().includes('حلا') ? '🍰' :
+                                                            p.category.toLowerCase().includes('مشروب') ? '🥤' : '🥗'}
+                                                </div>
                                                 {isLow && (
-                                                    <div className="flex items-center gap-1.5 bg-red-100 text-red-600 px-3 py-1 rounded-full text-[10px] font-black animate-pulse">
-                                                        <AlertTriangle size={12} /> منخفض
+                                                    <div className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-full text-[10px] font-black shadow-lg shadow-red-500/20 animate-bounce">
+                                                        <AlertTriangle size={12} /> نفاد وشيك
                                                     </div>
                                                 )}
                                             </div>
-                                            <h3 className="text-lg font-bold text-coffee-900 mb-1">{p.name}</h3>
-                                            <span className="text-xs text-gray-400 mb-5 block">{p.category}</span>
 
-                                            <div className="bg-gray-100 p-4 rounded-2xl flex justify-between items-center mb-6">
-                                                <span className="text-xs font-bold text-gray-500 uppercase tracking-tighter">المخزون الحالي</span>
-                                                <span className={`text-2xl font-black ${isLow ? 'text-red-600' : 'text-coffee-900'}`}>{p.stock}</span>
+                                            <h3 className="text-xl font-black text-brand-dark mb-1 group-hover:text-brand-primary transition-colors">{p.name}</h3>
+                                            <div className="flex items-center gap-2 mb-6">
+                                                <div className="w-1.5 h-1.5 bg-brand-accent rounded-full"></div>
+                                                <span className="text-[10px] font-black text-brand-dark/20 uppercase tracking-widest">{p.category}</span>
+                                            </div>
+
+                                            <div className={`p-6 rounded-3xl flex justify-between items-center mb-8 border transition-colors ${isLow ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter mb-1">المخزون المتوفر</span>
+                                                    <span className={`text-3xl font-black ${isLow ? 'text-red-600' : 'text-brand-dark'}`}>{p.stock}</span>
+                                                </div>
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isLow ? 'bg-red-200 text-red-600' : 'bg-brand-primary/10 text-brand-primary'}`}>
+                                                    <Package size={18} />
+                                                </div>
                                             </div>
                                         </div>
 
-                                        <div className="space-y-2">
+                                        <div className="grid grid-cols-5 gap-3">
                                             <button
                                                 onClick={() => setEditingProduct(p)}
-                                                className="w-full py-3 bg-coffee-900 text-white rounded-xl text-xs font-bold hover:bg-gold-600 transition-all flex items-center justify-center gap-2 shadow-md"
+                                                className="col-span-2 py-4 bg-brand-dark text-white rounded-2xl text-[10px] font-black hover:bg-brand-primary transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95"
                                             >
-                                                <Edit3 size={14} /> تعديل الكمية
+                                                <Edit3 size={14} /> تحديث
                                             </button>
                                             <button
                                                 onClick={() => handleManualWarning(p)}
-                                                className={`w-full py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 border-2 ${isLow ? 'bg-red-600 text-white border-red-600 shadow-red-200 shadow-lg' : 'bg-white text-coffee-900 border-coffee-900 hover:bg-coffee-900 hover:text-white'
+                                                className={`col-span-3 py-4 rounded-2xl text-[10px] font-black transition-all flex items-center justify-center gap-2 border-2 active:scale-95 shadow-lg ${isLow
+                                                        ? 'bg-red-600 text-white border-red-600 shadow-red-200 animate-pulse'
+                                                        : 'bg-white text-brand-dark border-brand-dark/10 hover:border-brand-primary hover:text-brand-primary'
                                                     }`}
                                             >
-                                                <Bell size={14} /> تنبيه المبيعات
+                                                <Bell size={14} /> تنبيه الإدارة للمبيعات
                                             </button>
                                         </div>
                                     </div>

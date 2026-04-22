@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Loader2, Coffee, Wifi, WifiOff, AlertCircle } from 'lucide-react';
+import { soundService } from '../services/soundService';
 
 interface LoginViewProps {
   onLogin: (email: string, pass: string) => Promise<boolean>;
@@ -40,6 +41,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
     if (!success) {
       setError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
       setIsLoading(false);
+      soundService.playError();
     }
   };
 

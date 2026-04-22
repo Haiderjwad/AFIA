@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, CircleUser, LogOut, PackageCheck, AlertTriangle, Wifi, WifiOff, Menu } from 'lucide-react';
+import { Bell, CircleUser, LogOut, PackageCheck, AlertTriangle, Wifi, WifiOff, Menu, ChefHat } from 'lucide-react';
 import { Employee, Transaction, MenuItem, AppSettings } from '../types';
 
 interface TopHeaderProps {
@@ -10,7 +10,7 @@ interface TopHeaderProps {
     readyOrders: Transaction[];
     lowStockItems: MenuItem[];
     onCompleteOrder: (id: string) => void;
-    onNavigate: (view: string) => void;
+    onNavigate: (view: string, subTab?: string, data?: any) => void;
     isOnline: boolean;
     activeTabTitle: string;
     settings?: AppSettings;
@@ -57,7 +57,8 @@ const TopHeader: React.FC<TopHeaderProps> = ({
         return roles[role] || role;
     };
 
-    const notificationCount = readyOrders.length + lowStockItems.length;
+    const kitchenWarnings = notifications.filter(n => n.type === 'kitchen_warning' && !n.read).length;
+    const notificationCount = readyOrders.length + lowStockItems.length + kitchenWarnings;
 
     return (
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-brand-primary/10 px-4 md:px-8 flex items-center justify-between z-40 sticky top-0" dir="rtl">
@@ -114,29 +115,80 @@ const TopHeader: React.FC<TopHeaderProps> = ({
                         <div className="absolute top-16 left-0 w-80 bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-brand-primary/10 overflow-hidden animate-in fade-in slide-in-from-top-2 origin-top-left">
                             <div className="p-4 bg-brand-light/10 border-b border-brand-primary/5 flex justify-between items-center">
                                 <span className="font-black text-brand-dark text-sm">التنبيهات السحابية</span>
-                                <span className="text-[10px] font-bold text-brand-secondary">{notificationCount} طلبات جديدة</span>
+                                <span className="text-[10px] font-bold text-brand-secondary">{notificationCount} تنبيهات</span>
                             </div>
                             <div className="max-h-96 overflow-y-auto no-scrollbar">
                                 {readyOrders.map(order => (
-                                    <div key={order.id} className="p-4 border-b border-gray-50 bg-green-50/20 hover:bg-green-50 transition-colors flex items-start gap-3">
-                                        <div className="p-2 bg-green-100 text-green-600 rounded-xl">
+                                    <div
+                                        key={order.id}
+                                        onClick={() => {
+                                            onNavigate('invoices');
+                                            setShowNotifications(false);
+                                        }}
+                                        className="p-4 border-b border-gray-50 bg-green-50/20 hover:bg-green-50 transition-colors flex items-start gap-3 cursor-pointer group"
+                                    >
+                                        <div className="p-2 bg-green-100 text-green-600 rounded-xl group-hover:scale-110 transition-transform">
                                             <PackageCheck size={16} />
                                         </div>
                                         <div className="flex-1">
-                                            <p className="text-sm font-bold text-brand-dark">الطلب #{order.id.slice(-4)} جاهز!</p>
-                                            <button onClick={() => { onCompleteOrder(order.id); setShowNotifications(false); }} className="mt-2 text-[10px] font-black bg-brand-primary text-white px-3 py-1 rounded-full">إرسال للمحاسبة</button>
+                                            <p className="text-sm font-bold text-brand-dark group-hover:text-brand-primary transition-colors">الطلب #{order.id.slice(-4)} جاهز!</p>
+                                            <div className="flex items-center justify-between mt-2">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onCompleteOrder(order.id);
+                                                        setShowNotifications(false);
+                                                    }}
+                                                    className="text-[10px] font-black bg-brand-primary text-white px-3 py-1 rounded-full hover:bg-brand-secondary transition-all"
+                                                >
+                                                    إرسال للمحاسبة
+                                                </button>
+                                                <span className="text-[9px] text-gray-400 font-bold">عرض الفواتير</span>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
                                 {lowStockItems.map(item => (
-                                    <div key={item.id} className="p-4 border-b border-gray-50 bg-amber-50/30 hover:bg-amber-50 transition-colors flex items-start gap-3 text-right">
-                                        <div className="p-2 bg-amber-100 text-amber-600 rounded-xl shadow-sm">
+                                    <div
+                                        key={item.id}
+                                        onClick={() => {
+                                            onNavigate('inventory', undefined, { productSearch: item.name });
+                                            setShowNotifications(false);
+                                        }}
+                                        className="p-4 border-b border-gray-50 bg-amber-50/30 hover:bg-amber-50 transition-colors flex items-start gap-3 text-right cursor-pointer group"
+                                    >
+                                        <div className="p-2 bg-amber-100 text-amber-600 rounded-xl shadow-sm group-hover:scale-110 transition-transform">
                                             <AlertTriangle size={16} />
                                         </div>
                                         <div className="flex-1">
-                                            <p className="text-sm font-black text-brand-dark">المخزون منخفض: {item.name}</p>
+                                            <p className="text-sm font-black text-brand-dark group-hover:text-amber-700 transition-colors">المخزون منخفض: {item.name}</p>
                                             <p className="text-[10px] text-amber-700 font-bold mb-1">يرجى تعبئة المخزون فوراً</p>
-                                            <p className="text-[10px] text-gray-400">الكمية الحالية: {item.stock} وحدة</p>
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-[10px] text-gray-400">الكمية: {item.stock} وحدة</p>
+                                                <span className="text-[9px] text-brand-primary font-black group-hover:translate-x-1 transition-transform">انتقال للمنتجات ←</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                                {notifications.filter(n => n.type === 'kitchen_warning').map(n => (
+                                    <div
+                                        key={n.id}
+                                        onClick={() => {
+                                            onNavigate('inventory', undefined, { productSearch: n.productName });
+                                            setShowNotifications(false);
+                                        }}
+                                        className="p-4 border-b border-gray-50 bg-red-50/20 hover:bg-red-50 transition-colors flex items-start gap-3 text-right cursor-pointer group"
+                                    >
+                                        <div className="p-2 bg-red-100 text-red-600 rounded-xl shadow-sm group-hover:scale-110 transition-transform">
+                                            <ChefHat size={16} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-sm font-black text-brand-dark group-hover:text-red-700 transition-colors">تنبيه حرج من المطبخ!</p>
+                                            <p className="text-[10px] text-red-700 font-bold mb-1">{n.message}</p>
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-[9px] text-gray-400 font-bold">{new Date(n.timestamp).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</p>
+                                                <span className="text-[9px] text-red-600 font-black group-hover:translate-x-1 transition-transform">عرض المنتج ←</span>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}

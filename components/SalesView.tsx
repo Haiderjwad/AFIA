@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Search, Coffee, Sparkles, Filter, Bell, CheckCircle2, PackageCheck, Plus, History, X, Clock, UtensilsCrossed } from 'lucide-react';
 import { MenuItem, AppSettings, Transaction, Employee } from '../types';
+import { formatCurrency } from '../utils/currencyUtils';
 
 interface SalesViewProps {
     products: MenuItem[];
@@ -140,9 +141,8 @@ const SalesView: React.FC<SalesViewProps> = ({ products, addToCart, settings, re
                                 <div className="text-center w-full">
                                     <h3 className="font-extrabold text-brand-dark text-xl mb-1 leading-tight group-hover:text-brand-primary transition-colors">{product.name}</h3>
                                     <p className="text-xs font-bold text-brand-secondary mb-4 opacity-70">{product.category}</p>
-                                    <div className="flex items-center justify-center gap-2 bg-brand-light/10 py-2 rounded-2xl group-hover:bg-brand-primary/5 transition-all">
-                                        <span className="text-2xl font-black text-brand-accent">{product.price.toFixed(2)}</span>
-                                        <span className="text-xs font-black text-brand-dark/40 uppercase">{settings.currency}</span>
+                                    <div className="flex items-center justify-center gap-2 bg-brand-light/10 py-3 px-4 rounded-2xl group-hover:bg-brand-primary/5 transition-all">
+                                        <span className="text-xl font-black text-brand-accent">{formatCurrency(product.price, settings.currency)}</span>
                                     </div>
                                 </div>
 

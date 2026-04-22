@@ -11,6 +11,7 @@ import { MenuItem, AppSettings } from '../types';
 import { QRCodeCanvas } from 'qrcode.react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { formatCurrency } from '../utils/currencyUtils';
 
 interface DigitalMenuModalProps {
     products: MenuItem[];
@@ -260,8 +261,8 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
                             onClick={exportProfessionalPDF}
                             disabled={previewMode !== 'poster' || isExporting}
                             className={`w-full py-6 rounded-[2rem] font-black text-lg flex items-center justify-center gap-4 transition-all active:scale-95 group shadow-3xl ${previewMode === 'poster'
-                                    ? 'bg-brand-dark hover:bg-brand-primary text-white shadow-brand-dark/20 cursor-pointer'
-                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-80 shadow-none'
+                                ? 'bg-brand-dark hover:bg-brand-primary text-white shadow-brand-dark/20 cursor-pointer'
+                                : 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-80 shadow-none'
                                 }`}
                         >
                             <QrCode size={28} className={`${previewMode === 'poster' ? 'group-hover:rotate-12' : ''} transition-transform`} />
@@ -334,7 +335,7 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
                                                         <div className="flex-1 min-w-0">
                                                             <div className="flex justify-between items-start mb-0.5">
                                                                 <h4 className="font-black text-[11px] truncate">{p.name}</h4>
-                                                                <span className={`text-[11px] font-black shrink-0 ${currentTheme.secondary}`}>{p.price.toFixed(0)}</span>
+                                                                <span className={`text-[11px] font-black shrink-0 ${currentTheme.secondary}`}>{formatCurrency(p.price, settings.currency)}</span>
                                                             </div>
                                                             <p className="text-[7px] opacity-50 line-clamp-1 font-bold">{p.notes || "تذوق الطعم الأصيل"}</p>
                                                         </div>

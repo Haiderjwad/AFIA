@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { CURRENCY } from '../constants';
 import { firestoreService } from '../services/firestoreService';
+import { formatCurrency } from '../utils/currencyUtils';
 
 interface InvoicesViewProps {
     transactions: Transaction[];
@@ -66,12 +67,12 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
         // ════════════════════════════════════════════════════════════════════════
         const buildThermalHTML = (): string => {
             const itemRows = transaction.items.map((item, idx) => `
-                <div class="t-row">
-                    <div class="t-col-name">${item.name}</div>
-                    <div class="t-col-qty">x${item.quantity}</div>
-                    <div class="t-col-total">${(item.price * item.quantity).toFixed(0)}</div>
-                </div>
-            `).join('');
+                    <div class="t-row">
+                        <div class="t-col-name">${item.name}</div>
+                        <div class="t-col-qty">x${item.quantity}</div>
+                        <div class="t-col-total">${formatCurrency(item.price * item.quantity, curr)}</div>
+                    </div>
+                `).join('');
 
             return `
                 <div class="thermal-receipt">
@@ -100,9 +101,9 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                     <div class="t-divider"></div>
 
                     <div class="t-summary">
-                        <div class="t-sum-row"><span>المجموع:</span> <span>${grandSubtotal.toFixed(0)} ${curr}</span></div>
-                        <div class="t-sum-row"><span>الضريبة (%${taxRate}):</span> <span>${grandTaxAmount.toFixed(0)} ${curr}</span></div>
-                        <div class="t-sum-row t-grand-total"><span>الإجمالي:</span> <span>${grandTotalAmount.toFixed(0)} ${curr}</span></div>
+                        <div class="t-sum-row"><span>المجموع:</span> <span>${formatCurrency(grandSubtotal, curr)}</span></div>
+                        <div class="t-sum-row"><span>الضريبة (%${taxRate}):</span> <span>${formatCurrency(grandTaxAmount, curr)}</span></div>
+                        <div class="t-sum-row t-grand-total"><span>الإجمالي:</span> <span>${formatCurrency(grandTotalAmount, curr)}</span></div>
                     </div>
 
                     <div class="t-footer">
@@ -131,9 +132,9 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                 return `<tr style="background:${bg}">
                   <td class="td-idx">${n}</td>
                   <td class="td-name">${item.name}</td>
-                  <td class="td-num">${item.price.toFixed(2)}</td>
+                  <td class="td-num">${formatCurrency(item.price, curr)}</td>
                   <td class="td-num">${item.quantity}</td>
-                  <td class="td-total">${(item.price * item.quantity).toFixed(2)}</td>
+                  <td class="td-total">${formatCurrency(item.price * item.quantity, curr)}</td>
                 </tr>`;
             }).join('');
 
@@ -195,13 +196,13 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                     <div class="a4-summary-left">
                         <div class="a4-total-badge">
                             <span class="a4-tb-lbl">الإجمالي النهائي</span>
-                            <span class="a4-tb-val">${grandTotalAmount.toFixed(2)} ${curr}</span>
+                            <span class="a4-tb-val">${formatCurrency(grandTotalAmount, curr)}</span>
                         </div>
                     </div>
                     <div class="a4-summary-right">
-                        <div class="a4-sum-row"><span>المجموع الفرعي:</span> <span>${grandSubtotal.toFixed(2)}</span></div>
-                        <div class="a4-sum-row"><span>ضريبة القيمة المضافة ${taxRate}%:</span> <span>${grandTaxAmount.toFixed(2)}</span></div>
-                        <div class="a4-sum-row a4-sum-total"><span>الصافي:</span> <span>${grandTotalAmount.toFixed(2)} ${curr}</span></div>
+                        <div class="a4-sum-row"><span>المجموع الفرعي:</span> <span>${formatCurrency(grandSubtotal, curr)}</span></div>
+                        <div class="a4-sum-row"><span>ضريبة القيمة المضافة ${taxRate}%:</span> <span>${formatCurrency(grandTaxAmount, curr)}</span></div>
+                        <div class="a4-sum-row a4-sum-total"><span>الصافي:</span> <span>${formatCurrency(grandTotalAmount, curr)}</span></div>
                     </div>
                 </div>
 
@@ -228,9 +229,9 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                 return `<tr>
                   <td class="c-idx">${n}</td>
                   <td class="c-name">${item.name}</td>
-                  <td class="c-price">${item.price.toFixed(2)}</td>
+                  <td class="c-price">${formatCurrency(item.price, curr)}</td>
                   <td class="c-qty">${item.quantity}</td>
-                  <td class="c-total">${(item.price * item.quantity).toFixed(2)}</td>
+                  <td class="c-total">${formatCurrency(item.price * item.quantity, curr)}</td>
                 </tr>`;
             }).join('');
 
@@ -290,15 +291,15 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                 <div class="c-summary">
                     <div class="c-summary-row">
                         <span>المجموع الفرعي</span>
-                        <span>${grandSubtotal.toFixed(2)} ${curr}</span>
+                        <span>${formatCurrency(grandSubtotal, curr)}</span>
                     </div>
                     <div class="c-summary-row">
                         <span>الضريبة (${taxRate}%)</span>
-                        <span>${grandTaxAmount.toFixed(2)} ${curr}</span>
+                        <span>${formatCurrency(grandTaxAmount, curr)}</span>
                     </div>
                     <div class="c-summary-total" style="color:${brandColor}">
                         <span>الإجمالي النهائي</span>
-                        <span>${grandTotalAmount.toFixed(2)} ${curr}</span>
+                        <span>${formatCurrency(grandTotalAmount, curr)}</span>
                     </div>
                 </div>
 
@@ -695,9 +696,8 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                 <div className="flex items-end justify-between pt-4 border-t border-gray-50">
                                     <div className="flex flex-col">
                                         <span className="text-gray-400 text-[10px] font-black uppercase tracking-tighter">الإجمالي الكلي</span>
-                                        <span className={`font-black text-3xl leading-none ${transaction.isManual ? 'text-red-600' : 'text-brand-dark'}`}>
-                                            {transaction.total.toFixed(2)}
-                                            <span className="text-xs mr-1 opacity-50">{settings?.currency || CURRENCY}</span>
+                                        <span class={`font-black text-2xl leading-none ${transaction.isManual ? 'text-red-600' : 'text-brand-dark'}`}>
+                                            {formatCurrency(transaction.total, settings?.currency || CURRENCY)}
                                         </span>
                                     </div>
 
@@ -805,7 +805,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                                 <tr key={i} className="hover:bg-gold-50/10 transition-colors">
                                                     <td className="px-6 py-4 font-bold text-brand-dark">{item.name}</td>
                                                     <td className="px-6 py-4 font-black text-brand-primary">x{item.quantity}</td>
-                                                    <td className="px-6 py-4 font-black text-brand-dark text-left">{(item.price * item.quantity).toFixed(2)}</td>
+                                                    <td className="px-6 py-4 font-black text-brand-dark text-left">{formatCurrency(item.price * item.quantity, settings?.currency || CURRENCY)}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -861,7 +861,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                             <div className="pt-6 border-t border-dashed border-gray-200">
                                 <div className="flex justify-between items-center text-2xl font-black">
                                     <span className="text-brand-dark">إجمالي القيمة</span>
-                                    <span className="text-brand-primary">{viewingTransaction.total.toFixed(2)} {settings?.currency || CURRENCY}</span>
+                                    <span className="text-brand-primary">{formatCurrency(viewingTransaction.total, settings?.currency || CURRENCY)}</span>
                                 </div>
                             </div>
                         </div>
@@ -941,7 +941,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                             <div className="flex items-center gap-8">
                                                 <div className="text-right">
                                                     <p className="text-xs text-gray-400 font-bold uppercase mb-1">Final Amount</p>
-                                                    <p className="text-2xl font-black text-brand-dark">{t.total.toFixed(2)} {settings?.currency || CURRENCY}</p>
+                                                    <p className="text-2xl font-black text-brand-dark">{formatCurrency(t.total, settings?.currency || CURRENCY)}</p>
                                                 </div>
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); handlePrint(t); }}
@@ -1002,7 +1002,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                             </div>
                                             <div className="flex-1">
                                                 <h4 className="font-black text-brand-dark mb-1">{p.name}</h4>
-                                                <span className="text-brand-primary font-black text-sm">{p.price.toFixed(2)} {CURRENCY}</span>
+                                                <span className="text-brand-primary font-black text-sm">{formatCurrency(p.price, settings?.currency || CURRENCY)}</span>
                                             </div>
                                             <div className="opacity-0 group-hover:opacity-100 transition-all">
                                                 <Plus className="text-brand-primary" size={20} />
@@ -1040,7 +1040,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                                     </div>
                                                     <div>
                                                         <p className="font-black text-sm text-brand-dark">{i.name}</p>
-                                                        <p className="text-[10px] text-gray-400 font-bold">{(i.price * i.quantity).toFixed(2)} IQD</p>
+                                                        <p className="text-[10px] text-gray-400 font-bold">{formatCurrency(i.price * i.quantity, settings?.currency || CURRENCY)}</p>
                                                     </div>
                                                 </div>
                                                 <button
@@ -1058,17 +1058,16 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                     <div className="space-y-4 mb-8">
                                         <div className="flex justify-between text-xs font-bold text-gray-400 uppercase">
                                             <span>Subtotal</span>
-                                            <span>{manualCart.reduce((acc, i) => acc + (i.price * i.quantity), 0).toFixed(2)}</span>
+                                            <span>{formatCurrency(manualCart.reduce((acc, i) => acc + (i.price * i.quantity), 0), settings?.currency || CURRENCY)}</span>
                                         </div>
                                         <div className="flex justify-between text-xs font-bold text-gray-400 uppercase border-b border-dashed border-gray-200 pb-4">
                                             <span>Tax Flow</span>
-                                            <span>{((manualCart.reduce((acc, i) => acc + (i.price * i.quantity), 0)) * (settings?.taxRate || 1) / 100).toFixed(2)}</span>
+                                            <span>{formatCurrency((manualCart.reduce((acc, i) => acc + (i.price * i.quantity), 0)) * (settings?.taxRate || 1) / 100, settings?.currency || CURRENCY)}</span>
                                         </div>
                                         <div className="flex justify-between items-center">
                                             <span className="text-brand-dark/40 font-black uppercase text-xs">Total Amount</span>
                                             <span className="text-4xl font-black text-brand-dark">
-                                                {(manualCart.reduce((acc, i) => acc + (i.price * i.quantity), 0) * (1 + (settings?.taxRate || 0) / 100)).toFixed(2)}
-                                                <small className="text-xs mr-2 text-brand-primary">{CURRENCY}</small>
+                                                {formatCurrency(manualCart.reduce((acc, i) => acc + (i.price * i.quantity), 0) * (1 + (settings?.taxRate || 0) / 100), settings?.currency || CURRENCY)}
                                             </span>
                                         </div>
                                     </div>
@@ -1162,8 +1161,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                         </div>
                                         <span className="text-gray-400 block text-[10px] mb-2 font-black uppercase tracking-[0.3em]">المبلغ المطلوب تحصيله</span>
                                         <span className={`text-6xl font-black block tracking-tighter ${selectedForPayment.isManual ? 'text-red-600' : 'text-brand-dark'}`}>
-                                            {selectedForPayment.total.toFixed(0)}
-                                            <span className="text-xl mr-2 text-gray-300">{settings?.currency || CURRENCY}</span>
+                                            {formatCurrency(selectedForPayment.total, settings?.currency || CURRENCY)}
                                         </span>
                                     </div>
 

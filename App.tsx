@@ -14,7 +14,8 @@ import KitchenView from './components/KitchenView';
 import SalesView from './components/SalesView';
 import TopHeader from './components/TopHeader';
 import LowStockAlert from './components/LowStockAlert';
-import { CartItem, MenuItem, Transaction, AppSettings, Employee } from './types';
+import KitchenAlert from './components/KitchenAlert';
+import { CartItem, MenuItem, Transaction, AppSettings, Employee, Supplier, SystemNotification } from './types';
 import { CURRENCY, DEFAULT_SETTINGS } from './constants';
 import { X, CheckCircle, Wifi, WifiOff, Globe, ShoppingCart } from 'lucide-react';
 import { firestoreService } from './services/firestoreService';
@@ -127,7 +128,9 @@ const App: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [activeLowStockAlert, setActiveLowStockAlert] = useState<MenuItem | null>(null);
+  const [activeKitchenAlert, setActiveKitchenAlert] = useState<SystemNotification | null>(null);
   const [alertedIds, setAlertedIds] = useState<Set<string>>(new Set());
+  const [sessionAlertedIds, setSessionAlertedIds] = useState<Set<string>>(new Set());
 
   // Data State (Loaded from DB)
   const [products, setProducts] = useState<MenuItem[]>([]);
@@ -135,11 +138,12 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isReceiptPanelOpen, setIsReceiptPanelOpen] = useState(false);
 
   useEffect(() => {
-    let unsubProducts: any, unsubTransactions: any, unsubSettings: any, unsubNotifications: any, unsubEmployees: any;
+    let unsubProducts: any, unsubTransactions: any, unsubSettings: any, unsubNotifications: any, unsubEmployees: any, unsubSuppliers: any;
 
     if (isAuthenticated) {
       unsubProducts = onSnapshot(collection(firestoreDb, "products"), (snapshot) => {
@@ -163,16 +167,33 @@ const App: React.FC = () => {
       });
 
       unsubNotifications = onSnapshot(
-        query(collection(firestoreDb, "notifications"), orderBy("timestamp", "desc"), limit(5)),
+        query(collection(firestoreDb, "notifications"), orderBy("timestamp", "desc"), limit(10)),
         (snapshot) => {
-          const n = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+          const n = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as SystemNotification));
           setNotifications(n);
+
+          // Check for new kitchen warnings for Sales/Cashier/Admin
+          if (currentUser) {
+            const role = currentUser.role.toLowerCase();
+            if (['admin', 'manager', 'cashier', 'sales'].includes(role)) {
+              const latestKitchenAlert = n.find(notif => notif.type === 'kitchen_warning' && !notif.read);
+              if (latestKitchenAlert && !sessionAlertedIds.has(latestKitchenAlert.id)) {
+                setActiveKitchenAlert(latestKitchenAlert);
+                setSessionAlertedIds(prev => new Set(prev).add(latestKitchenAlert.id));
+              }
+            }
+          }
         }
       );
 
       unsubEmployees = onSnapshot(collection(firestoreDb, "employees"), (snapshot) => {
         const e = snapshot.docs.map(doc => ({ ...doc.data(), uid: doc.id } as Employee));
         setEmployees(e);
+      });
+
+      unsubSuppliers = onSnapshot(collection(firestoreDb, "suppliers"), (snapshot) => {
+        const s = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Supplier));
+        setSuppliers(s);
       });
     }
 
@@ -182,6 +203,7 @@ const App: React.FC = () => {
       if (unsubSettings) unsubSettings();
       if (unsubNotifications) unsubNotifications();
       if (unsubEmployees) unsubEmployees();
+      if (unsubSuppliers) unsubSuppliers();
     };
   }, [isAuthenticated]);
 
@@ -193,11 +215,18 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleGlobalClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      const isClickable = target.closest('button') ||
+
+      // Professional Interaction Detection
+      const isClickable =
+        target.closest('button') ||
         target.closest('a') ||
         target.closest('[role="button"]') ||
         target.closest('input[type="checkbox"]') ||
-        target.closest('input[type="radio"]');
+        target.closest('input[type="radio"]') ||
+        target.closest('.cursor-pointer') ||
+        target.closest('[data-clickable="true"]') ||
+        (target.onclick !== null) ||
+        (window.getComputedStyle(target).cursor === 'pointer');
 
       if (isClickable) {
         soundService.playClick();
@@ -217,9 +246,11 @@ const App: React.FC = () => {
   const handleLogin = async (email: string, pass: string): Promise<boolean> => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
+      soundService.playSuccess();
       return true;
     } catch (error) {
       console.error("Login Error:", error);
+      soundService.playError();
       return false;
     }
   };
@@ -427,13 +458,24 @@ const App: React.FC = () => {
     await firestoreService.deleteProduct(id);
   };
 
-  const handleDashboardNavigate = (view: string, subTab?: string) => {
+  const [inventorySearchQuery, setInventorySearchQuery] = useState('');
+
+  const handleDashboardNavigate = (view: string, subTab?: string, data?: any) => {
     setActiveTab(view);
     setIsProductMenuOpen(false);
+
     if (view === 'settings' && subTab) {
       setSettingsTab(subTab as 'general' | 'payments' | 'employees' | 'printing');
     } else {
       setSettingsTab('general');
+    }
+
+    // Handle professional navigation data
+    if (view === 'inventory' && data?.productSearch) {
+      setInventorySearchQuery(data.productSearch);
+    } else if (view !== 'inventory') {
+      // Clear search when leaving inventory or navigating normally
+      setInventorySearchQuery('');
     }
   };
 
@@ -503,6 +545,8 @@ const App: React.FC = () => {
             storeName={settings.storeName}
             settings={settings}
             canManage={['admin', 'manager'].includes(role) || hasAll}
+            initialSearchQuery={inventorySearchQuery}
+            onSearchChange={setInventorySearchQuery}
           />;
         }
         break;
@@ -519,12 +563,17 @@ const App: React.FC = () => {
         break;
       case 'suppliers':
         if (['admin', 'manager', 'cashier'].includes(role) || perms.includes('suppliers') || hasAll) {
-          return <SuppliersView />;
+          return <SuppliersView suppliers={suppliers} settings={settings} />;
         }
         break;
       case 'reports':
         if (['admin', 'manager', 'cashier'].includes(role) || perms.includes('reports') || hasAll) {
-          return <ReportsView transactions={transactions} />;
+          return <ReportsView
+            transactions={transactions}
+            employees={employees}
+            suppliers={suppliers}
+            settings={settings}
+          />;
         }
         break;
       case 'performance':
@@ -721,8 +770,19 @@ const App: React.FC = () => {
           item={activeLowStockAlert}
           onClose={() => setActiveLowStockAlert(null)}
           onNavigateToInventory={() => {
-            handleDashboardNavigate('inventory');
+            handleDashboardNavigate('inventory', undefined, { productSearch: activeLowStockAlert.name });
             setActiveLowStockAlert(null);
+          }}
+        />
+      )}
+
+      {activeKitchenAlert && (
+        <KitchenAlert
+          notification={activeKitchenAlert}
+          onClose={() => setActiveKitchenAlert(null)}
+          onNavigateToInventory={(productName) => {
+            handleDashboardNavigate('inventory', undefined, { productSearch: productName });
+            setActiveKitchenAlert(null);
           }}
         />
       )}

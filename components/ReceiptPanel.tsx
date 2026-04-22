@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CartItem, MenuItem, AppSettings } from '../types';
+import { formatCurrency } from '../utils/currencyUtils';
 import { Plus, Minus, Sparkles, Coffee, CreditCard, Loader2, Banknote, Wifi, ArrowLeft, Check, AlertCircle, Hash, MessageSquare, X } from 'lucide-react';
 import { suggestUpsell } from '../services/geminiService';
 
@@ -254,7 +255,7 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                             <div key={item.id} className="bg-white border-brand-primary/5 p-4 rounded-2xl shadow-sm border flex justify-between items-center group animate-in slide-in-from-right-2 hover:shadow-md transition-all">
                                 <div className="flex flex-col">
                                     <span className="font-bold text-brand-dark text-sm">{item.name}</span>
-                                    <span className="text-xs text-brand-dark/40">{item.price.toFixed(2)} {currency}</span>
+                                    <span className="text-xs text-brand-dark/40">{formatCurrency(item.price, settings.currency)}</span>
                                 </div>
 
                                 <div className="flex items-center gap-3 bg-brand-light/20 rounded-xl px-2 py-1">
@@ -294,20 +295,20 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                     <div className="space-y-3 text-sm mb-6">
                         <div className="flex justify-between text-brand-dark/60">
                             <span>المجموع الفرعي</span>
-                            <span className="font-bold text-brand-dark">{subtotal.toFixed(2)} {currency}</span>
+                            <span className="font-bold text-brand-dark">{formatCurrency(subtotal, settings.currency)}</span>
                         </div>
                         <div className="flex justify-between text-brand-dark/60">
                             <span>الضريبة ({settings.taxRate}%)</span>
-                            <span className="font-bold text-brand-dark">{tax.toFixed(2)} {currency}</span>
+                            <span className="font-bold text-brand-dark">{formatCurrency(tax, settings.currency)}</span>
                         </div>
                         <div className="flex justify-between text-red-500 font-bold">
                             <span>الخصم</span>
-                            <span>-{discount.toFixed(2)} {currency}</span>
+                            <span>-{formatCurrency(discount, settings.currency)}</span>
                         </div>
                         <div className="h-px bg-dashed border-t border-brand-primary/10 my-4"></div>
                         <div className="flex justify-between items-center">
                             <span className="text-xl font-black text-brand-dark">إجمالي</span>
-                            <span className="text-3xl font-black text-brand-accent drop-shadow-sm">{total.toFixed(2)} {currency}</span>
+                            <span className="text-3xl font-black text-brand-accent drop-shadow-sm">{formatCurrency(total, settings.currency)}</span>
                         </div>
                     </div>
 
@@ -344,7 +345,7 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                             {/* Amount Display */}
                             <div className="text-center mb-8">
                                 <span className="text-gray-500 block text-sm mb-1">المبلغ الإجمالي المستحق</span>
-                                <span className="text-4xl font-extrabold text-brand-primary">{total.toFixed(2)} {currency}</span>
+                                <span className="text-4xl font-extrabold text-brand-primary">{formatCurrency(total, settings.currency)}</span>
                             </div>
 
                             {!selectedMethod ? (
@@ -414,7 +415,7 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                                                 <div className={`p-4 rounded-xl text-center border-2 ${change >= 0 ? 'bg-brand-light/30 border-brand-primary/20' : 'bg-red-50 border-red-200'}`}>
                                                     <span className="block text-sm text-gray-500 mb-1">{change >= 0 ? 'الباقي للعميل' : 'المبلغ الناقص'}</span>
                                                     <span className={`text-2xl font-bold ${change >= 0 ? 'text-brand-dark' : 'text-red-600'}`}>
-                                                        {Math.abs(change).toFixed(2)} {currency}
+                                                        {formatCurrency(Math.abs(change), settings.currency)}
                                                     </span>
                                                 </div>
                                             )}

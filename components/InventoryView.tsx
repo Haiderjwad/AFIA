@@ -1,19 +1,24 @@
 
 import React, { useState } from 'react';
 import { MenuItem, AppSettings } from '../types';
-import { Package, Search, Filter, Plus, X, Tag, DollarSign, Coffee, Trash2, AlertTriangle, Edit, Layers, FileText, QrCode, ArrowLeft, Check } from 'lucide-react';
+import { Package, Search, Filter, Plus, X, Tag, DollarSign, Coffee, Trash2, AlertTriangle, Edit, Layers, FileText, QrCode, ArrowLeft, Check, Coins } from 'lucide-react';
+import { formatCurrency } from '../utils/currencyUtils';
 import DigitalMenuModal from './DigitalMenuModal';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
 
+import StatusModal from './StatusModal';
+
 interface InventoryViewProps {
   products: MenuItem[];
-  onAddProduct: (item: MenuItem) => void;
-  onUpdateProduct: (item: MenuItem) => void;
-  onDeleteProduct: (id: string) => void;
+  onAddProduct: (item: MenuItem) => Promise<void>;
+  onUpdateProduct: (item: MenuItem) => Promise<void>;
+  onDeleteProduct: (id: string) => Promise<void>;
   lowStockThreshold: number;
   storeName: string;
   settings: AppSettings;
   canManage?: boolean;
+  initialSearchQuery?: string;
+  onSearchChange?: (query: string) => void;
 }
 
 
@@ -25,17 +30,39 @@ const InventoryView: React.FC<InventoryViewProps> = ({
   lowStockThreshold = 10,
   storeName,
   settings,
-  canManage = true
+  canManage = true,
+  initialSearchQuery = '',
+  onSearchChange
 }) => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  // Status Modal State
+  const [statusConfig, setStatusConfig] = useState<{
+    isOpen: boolean;
+    type: 'success' | 'error' | 'warning';
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: 'success',
+    title: '',
+    message: ''
+  });
+
   // Search and Filter State
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [stockStatus, setStockStatus] = useState('All');
+
+  // Sync with prop if it changes externally
+  React.useEffect(() => {
+    if (initialSearchQuery !== searchQuery) {
+      setSearchQuery(initialSearchQuery);
+    }
+  }, [initialSearchQuery]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -86,42 +113,77 @@ const InventoryView: React.FC<InventoryViewProps> = ({
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.price || !formData.category || !formData.stock) return;
 
     const priceVal = parseFloat(formData.price);
     const stockVal = parseInt(formData.stock);
 
-    if (editingId) {
-      // Update existing
-      onUpdateProduct({
-        id: editingId,
-        name: formData.name,
-        price: priceVal,
-        category: formData.category,
-        stock: stockVal,
-        notes: formData.notes
-      });
-    } else {
-      // Add new
-      onAddProduct({
-        id: Date.now().toString(),
-        name: formData.name,
-        price: priceVal,
-        category: formData.category,
-        stock: stockVal,
-        notes: formData.notes
+    try {
+      if (editingId) {
+        // Update existing
+        await onUpdateProduct({
+          id: editingId,
+          name: formData.name,
+          price: priceVal,
+          category: formData.category,
+          stock: stockVal,
+          notes: formData.notes
+        });
+        setStatusConfig({
+          isOpen: true,
+          type: 'success',
+          title: 'تم التحديث بنجاح',
+          message: `تم حفظ التعديلات على منتج "${formData.name}" في السحابة بنجاح.`
+        });
+      } else {
+        // Add new
+        await onAddProduct({
+          id: Date.now().toString(),
+          name: formData.name,
+          price: priceVal,
+          category: formData.category,
+          stock: stockVal,
+          notes: formData.notes
+        });
+        setStatusConfig({
+          isOpen: true,
+          type: 'success',
+          title: 'تم الإضافة بنجاح',
+          message: `تم إدراج منتج "${formData.name}" في قائمة المنتجات بنجاح.`
+        });
+      }
+      setIsModalOpen(false);
+      setFormData({ name: '', price: '', category: '', stock: '', notes: '' });
+    } catch (error) {
+      setStatusConfig({
+        isOpen: true,
+        type: 'error',
+        title: 'فشلت العملية',
+        message: 'حدث خطأ غير متوقع أثناء محاولة حفظ البيانات، يرجى المحاولة مرة أخرى.'
       });
     }
-
-    setFormData({ name: '', price: '', category: '', stock: '', notes: '' });
-    setIsModalOpen(false);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (itemToDelete) {
-      onDeleteProduct(itemToDelete);
+      try {
+        await onDeleteProduct(itemToDelete);
+        setStatusConfig({
+          isOpen: true,
+          type: 'success',
+          title: 'تم الحذف نهائياً',
+          message: 'تمت إزالة المنتج من النظام ومن جميع الفروع والمزامنة السحابية.'
+        });
+      } catch (error) {
+        setStatusConfig({
+          isOpen: true,
+          type: 'error',
+          title: 'فشل الحذف',
+          message: 'لم نتمكن من حذف المنتج حالياً، يرجى التأكد من اتصال الإنترنت.'
+        });
+      }
       setItemToDelete(null);
     }
   };
@@ -170,7 +232,11 @@ const InventoryView: React.FC<InventoryViewProps> = ({
               type="text"
               placeholder="بحث عن منتج..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSearchQuery(val);
+                if (onSearchChange) onSearchChange(val);
+              }}
               className="w-full pl-4 pr-12 py-3 bg-gray-50 rounded-xl border-none focus:ring-2 focus:ring-gold-400 outline-none transition-all text-coffee-900 font-medium placeholder-gray-400"
             />
           </div>
@@ -229,22 +295,28 @@ const InventoryView: React.FC<InventoryViewProps> = ({
                   const status = isLowStock ? 'منخفض' : 'متوفر';
                   const statusColor = isLowStock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
 
+                  // Professional Highlight logic
+                  const isHighlighted = initialSearchQuery && product.name.toLowerCase() === initialSearchQuery.toLowerCase();
+
                   return (
-                    <tr key={product.id} className="hover:bg-gray-50 transition-colors">
+                    <tr
+                      key={product.id}
+                      className={`hover:bg-gray-50 transition-all duration-700 ${isHighlighted ? 'bg-brand-primary/5 ring-2 ring-brand-primary ring-inset' : ''}`}
+                    >
                       <td className="px-6 py-4 text-gray-500">#{product.id.slice(-4)}</td>
                       <td className="px-6 py-4 font-bold text-coffee-900 flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gold-100 text-gold-800 rounded-lg flex items-center justify-center text-lg">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg transition-transform ${isHighlighted ? 'scale-110 bg-brand-primary text-white shadow-lg' : 'bg-gold-100 text-gold-800'}`}>
                           ☕
                         </div>
                         <div>
-                          <div>{product.name}</div>
+                          <div className={isHighlighted ? 'text-brand-primary' : ''}>{product.name}</div>
                           {product.notes && <div className="text-xs text-gray-400 font-normal truncate max-w-[150px]">{product.notes}</div>}
                         </div>
                       </td>
                       <td className="px-6 py-4 text-gray-600">
                         <span className="bg-gray-100 px-3 py-1 rounded-full text-xs font-bold">{product.category}</span>
                       </td>
-                      <td className="px-6 py-4 font-bold text-coffee-900">{product.price.toFixed(2)} $</td>
+                      <td className="px-6 py-4 font-bold text-coffee-900">{formatCurrency(product.price, settings.currency)}</td>
                       <td className="px-6 py-4 font-bold text-coffee-900">{stock} وحدة</td>
                       <td className="px-6 py-4">
                         <span className={`${statusColor} px-3 py-1 rounded-full text-xs font-bold flex w-fit items-center gap-1`}>
@@ -365,7 +437,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({
                       className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 outline-none transition-all font-bold text-brand-dark pr-12"
                       placeholder="0.00"
                     />
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-primary/30 font-black text-xs">IQD</div>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-primary/30 font-black text-xs">{settings.currency}</div>
                   </div>
                 </div>
 
@@ -433,6 +505,14 @@ const InventoryView: React.FC<InventoryViewProps> = ({
         products={products}
         storeName={storeName}
         settings={settings}
+      />
+
+      <StatusModal
+        isOpen={statusConfig.isOpen}
+        onClose={() => setStatusConfig({ ...statusConfig, isOpen: false })}
+        type={statusConfig.type}
+        title={statusConfig.title}
+        message={statusConfig.message}
       />
 
     </div>

@@ -8,15 +8,19 @@ import {
   FileText, Users, TrendingUp, X, Check,
   AlertCircle, ArrowRight
 } from 'lucide-react';
-import { Supplier } from '../types';
+import { Supplier, AppSettings } from '../types';
 import { firestoreService } from '../services/firestoreService';
 import { CURRENCY } from '../constants';
 import { soundService } from '../services/soundService';
+import { formatCurrency } from '../utils/currencyUtils';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
 
-const SuppliersView: React.FC = () => {
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [loading, setLoading] = useState(true);
+interface SuppliersViewProps {
+  suppliers: Supplier[];
+  settings: AppSettings;
+}
+
+const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
 
@@ -28,16 +32,7 @@ const SuppliersView: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
-  const fetchSuppliers = async () => {
-    setLoading(true);
-    const data = await firestoreService.getSuppliers();
-    setSuppliers(data);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchSuppliers();
-  }, []);
+  // Removed internal fetchSuppliers as we use props for real-time sync
 
   const handleOpenModal = (supplier?: Supplier) => {
     if (supplier) {
@@ -70,7 +65,6 @@ const SuppliersView: React.FC = () => {
       }
       soundService.playSuccess();
       setIsModalOpen(false);
-      fetchSuppliers();
     } catch (error) {
       console.error("Error saving supplier:", error);
       soundService.playError();
@@ -81,7 +75,6 @@ const SuppliersView: React.FC = () => {
     try {
       await firestoreService.deleteSupplier(id);
       soundService.playSuccess();
-      fetchSuppliers();
     } catch (error) {
       soundService.playError();
     }
@@ -132,16 +125,7 @@ const SuppliersView: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-20 bg-brand-cream">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 border-4 border-brand-primary/20 border-t-brand-primary rounded-full animate-spin"></div>
-          <p className="text-brand-primary font-black animate-pulse">جاري تحميل بيانات الموردين...</p>
-        </div>
-      </div>
-    );
-  }
+  // Loading state handled globally in App.tsx or implicitly by being an empty array initially
 
   return (
     <div className="flex-1 p-8 bg-brand-cream overflow-y-auto no-scrollbar relative" dir="rtl">
@@ -209,9 +193,8 @@ const SuppliersView: React.FC = () => {
               <span className="text-brand-accent/40 text-[10px] font-black uppercase tracking-[0.2em] mb-2">إجمالي المسحوبات</span>
               <div className="flex items-baseline gap-2">
                 <h3 className="text-4xl font-black text-brand-dark">
-                  {suppliers.reduce((acc, s) => acc + s.totalPaid, 0).toLocaleString()}
+                  {formatCurrency(suppliers.reduce((acc, s) => acc + s.totalPaid, 0), settings.currency)}
                 </h3>
-                <span className="text-brand-dark/20 text-sm font-bold">{CURRENCY}</span>
               </div>
             </div>
             <div className="w-16 h-16 bg-brand-accent/10 text-brand-accent rounded-[1.5rem] flex items-center justify-center shadow-inner">
@@ -309,7 +292,7 @@ const SuppliersView: React.FC = () => {
                 <div className="flex items-center gap-2 text-brand-primary/40 text-[10px] font-black mb-2 uppercase tracking-tighter">
                   <CreditCard size={14} /> سعر الوحدة
                 </div>
-                <p className="text-md font-black text-brand-dark pr-1">{supplier.costPerUnit} {CURRENCY}</p>
+                <p className="text-md font-black text-brand-dark pr-1">{formatCurrency(supplier.costPerUnit, settings.currency)}</p>
               </div>
               <div className="bg-brand-cream/50 p-5 rounded-[2rem] border border-brand-primary/5 group-hover:border-brand-primary/10 transition-colors">
                 <div className="flex items-center gap-2 text-brand-primary/40 text-[10px] font-black mb-2 uppercase tracking-tighter">
@@ -329,8 +312,7 @@ const SuppliersView: React.FC = () => {
               <div className="flex flex-col">
                 <span className="text-[10px] text-brand-dark/30 font-black uppercase tracking-widest mb-1">صافي المدفوعات</span>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-black text-brand-dark">{supplier.totalPaid.toLocaleString()}</span>
-                  <span className="text-xs text-brand-primary font-black uppercase">{CURRENCY}</span>
+                  <span className="text-3xl font-black text-brand-dark">{formatCurrency(supplier.totalPaid, settings.currency)}</span>
                 </div>
               </div>
               <div className="flex gap-3">
@@ -443,7 +425,7 @@ const SuppliersView: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-3">
-                  <label className="text-brand-dark/60 text-xs font-black uppercase mr-2 tracking-widest">سعر الوحدة ({CURRENCY})</label>
+                  <label className="text-brand-dark/60 text-xs font-black uppercase mr-2 tracking-widest">سعر الوحدة ({settings.currency})</label>
                   <input
                     required
                     type="number"
@@ -453,7 +435,7 @@ const SuppliersView: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-3">
-                  <label className="text-brand-dark/60 text-xs font-black uppercase mr-2 tracking-widest">إجمالي المسحوبات ({CURRENCY})</label>
+                  <label className="text-brand-dark/60 text-xs font-black uppercase mr-2 tracking-widest">إجمالي المسحوبات ({settings.currency})</label>
                   <input
                     type="number"
                     value={formData.totalPaid || 0}
@@ -566,7 +548,7 @@ const SuppliersView: React.FC = () => {
             </div>
             <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100">
               <p className="text-xs text-gray-400 font-black mb-1 uppercase">مجموع المستحقات المدفوعة</p>
-              <p className="text-3xl font-black text-brand-dark">{suppliers.reduce((acc, s) => acc + s.totalPaid, 0).toLocaleString()} {CURRENCY}</p>
+              <p className="text-3xl font-black text-brand-dark">{formatCurrency(suppliers.reduce((acc, s) => acc + s.totalPaid, 0), settings.currency)}</p>
             </div>
           </div>
 
@@ -585,9 +567,9 @@ const SuppliersView: React.FC = () => {
                 <tr key={s.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                   <td className="p-4 border-b border-gray-100 font-bold">{s.name}</td>
                   <td className="p-4 border-b border-gray-100">{s.suppliedItem}</td>
-                  <td className="p-4 border-b border-gray-100 font-bold">{s.costPerUnit.toLocaleString()}</td>
+                  <td className="p-4 border-b border-gray-100 font-bold">{formatCurrency(s.costPerUnit, settings.currency)}</td>
                   <td className="p-4 border-b border-gray-100">{s.lastSupplyDate}</td>
-                  <td className="p-4 border-b border-gray-100 font-black text-brand-primary">{s.totalPaid.toLocaleString()}</td>
+                  <td className="p-4 border-b border-gray-100 font-black text-brand-primary">{formatCurrency(s.totalPaid, settings.currency)}</td>
                 </tr>
               ))}
             </tbody>
