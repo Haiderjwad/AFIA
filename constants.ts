@@ -84,6 +84,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
     cash: true,
     card: true,
     online: false
+  },
+  digitalMenu: {
+    theme: 'modern',
+    primaryColor: '#2d6a4f',
+    layout: 'grid',
+    showIngredients: true,
+    heroBanner: ''
   }
 };
 

@@ -6,13 +6,16 @@ import {
     CheckCircle2, Palette, Eye, Share2, FileText,
     Smartphone, Sparkles, Image as ImageIcon,
     Brush, Type, Settings2, Languages,
-    ArrowRightCircle, MonitorSmartphone
+    ArrowRightCircle, MonitorSmartphone,
+    LayoutGrid, List as ListIcon
 } from 'lucide-react';
 import { MenuItem, AppSettings } from '../types';
 import { QRCodeCanvas } from 'qrcode.react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { formatCurrency } from '../utils/currencyUtils';
+import { patchClonedSubtreeForHtml2Canvas } from '../utils/html2canvasCompat';
+import { firestoreService } from '../services/firestoreService';
 
 interface DigitalMenuModalProps {
     products: MenuItem[];
@@ -25,12 +28,15 @@ interface DigitalMenuModalProps {
 const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, onClose, storeName, settings }) => {
 
     const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
-    const [theme, setTheme] = useState<'afia' | 'dark' | 'coffee' | 'modern'>('afia');
-    const [layout, setLayout] = useState<'grid' | 'list'>('grid');
-    const [storeDescription, setStoreDescription] = useState('نرحب بكم في تجربتنا الرقمية المتميزة. نهدف لتقديم أفضل جودة وأرقى خدمة تليق بذائقتكم.');
+    const [theme, setTheme] = useState<'modern' | 'classic' | 'minimal' | 'dark'>(settings?.digitalMenu?.theme || 'modern');
+    const [layout, setLayout] = useState<'grid' | 'list'>(settings?.digitalMenu?.layout || 'grid');
+    const [primaryColor, setPrimaryColor] = useState(settings?.digitalMenu?.primaryColor || '#2d6a4f');
+    const [showIngredients, setShowIngredients] = useState(settings?.digitalMenu?.showIngredients !== false);
+    const [storeDescription, setStoreDescription] = useState(settings?.digitalMenu?.heroBanner || 'نرحب بكم في تجربتنا الرقمية المتميزة. نهدف لتقديم أفضل جودة وأرقى خدمة تليق بذائقتكم.');
     const [activeTab, setActiveTab] = useState<'design' | 'content'>('design');
     const [previewMode, setPreviewMode] = useState<'mobile' | 'poster'>('mobile');
     const [isExporting, setIsExporting] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [statusModal, setStatusModal] = useState<{ isOpen: boolean, type: 'success' | 'error' | 'loading', title: string, message: string }>({
         isOpen: false,
         type: 'loading',
@@ -40,6 +46,7 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
 
     const previewRef = useRef<HTMLDivElement>(null);
     const posterRef = useRef<HTMLDivElement>(null);
+    const exportRef = useRef<HTMLDivElement>(null);
 
     // Synchronize selected products when modal opens or products data changes
     React.useEffect(() => {
@@ -51,7 +58,7 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
     if (!isOpen) return null;
 
     const exportProfessionalPDF = async () => {
-        if (!posterRef.current || isExporting) return;
+        if (!exportRef.current || isExporting) return;
 
         setIsExporting(true);
         setStatusModal({
@@ -64,27 +71,24 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
         // Stage 1: UI Update and Preparation
         await new Promise(resolve => setTimeout(resolve, 800));
 
+        const exportId = 'digital-menu-export';
+        exportRef.current.setAttribute('data-export-capture', exportId);
+
         try {
-            // Stage 2: Heavy Lifting (html2canvas)
-            const canvas = await html2canvas(posterRef.current, {
-                scale: 2, // Standard High-Def scale
+            // Stage 2: Capture the hidden export div (exact A4 px dimensions)
+            const canvas = await html2canvas(exportRef.current, {
+                scale: 2,
                 useCORS: true,
                 backgroundColor: '#ffffff',
                 logging: false,
                 imageTimeout: 20000,
+                width: 794,
+                height: 1123,
                 onclone: (clonedDoc) => {
-                    // Optimized color fallback for oklch which crashes html2canvas
-                    const allElements = clonedDoc.querySelectorAll('*');
-                    allElements.forEach((el: any) => {
-                        const style = el.style;
-                        if (!style) return;
-
-                        ['backgroundColor', 'color', 'borderColor'].forEach(prop => {
-                            const val = style[prop];
-                            if (val && (val.includes('oklch') || val.includes('oklab'))) {
-                                style[prop] = '#2D6A4F'; // Brand Primary fallback
-                            }
-                        });
+                    patchClonedSubtreeForHtml2Canvas(clonedDoc, {
+                        exportId,
+                        attributeName: 'data-export-capture',
+                        fallbackColor: '#2D6A4F'
                     });
                 }
             });
@@ -127,6 +131,8 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
                 title: 'فشل في توليد الملصق',
                 message: 'حدث خطأ تقني غير متوقع. قد يكون ذلك بسبب حجم البيانات أو قيود أمنية في المتصفح، يرجى إعادة المحاولة.'
             });
+        } finally {
+            exportRef.current?.removeAttribute('data-export-capture');
         }
     };
 
@@ -136,40 +142,74 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
         );
     };
 
+    const handleSaveMenuConfig = async () => {
+        setIsSaving(true);
+        try {
+            const updatedSettings: AppSettings = {
+                ...settings,
+                digitalMenu: {
+                    theme,
+                    layout,
+                    primaryColor,
+                    showIngredients,
+                    heroBanner: storeDescription
+                }
+            };
+            await firestoreService.updateSettings(updatedSettings);
+            setStatusModal({
+                isOpen: true,
+                type: 'success',
+                title: 'تم الحفظ بنجاح',
+                message: 'تم تحديث مظهر المنيو الإلكتروني واعتماده للزبائن فوراً.'
+            });
+            setTimeout(() => setStatusModal(prev => ({ ...prev, isOpen: false })), 2000);
+        } catch (error) {
+            console.error("Save Menu Config Error:", error);
+            setStatusModal({
+                isOpen: true,
+                type: 'error',
+                title: 'فشل الحفظ',
+                message: 'حدث خطأ أثناء محاولة حفظ الإعدادات، يرجى المحاولة لاحقاً.'
+            });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     const filteredProducts = products.filter(p => selectedProducts.includes(p.id));
 
     const themeConfig = {
-        afia: {
+        modern: {
             bg: 'bg-brand-cream',
             text: 'text-brand-dark',
-            accent: 'bg-brand-primary',
+            accent: primaryColor,
             card: 'bg-white border-brand-primary/10 shadow-sm',
             secondary: 'text-brand-secondary',
-            label: 'عافية الفخم'
+            label: 'العصري الأنيق'
         },
         dark: {
             bg: 'bg-[#0a0a0a]',
             text: 'text-white',
-            accent: 'bg-orange-500',
+            accent: primaryColor,
             card: 'bg-white/5 border-white/10 backdrop-blur-sm',
             secondary: 'text-orange-400',
             label: 'الاحترافي المعتم'
         },
-        coffee: {
+        classic: {
             bg: 'bg-[#faf7f2]',
             text: 'text-[#4a3728]',
-            accent: 'bg-[#8c6d46]',
+            accent: primaryColor,
             card: 'bg-white border-[#e0d6cc]',
             secondary: 'text-[#8c6d46]',
-            label: 'القهوة الكلاسيكي'
+            label: 'الكلاسيكي الفخم'
         },
-        modern: {
+        minimal: {
             bg: 'bg-white',
             text: 'text-gray-900',
-            accent: 'bg-brand-dark',
+            accent: primaryColor,
             card: 'bg-gray-50 border-gray-100',
             secondary: 'text-gray-500',
-            label: 'العصري الأنيق'
+            label: 'بسيط وهادئ'
         }
     };
 
@@ -239,6 +279,45 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
                                                 </div>
                                             </button>
                                         ))}
+                                    </div>
+                                </section>
+
+                                {/* Color and Layout Control */}
+                                <section className="space-y-6">
+                                    <h3 className="text-[10px] items-center gap-2 flex font-black text-brand-secondary uppercase tracking-widest">
+                                        <div className="w-2 h-2 bg-brand-primary rounded-full"></div>
+                                        تخصيص الألوان والنمط
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-4 bg-white p-4 rounded-3xl border-2 border-brand-primary/5">
+                                            <div className="w-10 h-10 rounded-xl shadow-inner border border-gray-100 shrink-0 overflow-hidden relative">
+                                                <input
+                                                    type="color"
+                                                    value={primaryColor}
+                                                    onChange={(e) => setPrimaryColor(e.target.value)}
+                                                    className="absolute inset-0 w-full h-full cursor-pointer scale-150"
+                                                />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-[10px] font-black text-brand-dark">لون الهوية الأساسي</p>
+                                                <p className="text-[8px] text-gray-400 font-bold uppercase tracking-widest">{primaryColor}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex bg-gray-100 p-1.5 rounded-2xl gap-2">
+                                            <button
+                                                onClick={() => setLayout('grid')}
+                                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all font-black text-[10px] ${layout === 'grid' ? 'bg-white shadow-md text-brand-primary active:scale-95' : 'text-gray-400 hover:text-gray-600'}`}
+                                            >
+                                                <LayoutGrid size={14} /> شبكة
+                                            </button>
+                                            <button
+                                                onClick={() => setLayout('list')}
+                                                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all font-black text-[10px] ${layout === 'list' ? 'bg-white shadow-md text-brand-primary active:scale-95' : 'text-gray-400 hover:text-gray-600'}`}
+                                            >
+                                                <ListIcon size={14} /> قائمة
+                                            </button>
+                                        </div>
                                     </div>
                                 </section>
 
@@ -331,6 +410,17 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
                         >
                             <Printer size={14} /> A4 Poster Preview
                         </button>
+                        <div className="flex-1"></div>
+                        {previewMode === 'mobile' && (
+                            <button
+                                onClick={handleSaveMenuConfig}
+                                disabled={isSaving}
+                                className="bg-brand-primary hover:bg-brand-primary/90 text-white px-6 py-2.5 rounded-2xl font-black text-[10px] flex items-center gap-2 shadow-xl shadow-brand-primary/20 transition-all active:scale-95 disabled:opacity-50"
+                            >
+                                {isSaving ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <CheckCircle2 size={14} />}
+                                اعتماد وحفظ تصميم المنيو
+                            </button>
+                        )}
                     </div>
 
                     <div className="flex-1 p-8 md:p-16 overflow-y-auto premium-scrollbar flex items-start justify-center relative">
@@ -370,14 +460,22 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
 
                                             <div className="space-y-4">
                                                 {filteredProducts.map(p => (
-                                                    <div key={p.id} className={`p-4 rounded-[1.8rem] border transition-all duration-500 hover:scale-[1.03] ${currentTheme.card} flex gap-3 items-center`}>
-                                                        <div className={`w-12 h-12 shrink-0 rounded-2xl flex items-center justify-center text-xl shadow-sm ${currentTheme.accent} bg-white/20 backdrop-blur-sm border border-white/10`}>
+                                                    <div key={p.id} className={`p-4 rounded-[1.8rem] border transition-all duration-500 hover:scale-[1.03] ${currentTheme.card} ${layout === 'list' ? 'flex gap-3 items-center' : ''}`}>
+                                                        <div
+                                                            style={{ backgroundColor: currentTheme.accent }}
+                                                            className={`w-12 h-12 shrink-0 rounded-2xl flex items-center justify-center text-xl shadow-sm text-white/90 backdrop-blur-sm border border-white/10 ${layout === 'grid' ? 'mb-3' : ''}`}
+                                                        >
                                                             {p.category === 'Coffee' ? '☕' : p.category === 'Tea' ? '🍵' : '🍔'}
                                                         </div>
                                                         <div className="flex-1 min-w-0">
                                                             <div className="flex justify-between items-start mb-0.5">
                                                                 <h4 className="font-black text-[11px] truncate">{p.name}</h4>
-                                                                <span className={`text-[11px] font-black shrink-0 ${currentTheme.secondary}`}>{formatCurrency(p.price, settings.currency)}</span>
+                                                                <span
+                                                                    style={{ color: currentTheme.accent }}
+                                                                    className={`text-[11px] font-black shrink-0`}
+                                                                >
+                                                                    {formatCurrency(p.price, settings.currency)}
+                                                                </span>
                                                             </div>
                                                             <p className="text-[7px] opacity-50 line-clamp-1 font-bold">{p.notes || "تذوق الطعم الأصيل"}</p>
                                                         </div>
@@ -396,62 +494,153 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
 
                         {previewMode === 'poster' && (
                             <div className="flex flex-col gap-8 items-center relative z-10 animate-in fade-in zoom-in duration-500">
-                                <div
-                                    ref={posterRef}
-                                    className="w-[480px] md:w-[600px] aspect-[1/1.414] bg-white rounded-[4rem] shadow-4xl p-12 md:p-20 flex flex-col items-center justify-between text-center overflow-hidden relative group/poster border-8 border-white/10"
-                                    style={{ direction: 'rtl' }}
-                                >
-                                    {/* Luxury Border Box inside */}
-                                    <div className="absolute inset-10 border-2 border-brand-primary/5 rounded-[2rem] pointer-events-none"></div>
+                                {/* ── SCALED PREVIEW (visual only, no ref used for export) ── */}
+                                <div style={{
+                                    width: '397px',   /* 794px / 2  — half A4 for preview */
+                                    height: '561px',  /* 1123px / 2 */
+                                    position: 'relative',
+                                    overflow: 'hidden',
+                                    borderRadius: '1.25rem',
+                                    boxShadow: '0 40px 120px rgba(0,0,0,0.45)',
+                                    border: '5px solid #1a3a2a',
+                                    flexShrink: 0,
+                                }}>
+                                    {/* inner poster scaled at 50% from top-left */}
+                                    <div
+                                        ref={posterRef}
+                                        style={{
+                                            width: '794px',
+                                            height: '1123px',
+                                            transformOrigin: 'top left',
+                                            transform: 'scale(0.5)',
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            direction: 'rtl',
+                                        }}
+                                    >
+                                        {/* ── POSTER CONTENT (shared between preview & export) ── */}
+                                        {/* TOP ACCENT BAND */}
+                                        <div style={{ width: '100%', height: '18px', background: 'linear-gradient(90deg, #1a3a2a 0%, #2d6a4f 55%, #f4a261 100%)', flexShrink: 0 }} />
 
-                                    <div className="space-y-8 relative z-10">
-                                        <div className="w-28 h-28 bg-white rounded-3xl flex items-center justify-center mx-auto shadow-2xl transition-transform duration-700 overflow-hidden">
-                                            {settings?.storeLogo ? (
-                                                <img src={settings?.storeLogo} alt={storeName} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <img src="/branding/afia_logo.png" alt="Afia" className="w-full h-full object-contain p-4" />
-                                            )}
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            <h2 className="text-6xl font-black text-brand-dark tracking-tighter">{storeName}</h2>
-                                            <div className="flex items-center justify-center gap-4">
-                                                <div className="h-0.5 w-12 bg-brand-primary/20"></div>
-                                                <div className="px-4 py-1 bg-brand-primary text-white text-xs font-black rounded-full shadow-lg shadow-brand-primary/20">نظام ألف عافية للأعمال</div>
-                                                <div className="h-0.5 w-12 bg-brand-primary/20"></div>
+                                        {/* LOGO ZONE */}
+                                        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '48px 60px 36px', background: '#ffffff', borderBottom: '1px solid rgba(45,106,79,0.12)', flexShrink: 0 }}>
+                                            {/* Logo */}
+                                            <div style={{ width: '180px', height: '180px', borderRadius: '40px', background: '#ffffff', border: '6px solid rgba(45,106,79,0.15)', boxShadow: '0 20px 60px rgba(45,106,79,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: '30px', flexShrink: 0 }}>
+                                                {settings?.storeLogo ? (
+                                                    <img src={settings.storeLogo} alt={storeName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                ) : (
+                                                    <img src="/branding/afia_logo.png" alt="Afia" style={{ width: '82%', height: '82%', objectFit: 'contain' }} />
+                                                )}
                                             </div>
-                                            <p className="text-xl font-black text-brand-secondary mt-2 tracking-widest uppercase opacity-60">Digital Ordering Experience</p>
+                                            {/* Store Name */}
+                                            <h1 style={{ fontFamily: 'inherit', fontWeight: 900, fontSize: storeName.length > 16 ? '56px' : storeName.length > 10 ? '72px' : '88px', color: '#1a3a2a', lineHeight: 1.05, letterSpacing: '0', margin: '0 0 24px 0', textAlign: 'center', wordBreak: 'break-word', direction: 'rtl' }}>{storeName}</h1>
+                                            {/* System Badge */}
+                                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', background: '#2d6a4f', color: '#ffffff', padding: '12px 28px', borderRadius: '100px', boxShadow: '0 8px 24px rgba(45,106,79,0.3)', direction: 'ltr' }}>
+                                                <img src="/branding/afia_logo.png" alt="" style={{ width: '28px', height: '28px', objectFit: 'contain', filter: 'brightness(0) invert(1)' }} />
+                                                <span style={{ fontSize: '18px', fontWeight: 800, letterSpacing: '0', direction: 'rtl', textAlign: 'right', whiteSpace: 'nowrap' }}>نظام ألف عافية للأعمال</span>
+                                            </div>
+                                        </div>
+
+                                        {/* TAGLINE */}
+                                        <div style={{ padding: '28px 0', flexShrink: 0, textAlign: 'center' }}>
+                                            <p style={{ fontWeight: 800, fontSize: '18px', letterSpacing: '6px', color: 'rgba(45,106,79,0.6)', textTransform: 'uppercase', margin: 0 }}>DIGITAL ORDERING EXPERIENCE</p>
+                                        </div>
+
+                                        {/* DIVIDER */}
+                                        <div style={{ width: '70%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(45,106,79,0.25), transparent)', flexShrink: 0, margin: '0 auto' }} />
+
+                                        {/* QR CODE ZONE — fixed height, no flex:1 */}
+                                        <div style={{ width: '100%', height: '580px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 80px', flexShrink: 0 }}>
+                                            {/* QR Card */}
+                                            <div style={{ width: '100%', maxWidth: '500px', background: '#ffffff', border: '12px solid #1a3a2a', borderRadius: '48px', padding: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', boxShadow: '0 24px 80px rgba(26,58,42,0.15)' }}>
+                                                <div style={{ fontSize: '16px', fontWeight: 800, letterSpacing: '6px', color: 'rgba(45,106,79,0.55)', textTransform: 'uppercase' }}>SCAN THE MENU</div>
+                                                <div style={{ background: '#ffffff', padding: '16px', borderRadius: '16px', border: '1px solid rgba(45,106,79,0.1)' }}>
+                                                    <QRCodeCanvas
+                                                        value={`${window.location.origin}/menu`}
+                                                        size={320}
+                                                        level="H"
+                                                        includeMargin={false}
+                                                        fgColor="#1a3a2a"
+                                                        bgColor="#ffffff"
+                                                    />
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', direction: 'ltr' }}>
+                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="5" height="5" x="3" y="3" rx="1" /><rect width="5" height="5" x="16" y="3" rx="1" /><rect width="5" height="5" x="3" y="16" rx="1" /><path d="M21 16h-3a2 2 0 0 0-2 2v3" /><path d="M21 21v.01" /><path d="M12 7v3a2 2 0 0 1-2 2H7" /><path d="M3 12h.01" /><path d="M12 3h.01" /><path d="M12 16v.01" /><path d="M16 12h1" /><path d="M21 12v.01" /><path d="M12 21v-1" /></svg>
+                                                    <span style={{ fontSize: '16px', fontWeight: 800, color: '#1a3a2a', direction: 'rtl', letterSpacing: '0', display: 'inline-block' }}>امسح الـ QR لفتح المنيو مباشرة</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* FOOTER BAND */}
+                                        <div style={{ width: '100%', background: '#1a3a2a', padding: '28px 60px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '18px', flexShrink: 0, marginTop: 'auto', direction: 'ltr' }}>
+                                            <img src="/branding/afia_logo.png" alt="Afia" style={{ width: '44px', height: '44px', objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.9 }} />
+                                            <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '14px', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase' }}>Powered by Al Afia Smart Systems</div>
+                                        </div>
+                                    </div>{/* end posterRef inner */}
+                                </div>{/* end preview wrapper */}
+
+                                {/* ── HIDDEN EXPORT DIV (exact A4 = 794×1123px, captured by html2canvas) ── */}
+                                <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', zIndex: -1 }}>
+                                    <div
+                                        ref={exportRef}
+                                        style={{ width: '794px', height: '1123px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#ffffff', overflow: 'hidden', direction: 'rtl', position: 'relative' }}
+                                    >
+                                        {/* TOP ACCENT BAND */}
+                                        <div style={{ width: '100%', height: '18px', background: 'linear-gradient(90deg, #1a3a2a 0%, #2d6a4f 55%, #f4a261 100%)', flexShrink: 0 }} />
+
+                                        {/* LOGO ZONE */}
+                                        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '48px 60px 36px', background: '#ffffff', borderBottom: '1px solid rgba(45,106,79,0.12)', flexShrink: 0 }}>
+                                            <div style={{ width: '180px', height: '180px', borderRadius: '40px', background: '#ffffff', border: '6px solid rgba(45,106,79,0.15)', boxShadow: '0 20px 60px rgba(45,106,79,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: '30px', flexShrink: 0 }}>
+                                                {settings?.storeLogo ? (
+                                                    <img src={settings.storeLogo} alt={storeName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                ) : (
+                                                    <img src="/branding/afia_logo.png" alt="Afia" style={{ width: '82%', height: '82%', objectFit: 'contain' }} />
+                                                )}
+                                            </div>
+                                            <h1 style={{ fontFamily: 'inherit', fontWeight: 900, fontSize: storeName.length > 16 ? '56px' : storeName.length > 10 ? '72px' : '88px', color: '#1a3a2a', lineHeight: 1.05, letterSpacing: '0', margin: '0 0 24px 0', textAlign: 'center', wordBreak: 'break-word', direction: 'rtl' }}>{storeName}</h1>
+                                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', background: '#2d6a4f', color: '#ffffff', padding: '12px 28px', borderRadius: '100px', boxShadow: '0 8px 24px rgba(45,106,79,0.3)', direction: 'ltr' }}>
+                                                <img src="/branding/afia_logo.png" alt="" style={{ width: '28px', height: '28px', objectFit: 'contain', filter: 'brightness(0) invert(1)' }} />
+                                                <span style={{ fontSize: '18px', fontWeight: 800, letterSpacing: '0', direction: 'rtl', textAlign: 'right', whiteSpace: 'nowrap' }}>نظام ألف عافية للأعمال</span>
+                                            </div>
+                                        </div>
+
+                                        {/* TAGLINE */}
+                                        <div style={{ padding: '28px 0', flexShrink: 0, textAlign: 'center' }}>
+                                            <p style={{ fontWeight: 800, fontSize: '18px', letterSpacing: '6px', color: 'rgba(45,106,79,0.6)', textTransform: 'uppercase', margin: 0 }}>DIGITAL ORDERING EXPERIENCE</p>
+                                        </div>
+
+                                        {/* DIVIDER */}
+                                        <div style={{ width: '70%', height: '1px', background: 'linear-gradient(90deg, transparent, rgba(45,106,79,0.25), transparent)', flexShrink: 0, margin: '0 auto' }} />
+
+                                        {/* QR CODE ZONE — hardcoded height */}
+                                        <div style={{ width: '100%', height: '580px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 80px', flexShrink: 0 }}>
+                                            <div style={{ width: '100%', maxWidth: '500px', background: '#ffffff', border: '12px solid #1a3a2a', borderRadius: '48px', padding: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', boxShadow: '0 24px 80px rgba(26,58,42,0.15)' }}>
+                                                <div style={{ fontSize: '16px', fontWeight: 800, letterSpacing: '6px', color: 'rgba(45,106,79,0.55)', textTransform: 'uppercase' }}>SCAN THE MENU</div>
+                                                <div style={{ background: '#ffffff', padding: '16px', borderRadius: '16px', border: '1px solid rgba(45,106,79,0.1)' }}>
+                                                    <QRCodeCanvas
+                                                        value={`${window.location.origin}/menu`}
+                                                        size={320}
+                                                        level="H"
+                                                        includeMargin={false}
+                                                        fgColor="#1a3a2a"
+                                                        bgColor="#ffffff"
+                                                    />
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', direction: 'ltr' }}>
+                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="5" height="5" x="3" y="3" rx="1" /><rect width="5" height="5" x="16" y="3" rx="1" /><rect width="5" height="5" x="3" y="16" rx="1" /><path d="M21 16h-3a2 2 0 0 0-2 2v3" /><path d="M21 21v.01" /><path d="M12 7v3a2 2 0 0 1-2 2H7" /><path d="M3 12h.01" /><path d="M12 3h.01" /><path d="M12 16v.01" /><path d="M16 12h1" /><path d="M21 12v.01" /><path d="M12 21v-1" /></svg>
+                                                    <span style={{ fontSize: '16px', fontWeight: 800, color: '#1a3a2a', direction: 'rtl', letterSpacing: '0', display: 'inline-block' }}>امسح الـ QR لفتح المنيو مباشرة</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* FOOTER BAND */}
+                                        <div style={{ width: '100%', background: '#1a3a2a', padding: '28px 60px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '18px', flexShrink: 0, marginTop: 'auto', direction: 'ltr' }}>
+                                            <img src="/branding/afia_logo.png" alt="Afia" style={{ width: '44px', height: '44px', objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.9 }} />
+                                            <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '14px', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase' }}>Powered by Al Afia Smart Systems</div>
                                         </div>
                                     </div>
-
-                                    <div className="relative group p-12">
-                                        <div className="absolute inset-0 bg-brand-primary/10 blur-[100px] opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
-                                        <div className="p-12 bg-white rounded-[5rem] border-[12px] border-brand-dark shadow-4xl relative z-10 transition-all hover:scale-105 duration-700">
-                                            <QRCodeCanvas
-                                                value={`https://menu.alafia.iq/${encodeURIComponent(storeName.trim().replace(/\s+/g, '-').toLowerCase())}`}
-                                                size={280}
-                                                level="H"
-                                                includeMargin={false}
-                                                fgColor="#1a1a1a"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-5 relative z-10">
-                                        <p className="text-4xl font-black text-brand-dark uppercase tracking-tighter">امسح الكود واستمتع بالطلب الذكي</p>
-                                        <p className="text-lg text-brand-secondary/40 font-black tracking-widest uppercase">Scan to access the full digital menu</p>
-                                    </div>
-
-                                    {/* Professional Watermark Logo */}
-                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.03] pointer-events-none rotate-12">
-                                        <img src="/branding/afia_logo.png" className="w-[500px]" alt="" />
-                                    </div>
-                                    <div className="absolute bottom-10 left-1/2 -translate-x-1/2 opacity-20 flex items-center gap-2">
-                                        <div className="w-2 h-2 bg-brand-primary rounded-full"></div>
-                                        <p className="text-[10px] font-black text-brand-dark uppercase tracking-widest">Powered by Al Afia Smart Systems</p>
-                                        <div className="w-2 h-2 bg-brand-primary rounded-full"></div>
-                                    </div>
-                                </div>
+                                </div>{/* end hidden export div */}
                             </div>
                         )}
                     </div>

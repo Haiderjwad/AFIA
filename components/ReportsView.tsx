@@ -12,6 +12,7 @@ import {
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { formatCurrency } from '../utils/currencyUtils';
+import { patchClonedSubtreeForHtml2Canvas } from '../utils/html2canvasCompat';
 
 interface ReportsViewProps {
     transactions: Transaction[];
@@ -122,6 +123,9 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
             message: 'نقوم الآن بتحليل تدفقات السيولة، الإيرادات، والمصروفات التشغيلية لإنشاء وثيقة محاسبية رسمية، يرجى الانتظار...'
         });
 
+        const exportId = 'financial-report';
+        reportRef.current.setAttribute('data-export-capture', exportId);
+
         try {
             await new Promise(resolve => setTimeout(resolve, 800));
 
@@ -132,24 +136,10 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
                 logging: false,
                 imageTimeout: 20000,
                 onclone: (clonedDoc) => {
-                    // Fix for brand colors and modern CSS
-                    const allElements = clonedDoc.querySelectorAll('*');
-                    allElements.forEach((el: any) => {
-                        const style = el.style;
-                        if (!style) return;
-                        if (style.boxShadow) style.boxShadow = 'none';
-
-                        ['backgroundColor', 'color', 'borderColor'].forEach(prop => {
-                            const val = style[prop];
-                            if (val && (val.includes('oklch') || val.includes('oklab'))) {
-                                // Direct semantic mapping based on class or fallback
-                                if (el.classList.contains('bg-brand-dark')) style[prop] = '#1B4332';
-                                else if (el.classList.contains('bg-brand-primary')) style[prop] = '#2D6A4F';
-                                else if (el.classList.contains('bg-brand-accent')) style[prop] = '#F8961E';
-                                else style[prop] = '#2d6a4f';
-                            }
-                        });
-                        style.fontFamily = "'Cairo', sans-serif";
+                    patchClonedSubtreeForHtml2Canvas(clonedDoc, {
+                        exportId,
+                        attributeName: 'data-export-capture',
+                        fallbackColor: '#2D6A4F'
                     });
                 }
             });
@@ -203,6 +193,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
             });
         } finally {
             setIsGenerating(false);
+            reportRef.current?.removeAttribute('data-export-capture');
         }
     };
 

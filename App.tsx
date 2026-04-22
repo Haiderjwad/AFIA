@@ -24,6 +24,7 @@ import { onSnapshot, collection, query, orderBy, doc, updateDoc, limit } from 'f
 import { db as firestoreDb, auth } from './firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import SplashScreen from './components/SplashScreen';
+import PublicMenuView from './components/PublicMenuView';
 
 
 const App: React.FC = () => {
@@ -33,6 +34,15 @@ const App: React.FC = () => {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isPublicMenu, setIsPublicMenu] = useState(false);
+
+  useEffect(() => {
+    // Basic route detection without react-router
+    const path = window.location.pathname;
+    if (path.includes('/menu') || window.location.search.includes('view=menu')) {
+      setIsPublicMenu(true);
+    }
+  }, []);
 
 
   useEffect(() => {
@@ -682,6 +692,11 @@ const App: React.FC = () => {
 
   if (isInitializing || isAuthLoading) {
     return <SplashScreen />;
+  }
+
+  // Digital Menu Public View (Bypass Auth)
+  if (isPublicMenu) {
+    return <PublicMenuView />;
   }
 
   if (!isAuthenticated) {

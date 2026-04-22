@@ -15,6 +15,7 @@ import { CURRENCY } from '../constants';
 import { soundService } from '../services/soundService';
 import { formatCurrency } from '../utils/currencyUtils';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
+import { patchClonedSubtreeForHtml2Canvas } from '../utils/html2canvasCompat';
 
 interface SuppliersViewProps {
   suppliers: Supplier[];
@@ -251,18 +252,19 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
         // Wait for potential font rendering
         await new Promise(resolve => setTimeout(resolve, 300));
 
+        const exportId = `suppliers-report-${i}`;
+        tempContainer.setAttribute('data-export-capture', exportId);
+
         const canvas = await html2canvas(tempContainer, {
           scale: 3,
           useCORS: true,
           logging: false,
           backgroundColor: '#ffffff',
           onclone: (clonedDoc) => {
-            // Apply similar color fixes as in ReportsView
-            const els = clonedDoc.querySelectorAll('*');
-            els.forEach((el: any) => {
-              if (el.style.backgroundColor && el.style.backgroundColor.includes('oklch')) el.style.backgroundColor = '#1B4332';
-              if (el.style.color && el.style.color.includes('oklch')) el.style.color = '#1B4332';
-              el.style.fontFamily = "'Cairo', sans-serif";
+            patchClonedSubtreeForHtml2Canvas(clonedDoc, {
+              exportId,
+              attributeName: 'data-export-capture',
+              fallbackColor: '#1B4332'
             });
           }
         });

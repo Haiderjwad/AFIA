@@ -81,6 +81,13 @@ export interface AppSettings {
     card: boolean;
     online: boolean;
   };
+  digitalMenu: {
+    theme: 'modern' | 'classic' | 'minimal' | 'dark';
+    primaryColor: string;
+    layout: 'grid' | 'list';
+    showIngredients: boolean;
+    heroBanner?: string;
+  };
 }
 
 export type UserRole = 'admin' | 'manager' | 'cashier' | 'kitchen' | 'sales';
