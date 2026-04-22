@@ -10,7 +10,14 @@ import {
   Box,
   Receipt,
   Truck,
-  Search
+  Search,
+  ShoppingCart,
+  ChefHat,
+  Package,
+  Users,
+  BarChart3,
+  PieChart,
+  TrendingUp
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { SALES_DATA, BAR_DATA } from '../constants';
@@ -65,49 +72,49 @@ const Dashboard: React.FC<DashboardProps> = ({
       {/* Main Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8 relative z-0" dir="rtl">
         <DashboardCard
-          title="قائمة المنتجات"
-          icon={Grid}
+          title="المبيعات"
+          icon={ShoppingCart}
           colorClass="bg-gradient-to-br from-brand-primary to-brand-secondary shadow-brand-primary/20"
-          onClick={onProductClick}
+          onClick={() => onNavigate('sales')}
         />
         <DashboardCard
-          title="الفواتير السابقة"
-          icon={Receipt}
+          title="المطبخ"
+          icon={ChefHat}
           colorClass="bg-gradient-to-br from-brand-dark to-brand-primary shadow-brand-dark/20"
-          onClick={() => onNavigate('invoices')}
+          onClick={() => onNavigate('kitchen')}
         />
         <DashboardCard
-          title="طرق الدفع"
-          icon={CreditCard}
+          title="الفواتير"
+          icon={Receipt}
           colorClass="bg-gradient-to-br from-brand-accent to-orange-600 shadow-brand-accent/20"
-          onClick={() => onNavigate('settings', 'payments')}
-        />
-        <DashboardCard
-          title="الموردين"
-          icon={Truck}
-          colorClass="bg-gradient-to-br from-brand-secondary to-green-700 shadow-brand-secondary/20"
-          onClick={() => onNavigate('suppliers')}
-        />
-        <DashboardCard
-          title="التقارير المفصلة"
-          icon={Sparkles}
-          colorClass="bg-gradient-to-br from-emerald-600 to-brand-primary shadow-emerald-500/20"
-          onClick={() => onNavigate('reports')}
-        />
-        <DashboardCard
-          title="تاريخ الضمان"
-          icon={Calendar}
-          colorClass="bg-gradient-to-br from-orange-400 to-brand-accent shadow-orange-400/20"
           onClick={() => onNavigate('invoices')}
         />
         <DashboardCard
           title="المخزون"
-          icon={Box}
-          colorClass="bg-gradient-to-br from-brand-secondary to-brand-primary shadow-brand-secondary/20"
+          icon={Package}
+          colorClass="bg-gradient-to-br from-brand-secondary to-green-700 shadow-brand-secondary/20"
           onClick={() => onNavigate('inventory')}
         />
         <DashboardCard
-          title="الإعدادات"
+          title="الموردين"
+          icon={Truck}
+          colorClass="bg-gradient-to-br from-emerald-600 to-brand-primary shadow-emerald-500/20"
+          onClick={() => onNavigate('suppliers')}
+        />
+        <DashboardCard
+          title="التقارير المفصلة"
+          icon={PieChart}
+          colorClass="bg-gradient-to-br from-orange-400 to-brand-accent shadow-orange-400/20"
+          onClick={() => onNavigate('reports')}
+        />
+        <DashboardCard
+          title="اداء الموظفين"
+          icon={TrendingUp}
+          colorClass="bg-gradient-to-br from-brand-secondary to-brand-primary shadow-brand-secondary/20"
+          onClick={() => onNavigate('performance')}
+        />
+        <DashboardCard
+          title="الاعدادات"
           icon={Settings}
           colorClass="bg-gradient-to-br from-brand-dark to-black shadow-brand-dark/20"
           onClick={() => onNavigate('settings')}

@@ -24,7 +24,7 @@ interface DigitalMenuModalProps {
 
 const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, onClose, storeName, settings }) => {
 
-    const [selectedProducts, setSelectedProducts] = useState<string[]>(products.map(p => p.id));
+    const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
     const [theme, setTheme] = useState<'afia' | 'dark' | 'coffee' | 'modern'>('afia');
     const [layout, setLayout] = useState<'grid' | 'list'>('grid');
     const [storeDescription, setStoreDescription] = useState('نرحب بكم في تجربتنا الرقمية المتميزة. نهدف لتقديم أفضل جودة وأرقى خدمة تليق بذائقتكم.');
@@ -41,38 +41,48 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
     const previewRef = useRef<HTMLDivElement>(null);
     const posterRef = useRef<HTMLDivElement>(null);
 
+    // Synchronize selected products when modal opens or products data changes
+    React.useEffect(() => {
+        if (isOpen && products.length > 0 && selectedProducts.length === 0) {
+            setSelectedProducts(products.map(p => p.id));
+        }
+    }, [isOpen, products]);
+
     if (!isOpen) return null;
 
     const exportProfessionalPDF = async () => {
         if (!posterRef.current || isExporting) return;
 
         setIsExporting(true);
+        setStatusModal({
+            isOpen: true,
+            type: 'loading',
+            title: 'جاري إنشاء المنيو الذكي',
+            message: 'نستخدم تقنيات عافية المتقدمة لضغط البيانات وتوليد ملصق QR عالي الدقة، يرجى الانتظار...'
+        });
 
         // Stage 1: UI Update and Preparation
-        // We use a double requestAnimationFrame to ensure the browser has painted the loading dialog
-        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 800));
 
         try {
             // Stage 2: Heavy Lifting (html2canvas)
             const canvas = await html2canvas(posterRef.current, {
-                scale: 1.8, // Balanced scale for speed and A4 quality
+                scale: 2, // Standard High-Def scale
                 useCORS: true,
                 backgroundColor: '#ffffff',
                 logging: false,
-                allowTaint: true,
-                imageTimeout: 15000,
-                removeContainer: true,
+                imageTimeout: 20000,
                 onclone: (clonedDoc) => {
-                    // Fix for html2canvas oklch/oklab unsupported error
-                    const elementsWithModernColors = clonedDoc.querySelectorAll('*');
-                    elementsWithModernColors.forEach((el: any) => {
-                        const style = window.getComputedStyle(el);
-                        ['backgroundColor', 'color', 'borderColor', 'outlineColor'].forEach(prop => {
-                            const value = style[prop as any];
-                            if (value && (value.includes('oklch') || value.includes('oklab'))) {
-                                // Fallback to a safe color if modern color functions are detected
-                                el.style[prop] = 'rgb(45, 106, 79)'; // Default to brand primary
+                    // Optimized color fallback for oklch which crashes html2canvas
+                    const allElements = clonedDoc.querySelectorAll('*');
+                    allElements.forEach((el: any) => {
+                        const style = el.style;
+                        if (!style) return;
+
+                        ['backgroundColor', 'color', 'borderColor'].forEach(prop => {
+                            const val = style[prop];
+                            if (val && (val.includes('oklch') || val.includes('oklab'))) {
+                                style[prop] = '#2D6A4F'; // Brand Primary fallback
                             }
                         });
                     });
@@ -80,28 +90,27 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
             });
 
             // Stage 3: PDF Assembly
-            const imgData = canvas.toDataURL('image/jpeg', 0.9); // JPEG is faster and lighter for posters
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
             const pdf = new jsPDF({
                 orientation: 'portrait',
                 unit: 'mm',
-                format: 'a4',
-                compress: true
+                format: 'a4'
             });
 
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
 
             // Stage 4: Saving and cleanup
-            pdf.save(`Al_Afia_Menu_${storeName.replace(/\s+/g, '_')}.pdf`);
+            pdf.save(`Al_Afia_QR_Menu_${settings.storeName.replace(/\s+/g, '_')}.pdf`);
 
             setIsExporting(false);
             setStatusModal({
                 isOpen: true,
                 type: 'success',
-                title: 'اكتمل التوليد بنجاح',
-                message: 'تم إنشاء نسخة الـ PDF وحفظها على جهازك بنجاح. جاهزة للطباعة الآن.'
+                title: 'تم التوليد بنجاح',
+                message: 'ملصق الـ QR جاهز الآن وتم حفظه على جهازك بجودة مطبعية فائقة.'
             });
 
             setTimeout(() => {
@@ -110,13 +119,13 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
             }, 3000);
 
         } catch (error) {
-            console.error("Critical Export Error:", error);
+            console.error("QR Export Failure:", error);
             setIsExporting(false);
             setStatusModal({
                 isOpen: true,
                 type: 'error',
-                title: 'فشل التوليد',
-                message: 'عذراً، حدث خطأ تقني أثناء محاولة توليد رمز الـ QR. يرجى المحاولة مرة أخرى لاحقاً.'
+                title: 'فشل في توليد الملصق',
+                message: 'حدث خطأ تقني غير متوقع. قد يكون ذلك بسبب حجم البيانات أو قيود أمنية في المتصفح، يرجى إعادة المحاولة.'
             });
         }
     };
@@ -419,7 +428,7 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
                                         <div className="absolute inset-0 bg-brand-primary/10 blur-[100px] opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
                                         <div className="p-12 bg-white rounded-[5rem] border-[12px] border-brand-dark shadow-4xl relative z-10 transition-all hover:scale-105 duration-700">
                                             <QRCodeCanvas
-                                                value={`https://menu.alafia.iq/${storeName.replace(/\s+/g, '-').toLowerCase()}`}
+                                                value={`https://menu.alafia.iq/${encodeURIComponent(storeName.trim().replace(/\s+/g, '-').toLowerCase())}`}
                                                 size={280}
                                                 level="H"
                                                 includeMargin={false}

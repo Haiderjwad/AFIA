@@ -113,62 +113,93 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
 
     const handleExportPDF = async () => {
         if (!reportRef.current) return;
+
         setIsGenerating(true);
         setStatusModal({
             isOpen: true,
             type: 'loading',
-            title: 'جاري توليد التقرير',
-            message: 'نحن نقوم الآن بجمع البيانات المالية ومعالجتها في نسخه PDF عالية الجودة، يرجى الانتظار...'
+            title: 'جاري حوسبة التقرير المالي الموحد',
+            message: 'نقوم الآن بتحليل تدفقات السيولة، الإيرادات، والمصروفات التشغيلية لإنشاء وثيقة محاسبية رسمية، يرجى الانتظار...'
         });
 
         try {
-            const element = reportRef.current;
-            const canvas = await html2canvas(element, {
-                scale: 2,
+            await new Promise(resolve => setTimeout(resolve, 800));
+
+            const canvas = await html2canvas(reportRef.current, {
+                scale: 2, // 2x is plenty for a4 and more stable for memory
                 useCORS: true,
                 backgroundColor: '#ffffff',
+                logging: false,
+                imageTimeout: 20000,
                 onclone: (clonedDoc) => {
-                    // Fix for html2canvas oklch/oklab unsupported error
-                    const elementsWithModernColors = clonedDoc.querySelectorAll('*');
-                    elementsWithModernColors.forEach((el: any) => {
-                        const style = window.getComputedStyle(el);
-                        ['backgroundColor', 'color', 'borderColor', 'outlineColor'].forEach(prop => {
-                            const value = style[prop as any];
-                            if (value && (value.includes('oklch') || value.includes('oklab'))) {
-                                // Fallback to a safe color if modern color functions are detected
-                                el.style[prop] = 'rgb(45, 106, 79)'; // Default to brand primary
+                    // Fix for brand colors and modern CSS
+                    const allElements = clonedDoc.querySelectorAll('*');
+                    allElements.forEach((el: any) => {
+                        const style = el.style;
+                        if (!style) return;
+                        if (style.boxShadow) style.boxShadow = 'none';
+
+                        ['backgroundColor', 'color', 'borderColor'].forEach(prop => {
+                            const val = style[prop];
+                            if (val && (val.includes('oklch') || val.includes('oklab'))) {
+                                // Direct semantic mapping based on class or fallback
+                                if (el.classList.contains('bg-brand-dark')) style[prop] = '#1B4332';
+                                else if (el.classList.contains('bg-brand-primary')) style[prop] = '#2D6A4F';
+                                else if (el.classList.contains('bg-brand-accent')) style[prop] = '#F8961E';
+                                else style[prop] = '#2d6a4f';
                             }
                         });
+                        style.fontFamily = "'Cairo', sans-serif";
                     });
                 }
             });
 
-            const imgData = canvas.toDataURL('image/png');
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
             const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const margin = 10;
+            const contentWidth = pageWidth - (margin * 2);
 
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(`تقرير_محاسبي_${period}_${new Date().toLocaleDateString('ar-IQ')}.pdf`);
+            // Calculate height of the captured content in PDF mm
+            const imgHeightInPDF = (canvas.height * contentWidth) / canvas.width;
+
+            let heightLeft = imgHeightInPDF;
+            let position = margin;
+            const pageContentHeight = pageHeight - (margin * 2);
+
+            // First page
+            pdf.addImage(imgData, 'JPEG', margin, position, contentWidth, imgHeightInPDF);
+            heightLeft -= pageContentHeight;
+
+            // Add new pages if content is longer than one A4
+            while (heightLeft > 0) {
+                position = heightLeft - imgHeightInPDF + margin; // Offset for next page
+                pdf.addPage();
+                pdf.addImage(imgData, 'JPEG', margin, position, contentWidth, imgHeightInPDF);
+                heightLeft -= pageContentHeight;
+            }
+
+            pdf.save(`التقرير_المالي_${settings.storeName}_${new Date().toISOString().split('T')[0]}.pdf`);
 
             setStatusModal({
                 isOpen: true,
                 type: 'success',
-                title: 'اكتمل التصدير',
-                message: 'تم توليد وحفظ التقرير المالي بنجاح على جهازك.'
+                title: 'تم تصدير التقرير بنجاح',
+                message: 'تم حفظ الكشف المحاسبي الموحد بجميع صفحاته وتفاصيله على جهازك.'
             });
 
             setTimeout(() => {
                 setStatusModal(prev => ({ ...prev, isOpen: false }));
-            }, 2500);
+            }, 3000);
 
         } catch (error) {
-            console.error("PDF Export failed:", error);
+            console.error("PDF Generation error:", error);
             setStatusModal({
                 isOpen: true,
                 type: 'error',
-                title: 'فشل التصدير',
-                message: 'عذراً، حدث خطأ أثناء محاولة توليد التقرير. يرجى المحاولة مرة أخرى.'
+                title: 'خطأ في معالجة البيانات',
+                message: 'عذراً، واجهنا صعوبة في تحويل البيانات إلى صيغة PDF. يرجى المحاولة مرة أخرى أو تقليل الفترة الزمنية للتقرير.'
             });
         } finally {
             setIsGenerating(false);

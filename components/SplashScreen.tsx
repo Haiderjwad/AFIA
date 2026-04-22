@@ -41,9 +41,9 @@ const SplashScreen: React.FC = () => {
 
                 {/* Brand Name */}
                 <div className="text-center space-y-2">
-                    <h1 className="text-5xl md:text-7xl font-black flex items-center justify-center gap-3">
-                        <span className="text-[#F8961E] drop-shadow-sm">عافية</span>
+                    <h1 className="text-5xl md:text-7xl font-black flex items-center justify-center gap-3" dir="rtl">
                         <span className="text-[#2D6A4F] drop-shadow-sm">ألف</span>
+                        <span className="text-[#F8961E] drop-shadow-sm">عافية</span>
                     </h1>
                     <p className="text-2xl md:text-3xl font-black text-[#333333] tracking-[0.3em] uppercase">
                         ALF AFIA

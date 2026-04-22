@@ -7,7 +7,7 @@ import {
   CreditCard, Calendar, Search, Plus,
   MoreVertical, Edit3, Trash2, Download,
   FileText, Users, TrendingUp, X, Check,
-  AlertCircle, ArrowRight
+  AlertCircle, ArrowRight, DollarSign
 } from 'lucide-react';
 import { Supplier, AppSettings } from '../types';
 import { firestoreService } from '../services/firestoreService';
@@ -23,7 +23,7 @@ interface SuppliersViewProps {
 
 const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState('All');
+  const [activeFrequency, setActiveFrequency] = useState<'all' | 'daily' | 'weekly' | 'monthly' | 'yearly'>('all');
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -50,7 +50,8 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
       setFormData({
         ...supplier,
         costPerUnit: supplier.costPerUnit * factor,
-        totalPaid: supplier.totalPaid * factor
+        totalPaid: supplier.totalPaid * factor,
+        frequency: supplier.frequency || 'monthly'
       });
     } else {
       setEditingSupplier(null);
@@ -63,6 +64,7 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
         stockProvided: 0,
         costPerUnit: 0,
         totalPaid: 0,
+        frequency: 'monthly',
         lastSupplyDate: new Date().toISOString().split('T')[0]
       });
     }
@@ -110,72 +112,189 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
   const filteredSuppliers = suppliers.filter(s =>
     (s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.suppliedItem.toLowerCase().includes(searchQuery.toLowerCase())) &&
-    (activeCategory === 'All' || s.category === activeCategory)
+    (activeFrequency === 'all' || s.frequency === activeFrequency)
   );
 
-  const categories = ['All', ...new Set(suppliers.map(s => s.category))];
+  const totalExpenses = suppliers.reduce((acc, s) => acc + s.totalPaid, 0);
+  const filteredExpenses = filteredSuppliers.reduce((acc, s) => acc + s.totalPaid, 0);
 
-  const generateReport = async (supplier?: Supplier) => {
+  const generateReport = async () => {
     setIsExporting(true);
     setStatusModal({
       isOpen: true,
       type: 'loading',
-      title: 'جاري إعداد التقرير',
-      message: 'نقوم الآن بتنظيم كشوفات الموردين وتدقيق البيانات للحصول على ملف PDF احترافي وعالي الدقة.'
+      title: 'جاري إعداد كشف الموردين الموحد',
+      message: 'نقوم الآن بمعالجة كافة البيانات المالية وتنظيمها في كشف محاسبي رسمي متعدد الصفحات، يرجى الانتظار...'
     });
 
-    // Aesthetic delay for the professional feel (as requested)
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
     try {
-      if (!reportRef.current) return;
+      // Chunk suppliers for multi-page support (e.g. 15 per page)
+      const chunkSize = 15;
+      const chunks = [];
+      for (let i = 0; i < suppliers.length; i += chunkSize) {
+        chunks.push(suppliers.slice(i, i + chunkSize));
+      }
 
-      const canvas = await html2canvas(reportRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-        onclone: (clonedDoc) => {
-          // Fix for html2canvas oklch unsupported error
-          const elementsWithOklch = clonedDoc.querySelectorAll('*');
-          elementsWithOklch.forEach((el: any) => {
-            const style = window.getComputedStyle(el);
-            ['backgroundColor', 'color', 'borderColor', 'outlineColor'].forEach(prop => {
-              const value = style[prop as any];
-              if (value && value.includes('oklch')) {
-                el.style[prop] = 'rgb(45, 106, 79)'; // Default to brand primary fallback
-              }
-            });
-          });
-        }
-      });
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.9);
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
 
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`تتقرير_الموردين_${new Date().toISOString().split('T')[0]}.pdf`);
+      for (let i = 0; i < chunks.length; i++) {
+        // Create a temporary container for this page's capture
+        const tempContainer = document.createElement('div');
+        tempContainer.style.position = 'fixed';
+        tempContainer.style.left = '-5000px';
+        tempContainer.style.top = '0';
+        tempContainer.style.width = '210mm';
+        tempContainer.style.backgroundColor = 'white';
+        tempContainer.dir = 'rtl';
+        document.body.appendChild(tempContainer);
+
+        const chunk = chunks[i];
+        const isFirstPage = i === 0;
+        const totalPages = chunks.length;
+
+        // Render the professional template into the container
+        tempContainer.innerHTML = `
+          <div style="width: 210mm; height: 297mm; padding: 15mm; font-family: 'Cairo', sans-serif; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; background-color: white; position: relative; overflow: hidden;">
+            <!-- Background Watermark -->
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.03; font-size: 150pt; font-weight: 950; pointer-events: none; white-space: nowrap; width: 100%; text-align: center; color: #1B4332;">
+              AFIA POS
+            </div>
+
+            <div style="flex-grow: 1;">
+              <!-- Header -->
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 4px solid #1B4332; padding-bottom: 20px; margin-bottom: 30px;">
+                <div style="display: flex; align-items: center; gap: 20px;">
+                  <div style="width: 80px; height: 80px; background-color: #1B4332; border-radius: 20px; display: flex; items-center; justify-content: center; padding: 10px;">
+                    <img src="/branding/afia_logo.png" style="width: 100%; height: 100%; object-fit: contain; filter: brightness(0) invert(1);" />
+                  </div>
+                  <div>
+                    <h1 style="margin: 0; color: #1B4332; font-size: 26pt; font-weight: 900; letter-spacing: -1px;">${settings.storeName}</h1>
+                    <p style="margin: 5px 0 0; color: #2D6A4F; font-weight: 800; font-size: 11pt; text-transform: uppercase; letter-spacing: 1px;">كشف الإفصاح المالي والمحاسبي للموردين</p>
+                  </div>
+                </div>
+                <div style="text-align: left; background-color: #f8f9fa; padding: 15px 25px; border-radius: 20px; border: 1px solid #eee;">
+                  <div style="font-weight: 900; color: #1B4332; font-size: 10pt; margin-bottom: 5px;">تقرير رسمي رقم: #SUP-${new Date().getTime().toString().slice(-6)}</div>
+                  <div style="color: #666; font-size: 9pt; font-weight: 700;">التاريخ: ${new Date().toLocaleDateString('ar-IQ')}</div>
+                  <div style="color: #666; font-size: 9pt; font-weight: 700;">الصفحة: ${i + 1} / ${totalPages}</div>
+                </div>
+              </div>
+
+              ${isFirstPage ? `
+                <!-- Summary Section -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 35px;">
+                  <div style="background-color: #f8f9fa; padding: 30px; border-radius: 25px; border: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                      <span style="color: #666; font-size: 10pt; font-weight: 900; display: block; margin-bottom: 8px;">إجمالي الموردين النشطين</span>
+                      <span style="color: #1B4332; font-size: 28pt; font-weight: 900;">${suppliers.length}</span>
+                    </div>
+                    <div style="width: 60px; height: 60px; background-color: white; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 20pt;">👥</div>
+                  </div>
+                  <div style="background-color: #1B4332; padding: 30px; border-radius: 25px; color: white; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 20px 40px rgba(27, 67, 50, 0.15);">
+                    <div>
+                      <span style="color: rgba(255,255,255,0.6); font-size: 10pt; font-weight: 900; display: block; margin-bottom: 8px;">صافي المصروفات الكلي</span>
+                      <span style="color: #F8961E; font-size: 26pt; font-weight: 900;">${formatCurrency(totalExpenses, settings.currency)}</span>
+                    </div>
+                    <div style="width: 60px; height: 60px; background-color: rgba(255,255,255,0.1); border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 20pt;">💰</div>
+                  </div>
+                </div>
+              ` : ''}
+
+              <!-- Main Table -->
+              <table style="width: 100%; border-collapse: separate; border-spacing: 0 10px;">
+                <thead>
+                  <tr style="background-color: #1B4332; color: white;">
+                    <th style="padding: 20px 15px; text-align: right; border-radius: 0 15px 15px 0; font-size: 10pt; text-transform: uppercase;">اسم الجهة الموردة</th>
+                    <th style="padding: 20px 15px; text-align: right; font-size: 10pt;">السلعة الموردة</th>
+                    <th style="padding: 20px 15px; text-align: right; font-size: 10pt;">الفئة</th>
+                    <th style="padding: 20px 15px; text-align: right; font-size: 10pt;">آخر معاملة</th>
+                    <th style="padding: 20px 15px; text-align: right; border-radius: 15px 0 0 15px; font-size: 10pt;">إجمالي الاستحقاق</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${chunk.map(s => `
+                    <tr style="background-color: #fff; border: 1px solid #eee;">
+                      <td style="padding: 22px 15px; border-bottom: 1.5px solid #f1f1f1; font-weight: 900; color: #1B4332; font-size: 11pt;">${s.name}</td>
+                      <td style="padding: 22px 15px; border-bottom: 1.5px solid #f1f1f1; color: #444; font-weight: 700;">${s.suppliedItem}</td>
+                      <td style="padding: 22px 15px; border-bottom: 1.5px solid #f1f1f1;">
+                        <span style="background: ${s.frequency === 'daily' ? '#D1FAE5' : s.frequency === 'weekly' ? '#DBEAFE' : s.frequency === 'monthly' ? '#FFEDD5' : '#F3F4F6'}; color: ${s.frequency === 'daily' ? '#065F46' : s.frequency === 'weekly' ? '#1E40AF' : s.frequency === 'monthly' ? '#9A3412' : '#374151'}; padding: 6px 12px; border-radius: 10px; font-size: 8.5pt; font-weight: 800;">
+                          ${s.frequency === 'daily' ? 'توريد يومي' : s.frequency === 'weekly' ? 'توريد أسبوعي' : s.frequency === 'monthly' ? 'توريد شهري' : 'توريد سنوي'}
+                        </span>
+                      </td>
+                      <td style="padding: 22px 15px; border-bottom: 1.5px solid #f1f1f1; color: #777; font-size: 9.5pt; font-weight: 700;">${s.lastSupplyDate}</td>
+                      <td style="padding: 22px 15px; border-bottom: 1.5px solid #f1f1f1; font-weight: 900; color: #1B4332; font-size: 12pt;">${formatCurrency(s.totalPaid, settings.currency)}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Footer Section -->
+            <div style="margin-top: 30px; border-top: 2px solid #1B4332;">
+              <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 15px; margin-bottom: 15px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <div style="width: 10px; height: 10px; background-color: #F8961E; border-radius: 50%;"></div>
+                  <span style="color: #1B4332; font-weight: 900; font-size: 10pt;">نظام عافية - لإدارة المؤسسات</span>
+                </div>
+                <div style="color: #999; font-size: 8pt; font-weight: 700;">تم التوليد بواسطة: حوسبة عافية السحابية (Afia Cloud)</div>
+              </div>
+              <div style="background-color: #1B4332; padding: 10px 20px; border-radius: 12px; display: flex; justify-content: space-between; color: white; font-size: 8pt; font-weight: 700;">
+                <span>الموقع: ${window.location.origin}</span>
+                <span>المعرّف الرقمي الصادر: AF-${Math.random().toString(36).substr(2, 9).toUpperCase()}</span>
+                <span>الصفحة ${i + 1} من ${totalPages}</span>
+              </div>
+            </div>
+          </div>
+        `;
+
+        // Wait for potential font rendering
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        const canvas = await html2canvas(tempContainer, {
+          scale: 3,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+          onclone: (clonedDoc) => {
+            // Apply similar color fixes as in ReportsView
+            const els = clonedDoc.querySelectorAll('*');
+            els.forEach((el: any) => {
+              if (el.style.backgroundColor && el.style.backgroundColor.includes('oklch')) el.style.backgroundColor = '#1B4332';
+              if (el.style.color && el.style.color.includes('oklch')) el.style.color = '#1B4332';
+              el.style.fontFamily = "'Cairo', sans-serif";
+            });
+          }
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        if (i > 0) pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, 0, pageWidth, pageHeight);
+
+        // Cleanup
+        document.body.removeChild(tempContainer);
+      }
+
+      pdf.save(`كشف_الموردين_${settings.storeName}_${new Date().toISOString().split('T')[0]}.pdf`);
 
       setStatusModal({
         isOpen: true,
         type: 'success',
-        title: 'اكتمل التصدير',
-        message: 'تم توليد كشف الموردين وحفظه بنجاح.'
+        title: 'اكتمل التقرير بنجاح',
+        message: 'تم توليد كشف الموردين الموحد بجميع الصفحات وحفظه على جهازك.'
       });
 
       setTimeout(() => {
         setStatusModal(prev => ({ ...prev, isOpen: false }));
-      }, 2500);
+      }, 3000);
 
     } catch (error) {
       console.error("Report generation failed:", error);
       setStatusModal({
         isOpen: true,
         type: 'error',
-        title: 'فشل التصدير',
-        message: 'عذراً، حدث خطأ أثناء محاولة توليد تقرير الموردين.'
+        title: 'فشل تصدير التقرير',
+        message: 'عذراً، حدث خطأ فني أثناء محاولة توليد الكشف الموحد. يرجى المحاولة مرة أخرى.'
       });
     } finally {
       setIsExporting(false);
@@ -225,169 +344,145 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
         </div>
       </div>
 
-      {/* Modern Analytics Cards */}
+      {/* Top Analysis Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <div className="bg-white p-8 rounded-[3rem] shadow-xl shadow-brand-primary/5 border border-brand-primary/5 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/5 rounded-bl-[5rem] -mr-8 -mt-8 group-hover:scale-110 transition-transform"></div>
+        <div className="bg-gradient-to-br from-brand-dark to-brand-primary p-8 rounded-[3rem] shadow-2xl relative overflow-hidden group">
+          <div className="absolute -top-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-3xl transition-transform group-hover:scale-125"></div>
           <div className="relative z-10 flex items-center justify-between">
-            <div className="flex flex-col">
-              <span className="text-brand-primary/40 text-[10px] font-black uppercase tracking-[0.2em] mb-2">الموردين المسجلين</span>
-              <div className="flex items-baseline gap-2">
-                <h3 className="text-4xl font-black text-brand-dark">{suppliers.length}</h3>
-                <span className="text-brand-dark/20 text-sm font-bold">مؤسسة</span>
+            <div>
+              <span className="text-white/60 text-xs font-black uppercase tracking-widest block mb-2">إجمالي المصروفات على الموردين</span>
+              <h3 className="text-4xl font-black text-white tracking-tighter">
+                {formatCurrency(totalExpenses, settings.currency)}
+              </h3>
+              <div className="flex items-center gap-2 mt-4 px-3 py-1 bg-white/10 w-fit rounded-full border border-white/5">
+                <div className="w-2 h-2 bg-brand-accent rounded-full animate-pulse"></div>
+                <span className="text-white/80 text-[10px] font-black uppercase tracking-widest">ميزانية المشتريات الكلية</span>
               </div>
             </div>
-            <div className="w-16 h-16 bg-brand-light/30 text-brand-primary rounded-[1.5rem] flex items-center justify-center shadow-inner">
-              <Users size={30} />
+            <div className="w-20 h-20 bg-white/10 backdrop-blur-md rounded-3xl flex items-center justify-center text-brand-accent shadow-2xl">
+              <DollarSign size={40} />
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-8 rounded-[3rem] shadow-xl shadow-brand-primary/5 border border-brand-primary/5 relative overflow-hidden group text-right">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-brand-accent/5 rounded-bl-[5rem] -mr-8 -mt-8 group-hover:scale-110 transition-transform"></div>
-          <div className="relative z-10 flex items-center justify-between">
-            <div className="flex flex-col">
-              <span className="text-brand-accent/40 text-[10px] font-black uppercase tracking-[0.2em] mb-2">إجمالي المسحوبات</span>
-              <div className="flex items-baseline gap-2">
-                <h3 className="text-4xl font-black text-brand-dark">
-                  {formatCurrency(suppliers.reduce((acc, s) => acc + s.totalPaid, 0), settings.currency)}
-                </h3>
-              </div>
+        <div className="bg-white p-8 rounded-[3rem] shadow-xl border border-brand-primary/5 group">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-brand-dark/30 text-xs font-black uppercase tracking-widest block mb-2">عدد الشركاء المعتمدين</span>
+              <h3 className="text-4xl font-black text-brand-dark tracking-tighter">{suppliers.length}</h3>
+              <p className="text-brand-primary font-bold text-xs mt-2">علاقات توريد نشطة</p>
             </div>
-            <div className="w-16 h-16 bg-brand-accent/10 text-brand-accent rounded-[1.5rem] flex items-center justify-center shadow-inner">
-              <TrendingUp size={30} />
+            <div className="w-20 h-20 bg-brand-light/30 rounded-3xl flex items-center justify-center text-brand-primary">
+              <Users size={40} />
             </div>
           </div>
         </div>
 
-        <div className="bg-brand-dark p-8 rounded-[3rem] shadow-xl shadow-brand-dark/20 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-bl-[5rem] -mr-8 -mt-8 group-hover:scale-110 transition-transform"></div>
-          <div className="relative z-10 flex items-center justify-between">
-            <div className="flex flex-col text-white">
-              <span className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em] mb-2">توريد اللحظة</span>
-              <div className="flex items-baseline gap-2">
-                <h3 className="text-2xl font-black">{suppliers[0]?.suppliedItem || 'لا يوجد'}</h3>
-              </div>
+        <div className="bg-white p-8 rounded-[3rem] shadow-xl border border-brand-primary/5 group">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-brand-dark/30 text-xs font-black uppercase tracking-widest block mb-2">مصاريف الفلتر المختار</span>
+              <h3 className="text-4xl font-black text-brand-primary tracking-tighter">{formatCurrency(filteredExpenses, settings.currency)}</h3>
+              <p className="text-orange-500 font-bold text-xs mt-2">بناءً على التصنيف الحالي</p>
             </div>
-            <div className="w-16 h-16 bg-white/10 text-brand-accent rounded-[1.5rem] flex items-center justify-center backdrop-blur-md shadow-lg">
-              <Package size={30} />
+            <div className="w-20 h-20 bg-orange-50 rounded-3xl flex items-center justify-center text-orange-500">
+              <TrendingUp size={40} />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Filter & Search Section */}
-      <div className="bg-white p-6 rounded-[3.5rem] shadow-xl shadow-brand-primary/5 border border-brand-primary/5 mb-10 flex flex-col lg:flex-row gap-6 items-center">
+      {/* Frequency Filter & Search */}
+      <div className="bg-white p-6 rounded-[3.5rem] shadow-xl border border-brand-primary/5 mb-10 flex flex-col lg:flex-row gap-6 items-center">
         <div className="relative flex-1 w-full">
           <Search className="absolute right-6 top-1/2 -translate-y-1/2 text-brand-primary/30" size={20} />
           <input
             type="text"
-            placeholder="ابحث بالاسم، السلعة، أو التصنيف..."
+            placeholder="البحث عن مورد، سلعة، أو شركة..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white border-2 border-brand-primary/5 rounded-3xl py-5 pr-14 pl-6 outline-none focus:ring-8 focus:ring-brand-primary/5 focus:border-brand-primary/20 transition-all font-black text-brand-dark placeholder-brand-dark/20 shadow-sm"
+            className="w-full bg-brand-cream/30 border-2 border-brand-primary/5 rounded-3xl py-5 pr-14 pl-6 outline-none focus:border-brand-primary/20 transition-all font-black text-brand-dark"
           />
         </div>
-        <div className="flex gap-2 w-full lg:w-auto overflow-x-auto pb-2 lg:pb-0 scrollbar-hide">
-          {categories.map(cat => (
+        <div className="flex gap-2 w-full lg:w-auto overflow-x-auto pb-2 lg:pb-0 no-scrollbar">
+          {(['all', 'daily', 'weekly', 'monthly', 'yearly'] as const).map(freq => (
             <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`px-8 py-5 rounded-[1.5rem] font-black whitespace-nowrap transition-all flex items-center gap-2 ${activeCategory === cat ? 'bg-brand-primary text-white shadow-2xl shadow-brand-primary/20 scale-105' : 'bg-white border border-brand-primary/5 text-brand-dark/40 hover:bg-brand-light/30 shadow-sm'}`}
+              key={freq}
+              onClick={() => setActiveFrequency(freq)}
+              className={`px-8 py-5 rounded-[1.8rem] font-black whitespace-nowrap transition-all flex items-center gap-2 ${activeFrequency === freq ? 'bg-brand-primary text-white shadow-xl shadow-brand-primary/20 scale-105' : 'bg-gray-50 text-brand-dark/40 hover:bg-brand-light/30'}`}
             >
-              {cat === 'All' ? 'كل الموردين' : cat}
+              {freq === 'all' ? 'جميع الموردين' : freq === 'daily' ? 'موردين يوميين' : freq === 'weekly' ? 'موردين أسبوعيين' : freq === 'monthly' ? 'موردين شهريين' : 'موردين سنويين'}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Premium Suppliers Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-8 pb-20">
+      {/* Grid of Suppliers */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 pb-20">
         {filteredSuppliers.map(supplier => (
-          <div key={supplier.id} className="bg-white rounded-[3.5rem] p-10 shadow-xl border border-gold-100/50 hover:border-brand-primary transition-all hover:shadow-2xl hover:-translate-y-2 group relative overflow-hidden flex flex-col">
+          <div key={supplier.id} className="bg-white rounded-[4rem] p-10 shadow-xl border border-transparent hover:border-brand-primary/20 hover:shadow-2xl transition-all group flex flex-col relative overflow-hidden">
+            <div className={`absolute top-0 left-0 w-2 h-full ${supplier.frequency === 'daily' ? 'bg-green-500' : supplier.frequency === 'weekly' ? 'bg-blue-500' : supplier.frequency === 'monthly' ? 'bg-orange-500' : 'bg-brand-dark'}`}></div>
 
-            {/* Background Accent */}
-            <div className="absolute top-0 left-0 w-32 h-32 bg-brand-primary/5 rounded-br-[5rem] -ml-8 -mt-8 group-hover:scale-125 transition-transform duration-500"></div>
-
-            <div className="flex justify-between items-start mb-10 relative z-10">
-              <div className="flex items-center gap-6">
-                <div className="w-20 h-20 bg-gradient-to-br from-brand-primary to-brand-dark rounded-3xl flex items-center justify-center text-white shadow-xl shadow-brand-primary/20 transform group-hover:rotate-3 transition-transform">
+            <div className="flex justify-between items-start mb-8">
+              <div className="flex items-center gap-5">
+                <div className="w-20 h-20 bg-brand-cream rounded-3xl flex items-center justify-center text-brand-primary shadow-inner">
                   <Truck size={36} />
                 </div>
-                <div className="flex flex-col">
-                  <h3 className="text-2xl font-black text-brand-dark group-hover:text-brand-primary transition-colors">{supplier.name}</h3>
+                <div>
+                  <h3 className="text-2xl font-black text-brand-dark tracking-tight">{supplier.name}</h3>
                   <div className="flex items-center gap-2 mt-1">
-                    <div className="w-2 h-2 bg-brand-accent rounded-full animate-pulse"></div>
-                    <span className="text-brand-primary text-[10px] font-black uppercase tracking-widest">{supplier.category}</span>
+                    <span className="px-3 py-1 bg-brand-primary/10 text-brand-primary text-[10px] font-black rounded-full">
+                      {supplier.category}
+                    </span>
+                    <span className="px-3 py-1 bg-gray-100 text-gray-500 text-[10px] font-black rounded-full">
+                      {supplier.frequency === 'daily' ? 'توريد يومي' : supplier.frequency === 'weekly' ? 'توريد أسبوعي' : supplier.frequency === 'monthly' ? 'توريد شهري' : 'توريد سنوي'}
+                    </span>
                   </div>
                 </div>
               </div>
               <div className="flex gap-2">
-                <button
-                  onClick={() => handleOpenModal(supplier)}
-                  className="w-12 h-12 flex items-center justify-center rounded-2xl bg-brand-light/30 text-brand-primary hover:bg-brand-primary hover:text-white transition-all shadow-sm"
-                >
+                <button onClick={() => handleOpenModal(supplier)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-gray-400 hover:text-brand-primary transition-all">
                   <Edit3 size={18} />
                 </button>
-                <button
-                  onClick={() => handleDeleteClick(supplier.id)}
-                  className="w-12 h-12 flex items-center justify-center rounded-2xl bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm"
-                >
+                <button onClick={() => handleDeleteClick(supplier.id)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-gray-400 hover:text-red-500 transition-all">
                   <Trash2 size={18} />
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-10 flex-1">
-              <div className="bg-brand-cream/50 p-5 rounded-[2rem] border border-brand-primary/5 group-hover:border-brand-primary/10 transition-colors">
-                <div className="flex items-center gap-2 text-brand-primary/40 text-[10px] font-black mb-2 uppercase tracking-tighter">
-                  <Package size={14} /> السلعة الموردة
-                </div>
-                <p className="text-md font-black text-brand-dark pr-1">{supplier.suppliedItem}</p>
+            <div className="space-y-4 mb-8 flex-1">
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                <span className="text-gray-400 font-bold text-xs">السلعة الموردة:</span>
+                <span className="font-black text-brand-dark">{supplier.suppliedItem}</span>
               </div>
-              <div className="bg-brand-cream/50 p-5 rounded-[2rem] border border-brand-primary/5 group-hover:border-brand-primary/10 transition-colors">
-                <div className="flex items-center gap-2 text-brand-primary/40 text-[10px] font-black mb-2 uppercase tracking-tighter">
-                  <CreditCard size={14} /> سعر الوحدة
-                </div>
-                <p className="text-md font-black text-brand-dark pr-1">{formatCurrency(supplier.costPerUnit, settings.currency)}</p>
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                <span className="text-gray-400 font-bold text-xs">آخر تاريخ توريد:</span>
+                <span className="font-black text-brand-dark">{supplier.lastSupplyDate}</span>
               </div>
-              <div className="bg-brand-cream/50 p-5 rounded-[2rem] border border-brand-primary/5 group-hover:border-brand-primary/10 transition-colors">
-                <div className="flex items-center gap-2 text-brand-primary/40 text-[10px] font-black mb-2 uppercase tracking-tighter">
-                  <Calendar size={14} /> آخر توريد
-                </div>
-                <p className="text-md font-black text-brand-dark pr-1">{supplier.lastSupplyDate}</p>
-              </div>
-              <div className="bg-brand-cream/50 p-5 rounded-[2rem] border border-brand-primary/5 group-hover:border-brand-primary/10 transition-colors">
-                <div className="flex items-center gap-2 text-brand-primary/40 text-[10px] font-black mb-2 uppercase tracking-tighter">
-                  <TrendingUp size={14} /> الكمية الإجمالية
-                </div>
-                <p className="text-md font-black text-brand-dark pr-1">{supplier.stockProvided} قطعة</p>
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                <span className="text-gray-400 font-bold text-xs">سعر الوحدة:</span>
+                <span className="font-black text-brand-primary">{formatCurrency(supplier.costPerUnit, settings.currency)}</span>
               </div>
             </div>
 
-            <div className="flex items-center justify-between mb-8 pb-8 border-b border-dashed border-gray-100">
-              <div className="flex flex-col">
-                <span className="text-[10px] text-brand-dark/30 font-black uppercase tracking-widest mb-1">صافي المدفوعات</span>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-black text-brand-dark">{formatCurrency(supplier.totalPaid, settings.currency)}</span>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <a href={`tel:${supplier.phone}`} className="w-14 h-14 bg-green-50 text-green-600 rounded-[1.5rem] flex items-center justify-center hover:bg-green-600 hover:text-white transition-all shadow-xl shadow-green-600/5 group/btn">
-                  <Phone size={22} className="group-hover/btn:scale-110 transition-transform" />
-                </a>
-                <a href={`mailto:${supplier.email}`} className="w-14 h-14 bg-blue-50 text-blue-600 rounded-[1.5rem] flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-xl shadow-blue-600/5 group/btn">
-                  <Mail size={22} className="group-hover/btn:scale-110 transition-transform" />
-                </a>
+            <div className="bg-brand-dark text-white p-8 rounded-[2.5rem] relative overflow-hidden group/card shadow-xl">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-bl-[4rem] transition-transform group-hover/card:scale-110"></div>
+              <span className="text-white/40 text-[10px] font-black uppercase tracking-widest block mb-2">إجمالي قيمة البضائع الموردة منه</span>
+              <div className="flex items-baseline gap-2">
+                <h4 className="text-3xl font-black text-brand-accent tracking-tighter">
+                  {formatCurrency(supplier.totalPaid, settings.currency)}
+                </h4>
               </div>
             </div>
 
-            <button
-              onClick={() => generateReport(supplier)}
-              className="w-full py-5 bg-brand-cream border-2 border-brand-primary/5 text-brand-dark rounded-[1.8rem] font-black text-sm hover:bg-brand-primary hover:text-white hover:border-brand-primary transition-all flex items-center justify-center gap-3 group/report shadow-sm active:scale-95"
-            >
-              <Download size={18} className="group-hover/report:translate-y-1 transition-transform" /> استخراج الكشف الضريبي
-            </button>
+            <div className="mt-8 pt-8 border-t border-dashed border-gray-100 flex gap-4">
+              <a href={`tel:${supplier.phone}`} className="flex-1 flex items-center justify-center gap-2 py-4 bg-green-50 text-green-600 rounded-2xl font-black hover:bg-green-600 hover:text-white transition-all">
+                <Phone size={18} /> اتصل بالمورد
+              </a>
+              <button onClick={() => generateReport()} className="w-14 h-14 flex items-center justify-center bg-gray-50 text-gray-400 rounded-2xl hover:bg-brand-primary hover:text-white transition-all">
+                <FileText size={20} />
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -509,6 +604,19 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
                     className="w-full py-4 px-6 bg-gray-50 border border-transparent focus:border-brand-primary focus:bg-white rounded-[1.5rem] outline-none transition-all font-black text-brand-dark"
                   />
                 </div>
+                <div className="space-y-3">
+                  <label className="text-brand-dark/60 text-xs font-black uppercase mr-2 tracking-widest">وتيرة التوريد</label>
+                  <select
+                    value={formData.frequency || 'monthly'}
+                    onChange={e => setFormData({ ...formData, frequency: e.target.value as any })}
+                    className="w-full py-4 px-6 bg-gray-50 border border-transparent focus:border-brand-primary focus:bg-white rounded-[1.5rem] outline-none transition-all font-black text-brand-dark appearance-none"
+                  >
+                    <option value="daily">توريد يومي</option>
+                    <option value="weekly">توريد أسبوعي</option>
+                    <option value="monthly">توريد شهري</option>
+                    <option value="yearly">توريد سنوي</option>
+                  </select>
+                </div>
               </div>
 
               <div className="pt-10 flex gap-4">
@@ -539,105 +647,6 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
         title="هل أنت متأكد من حذف المورد؟"
         description="سيتم حذف كافة بيانات هذا المورد وتاريخ التوريد الخاص به بشكل نهائي من النظام، ولا يمكن التراجع عن هذا الإجراء."
       />
-
-      {/* Professional Export Dialog */}
-      {isExporting && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-brand-dark/60 backdrop-blur-xl animate-in fade-in duration-500 px-4">
-          <div className="bg-white rounded-[4rem] p-16 shadow-5xl max-w-md w-full text-center space-y-10 animate-in zoom-in duration-700 border-[12px] border-brand-primary/5 relative overflow-hidden">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-brand-primary/5 rounded-full blur-3xl -mt-32"></div>
-
-            <div className="relative">
-              <div className="w-32 h-32 mx-auto relative flex items-center justify-center">
-                <div className="absolute inset-0 border-[6px] border-brand-primary/10 rounded-[2.5rem]"></div>
-                <div className="absolute inset-0 border-[6px] border-brand-primary rounded-[2.5rem] border-t-transparent animate-spin duration-1000"></div>
-                <div className="bg-brand-primary w-20 h-20 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-brand-primary/40 animate-pulse">
-                  <FileText size={40} />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="text-3xl font-black text-brand-dark tracking-tighter">جاري إعداد التقرير</h3>
-              <p className="text-sm font-bold text-gray-500 leading-relaxed">
-                نقوم الآن بذكاء عافية بتنظيم كشوفات الموردين وتدقيق البيانات للحصول على ملف PDF احترافي وعالي الدقة.
-              </p>
-            </div>
-
-            <div className="flex gap-2 justify-center items-center">
-              {[0, 1, 2].map(i => (
-                <div key={i} className="w-3 h-3 rounded-full bg-brand-primary/20 animate-bounce" style={{ animationDelay: `${i * 0.2}s` }}></div>
-              ))}
-            </div>
-
-            <div className="text-[9px] font-black text-gray-300 uppercase tracking-widest pt-4">
-              Al Afia Enterprise Reporting Engine
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Hidden Report Template (For html2canvas) */}
-      <div className="fixed -left-[2000px] top-0">
-        <div
-          ref={reportRef}
-          className="w-[210mm] bg-white p-[20mm] font-sans"
-          style={{ direction: 'rtl' }}
-        >
-          {/* ... existing template ... */}
-          {/* Header */}
-          <div className="flex justify-between items-center border-b-4 border-brand-dark pb-8 mb-10">
-            <div className="flex items-center gap-6">
-              <img src="/branding/afia_logo.png" className="w-20 h-20 object-contain" alt="Afia" />
-              <div>
-                <h1 className="text-4xl font-black text-brand-dark">نظام عافية الذكي</h1>
-                <p className="text-brand-primary font-bold">كشف الموردين والشركات المعتمدة</p>
-              </div>
-            </div>
-            <div className="text-left">
-              <p className="text-sm text-gray-400 font-bold">التاريخ: {new Date().toLocaleDateString('ar-IQ')}</p>
-              <p className="text-sm text-gray-400 font-bold">الوقت: {new Date().toLocaleTimeString('ar-IQ')}</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-8 mb-10">
-            <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100">
-              <p className="text-xs text-gray-400 font-black mb-1 uppercase">إجمالي عدد الموردين</p>
-              <p className="text-3xl font-black text-brand-dark">{suppliers.length} مورد</p>
-            </div>
-            <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100">
-              <p className="text-xs text-gray-400 font-black mb-1 uppercase">مجموع المستحقات المدفوعة</p>
-              <p className="text-3xl font-black text-brand-dark">{formatCurrency(suppliers.reduce((acc, s) => acc + s.totalPaid, 0), settings.currency)}</p>
-            </div>
-          </div>
-
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-brand-dark text-white">
-                <th className="p-4 text-right rounded-tr-2xl">المورد</th>
-                <th className="p-4 text-right">السلعة</th>
-                <th className="p-4 text-right">سعر الوحدة</th>
-                <th className="p-4 text-right">آخر توريد</th>
-                <th className="p-4 text-right rounded-tl-2xl">الإجمالي</th>
-              </tr>
-            </thead>
-            <tbody>
-              {suppliers.map((s, idx) => (
-                <tr key={s.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                  <td className="p-4 border-b border-gray-100 font-bold">{s.name}</td>
-                  <td className="p-4 border-b border-gray-100">{s.suppliedItem}</td>
-                  <td className="p-4 border-b border-gray-100 font-bold">{formatCurrency(s.costPerUnit, settings.currency)}</td>
-                  <td className="p-4 border-b border-gray-100">{s.lastSupplyDate}</td>
-                  <td className="p-4 border-b border-gray-100 font-black text-brand-primary">{formatCurrency(s.totalPaid, settings.currency)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div className="mt-20 pt-10 border-t border-dashed border-gray-200 text-center">
-            <p className="text-xs text-gray-400 font-bold capitalize">Generated by Al Afia Smart Business Solutions - Management Report System</p>
-          </div>
-        </div>
-      </div>
 
       {/* Unified Status Modal */}
       <StatusModal

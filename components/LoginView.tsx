@@ -77,9 +77,9 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
           <div className="w-32 h-32 relative mb-6 drop-shadow-xl hover:scale-105 transition-transform duration-300">
             <img src="/branding/afia_logo.png" alt="Afia Logo" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-4xl font-black flex items-center gap-2 mb-2">
-            <span className="text-brand-accent">عافية</span>
+          <h1 className="text-4xl font-black flex items-center gap-2 mb-2" dir="rtl">
             <span className="text-brand-primary">ألف</span>
+            <span className="text-brand-accent">عافية</span>
           </h1>
           <p className="text-brand-dark/60 font-bold text-sm tracking-widest uppercase">Digital POS System</p>
         </div>

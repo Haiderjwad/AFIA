@@ -60,6 +60,7 @@ export interface Supplier {
   costPerUnit: number;
   totalPaid: number;
   lastSupplyDate: string;
+  frequency?: 'daily' | 'weekly' | 'monthly' | 'yearly';
 }
 
 export interface AppSettings {
