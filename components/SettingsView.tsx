@@ -95,7 +95,12 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
 
   const handleAddEmployee = async () => {
     if (!empForm.email || !empForm.password || !empForm.name) {
-      alert('يرجى ملء كافة البيانات الأساسية (الاسم، البريد، كلمة السر)');
+      setStatusModal({
+        isOpen: true,
+        type: 'error',
+        title: 'بيانات غير مكتملة',
+        message: 'يرجى ملء كافة البيانات الأساسية (الاسم، البريد، كلمة السر) للمتابعة في إنشاء حساب الموظف.'
+      });
       return;
     }
 

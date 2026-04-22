@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import StatusModal from './StatusModal';
 import { CartItem, MenuItem, AppSettings } from '../types';
 import { formatCurrency } from '../utils/currencyUtils';
 import { Plus, Minus, Sparkles, Coffee, CreditCard, Loader2, Banknote, Wifi, ArrowLeft, Check, AlertCircle, Hash, MessageSquare, X } from 'lucide-react';
@@ -41,6 +42,8 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
     const [isNoteVisible, setIsNoteVisible] = useState(false);
     const [isTakeaway, setIsTakeaway] = useState(false);
     const [showError, setShowError] = useState(false);
+    const [isSending, setIsSending] = useState(false);
+    const [sendError, setSendError] = useState<string | null>(null);
 
 
     const currency = settings.currency;
@@ -73,7 +76,7 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
         return () => clearTimeout(timeout);
     }, [cart]);
 
-    const initiateCheckout = () => {
+    const initiateCheckout = async () => {
         if (cart.length === 0) return;
 
         if (!isTakeaway && !tableNumber) {
@@ -82,14 +85,23 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
             return;
         }
 
-        // Bypass payment selection and send directly to kitchen/system
-        onCheckout('cash', isTakeaway ? 'Takeaway' : tableNumber, orderNote);
-        setTableNumber('');
-        setOrderNote('');
-        setIsNoteVisible(false);
-        setIsTakeaway(false);
-        // On mobile, close after sending
-        if (window.innerWidth < 1280 && onClose) onClose();
+        setIsSending(true);
+        setSendError(null);
+
+        try {
+            await onCheckout('cash', isTakeaway ? 'Takeaway' : tableNumber, orderNote);
+            setTableNumber('');
+            setOrderNote('');
+            setIsNoteVisible(false);
+            setIsTakeaway(false);
+            // On mobile, close after sending
+            if (window.innerWidth < 1280 && onClose) onClose();
+        } catch (error) {
+            console.error("Checkout failed:", error);
+            setSendError("فشلت عملية إرسال الطلب. يرجى التأكد من الاتصال بالإنترنت والمحاولة مرة أخرى.");
+        } finally {
+            setIsSending(false);
+        }
     };
 
 
@@ -322,15 +334,33 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                     <div className="space-y-3">
                         <button
                             onClick={initiateCheckout}
-                            disabled={cart.length === 0}
-                            className={`w-full py-5 text-white rounded-2xl font-black text-xl shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 bg-gradient-to-r from-brand-primary to-brand-secondary shadow-brand-primary/30`}
+                            disabled={cart.length === 0 || isSending}
+                            className={`w-full py-5 text-white rounded-2xl font-black text-xl shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 bg-gradient-to-r from-brand-primary to-brand-secondary shadow-brand-primary/30 relative overflow-hidden`}
                         >
-                            <Coffee size={22} />
-                            ارسال الطلب
+                            {isSending ? (
+                                <>
+                                    <Loader2 size={24} className="animate-spin" />
+                                    <span>جاري الإرسال...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Coffee size={22} />
+                                    <span>ارسال الطلب</span>
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>
             </div>
+
+            {/* Error Notification for Sending */}
+            <StatusModal
+                isOpen={!!sendError}
+                onClose={() => setSendError(null)}
+                type="error"
+                title="خطأ في الإرسال"
+                message={sendError || ""}
+            />
 
             {/* Payment Modal */}
             {showPaymentModal && (

@@ -37,9 +37,15 @@ export const firestoreService = {
 
     async decrementStock(id: string, quantity: number): Promise<void> {
         const docRef = doc(db, "products", id);
-        await updateDoc(docRef, {
-            stock: increment(-quantity)
-        });
+        const snapshot = await getDoc(docRef);
+
+        if (snapshot.exists()) {
+            await updateDoc(docRef, {
+                stock: increment(-quantity)
+            });
+        } else {
+            console.warn(`Attempted to decrement stock for non-existent product: ${id}`);
+        }
     },
 
     async deleteProduct(id: string): Promise<void> {
@@ -178,55 +184,68 @@ export const firestoreService = {
         await setDoc(doc(db, "settings", "default"), settings);
     },
 
+    // Seeding Lock
+    _isSeeding: false,
+
     // Seeding
     async seedDatabase(): Promise<void> {
-        // Check if products exist
-        const productsSnapshot = await getDocs(collection(db, "products"));
-        if (productsSnapshot.empty) {
-            const batch = writeBatch(db);
-            PRODUCTS.forEach(product => {
-                const docRef = doc(collection(db, "products"));
-                batch.set(docRef, product);
-            });
-            await batch.commit();
-            console.log("Firestore: Products seeded");
-        }
+        if (this._isSeeding) return;
+        this._isSeeding = true;
+        try {
 
-        // Check if settings exist
-        const settingsRef = doc(db, "settings", "default");
-        const settingsSnapshot = await getDoc(settingsRef);
-        if (!settingsSnapshot.exists()) {
-            await setDoc(settingsRef, DEFAULT_SETTINGS);
-            console.log("Firestore: Settings seeded");
-        }
+            // Check if products exist
+            const productsSnapshot = await getDocs(collection(db, "products"));
+            if (productsSnapshot.empty) {
+                const batch = writeBatch(db);
+                PRODUCTS.forEach(product => {
+                    const docRef = doc(collection(db, "products"));
+                    batch.set(docRef, product);
+                });
+                await batch.commit();
+                console.log("Firestore: Products seeded");
+            }
 
-        // Check if suppliers exist
-        const suppliersSnapshot = await getDocs(collection(db, "suppliers"));
-        if (suppliersSnapshot.empty) {
-            const batch = writeBatch(db);
-            MOCK_SUPPLIERS.forEach(supplier => {
-                const docRef = doc(collection(db, "suppliers"));
-                batch.set(docRef, supplier);
-            });
-            await batch.commit();
-            console.log("Firestore: Suppliers seeded");
-        }
+            // Check if settings exist
+            const settingsRef = doc(db, "settings", "default");
+            const settingsSnapshot = await getDoc(settingsRef);
+            if (!settingsSnapshot.exists()) {
+                await setDoc(settingsRef, DEFAULT_SETTINGS);
+                console.log("Firestore: Settings seeded");
+            }
 
-        // Check if employees exist
-        const employeesSnapshot = await getDocs(collection(db, "employees"));
-        if (employeesSnapshot.empty) {
-            const adminData: Employee = {
-                uid: "default-admin", // This will be linked to auth user
-                name: "مدير النظام",
-                email: "admin@cafesun.com",
-                role: "admin",
-                permissions: ["all"],
-                employeeId: "EMP-001",
-                joinedAt: new Date().toISOString()
-            };
-            // Use a specific ID for seeding so we don't duplicate on multiple loads
-            await setDoc(doc(db, "employees", "seed-admin-id"), adminData);
-            console.log("Firestore: Default employee created");
+            // Check if suppliers exist
+            const suppliersSnapshot = await getDocs(collection(db, "suppliers"));
+            if (suppliersSnapshot.empty) {
+                const batch = writeBatch(db);
+                MOCK_SUPPLIERS.forEach(supplier => {
+                    const docRef = doc(collection(db, "suppliers"));
+                    batch.set(docRef, supplier);
+                });
+                await batch.commit();
+                console.log("Firestore: Suppliers seeded");
+            }
+
+            // Check if employees exist
+            const employeesSnapshot = await getDocs(collection(db, "employees"));
+            if (employeesSnapshot.empty) {
+                const adminData: Employee = {
+                    uid: "default-admin", // This will be linked to auth user
+                    name: "مدير النظام",
+                    email: "admin@cafesun.com",
+                    role: "admin",
+                    permissions: ["all"],
+                    employeeId: "EMP-001",
+                    joinedAt: new Date().toISOString()
+                };
+                // Use a specific ID for seeding so we don't duplicate on multiple loads
+                await setDoc(doc(db, "employees", "seed-admin-id"), adminData);
+                console.log("Firestore: Default employee created");
+            }
+        } catch (error) {
+            console.error("Firestore Seeding Failed:", error);
+        } finally {
+            this._isSeeding = false;
         }
     }
 };
+

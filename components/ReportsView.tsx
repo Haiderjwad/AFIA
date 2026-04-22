@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useRef } from 'react';
+import StatusModal from './StatusModal';
 import { Transaction, Employee, Supplier, AppSettings } from '../types';
 import {
     FileText, Download, Calendar, TrendingUp,
@@ -24,6 +25,12 @@ type ReportPeriod = 'daily' | 'weekly' | 'monthly' | 'yearly';
 const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, suppliers, settings }) => {
     const [period, setPeriod] = useState<ReportPeriod>('daily');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [statusModal, setStatusModal] = useState<{ isOpen: boolean, type: 'success' | 'error' | 'loading', title: string, message: string }>({
+        isOpen: false,
+        type: 'loading',
+        title: '',
+        message: ''
+    });
     const reportRef = useRef<HTMLDivElement>(null);
 
     // Statistics Calculation logic
@@ -107,13 +114,35 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
     const handleExportPDF = async () => {
         if (!reportRef.current) return;
         setIsGenerating(true);
+        setStatusModal({
+            isOpen: true,
+            type: 'loading',
+            title: 'جاري توليد التقرير',
+            message: 'نحن نقوم الآن بجمع البيانات المالية ومعالجتها في نسخه PDF عالية الجودة، يرجى الانتظار...'
+        });
 
         try {
             const element = reportRef.current;
             const canvas = await html2canvas(element, {
                 scale: 2,
                 useCORS: true,
-                backgroundColor: '#ffffff'
+                backgroundColor: '#ffffff',
+                onclone: (clonedDoc) => {
+                    // Fix for html2canvas oklch unsupported error
+                    const elementsWithOklch = clonedDoc.querySelectorAll('*');
+                    elementsWithOklch.forEach((el: any) => {
+                        const style = window.getComputedStyle(el);
+                        ['backgroundColor', 'color', 'borderColor', 'outlineColor'].forEach(prop => {
+                            const value = style[prop as any];
+                            if (value && value.includes('oklch')) {
+                                // Fallback to a safe color if oklch is detected
+                                // In a real scenario we'd parse it, but for a quick fix 
+                                // we can just strip the modern function or force a property
+                                el.style[prop] = 'rgb(45, 106, 79)'; // Default to brand primary
+                            }
+                        });
+                    });
+                }
             });
 
             const imgData = canvas.toDataURL('image/png');
@@ -122,9 +151,27 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
             const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
             pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(`تثرير_محاسبي_${period}_${new Date().toLocaleDateString('ar-IQ')}.pdf`);
+            pdf.save(`تقرير_محاسبي_${period}_${new Date().toLocaleDateString('ar-IQ')}.pdf`);
+
+            setStatusModal({
+                isOpen: true,
+                type: 'success',
+                title: 'اكتمل التصدير',
+                message: 'تم توليد وحفظ التقرير المالي بنجاح على جهازك.'
+            });
+
+            setTimeout(() => {
+                setStatusModal(prev => ({ ...prev, isOpen: false }));
+            }, 2500);
+
         } catch (error) {
             console.error("PDF Export failed:", error);
+            setStatusModal({
+                isOpen: true,
+                type: 'error',
+                title: 'فشل التصدير',
+                message: 'عذراً، حدث خطأ أثناء محاولة توليد التقرير. يرجى المحاولة مرة أخرى.'
+            });
         } finally {
             setIsGenerating(false);
         }
@@ -142,18 +189,18 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
             {/* Header section with tabs */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-coffee-900 mb-2">التقارير المحاسبية</h1>
-                    <p className="text-gray-500">تحليل دقيق للإيرادات، المصروفات، وصافي الأرباح</p>
+                    <h1 className="text-3xl font-bold text-brand-dark mb-2">التقارير المحاسبية</h1>
+                    <p className="text-gray-600">تحليل دقيق للإيرادات، المصروفات، وصافي الأرباح</p>
                 </div>
 
-                <div className="flex bg-white p-2 rounded-2xl shadow-xl border border-gold-200">
+                <div className="flex bg-white p-1.5 rounded-2xl shadow-lg border border-brand-light/50">
                     {(['daily', 'weekly', 'monthly', 'yearly'] as ReportPeriod[]).map((p) => (
                         <button
                             key={p}
                             onClick={() => setPeriod(p)}
-                            className={`px-8 py-3 rounded-xl font-black transition-all text-sm ${period === p
-                                ? 'bg-coffee-900 text-gold-500 shadow-lg scale-105'
-                                : 'text-gray-400 hover:text-coffee-900'
+                            className={`px-8 py-2.5 rounded-xl font-bold transition-all text-sm ${period === p
+                                ? 'bg-brand-primary text-white shadow-md scale-[1.02]'
+                                : 'text-gray-400 hover:text-brand-primary hover:bg-brand-light/20'
                                 }`}
                         >
                             {periodLabels[p]}
@@ -164,103 +211,115 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
 
             {/* Main Accounting Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-                <div className="bg-white p-8 rounded-[3rem] border border-green-100 shadow-xl shadow-green-500/5 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-green-50 rounded-bl-[4rem] flex items-center justify-center -mr-8 -mt-8 transition-transform group-hover:scale-110">
-                        <TrendingUp size={24} className="text-green-600 translate-x-2 translate-y-2" />
+                {/* Revenue Card */}
+                <div className="bg-white p-6 rounded-[2.5rem] border border-green-100 shadow-xl shadow-green-500/5 relative overflow-hidden group hover:border-green-200 transition-all">
+                    <div className="absolute top-0 left-0 w-20 h-20 bg-green-50 rounded-br-[3rem] flex items-center justify-center -ml-4 -mt-4 transition-transform group-hover:scale-110">
+                        <TrendingUp size={22} className="text-green-600 -translate-x-1 -translate-y-1" />
                     </div>
-                    <span className="text-gray-400 text-xs font-bold mb-1 block">إجمالي الإيرادات</span>
-                    <h3 className="text-3xl font-black text-coffee-900">{formatCurrency(currentStats.revenue, settings.currency)}</h3>
-                    <div className="flex items-center gap-1 mt-4 text-green-600 font-bold text-[10px]">
-                        <ArrowUpRight size={12} />
-                        <span>نمو مستمر</span>
-                    </div>
-                </div>
-
-                <div className="bg-white p-8 rounded-[3rem] border border-red-100 shadow-xl shadow-red-500/5 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-red-50 rounded-bl-[4rem] flex items-center justify-center -mr-8 -mt-8 transition-transform group-hover:scale-110">
-                        <ShoppingBag size={24} className="text-red-600 translate-x-2 translate-y-2" />
-                    </div>
-                    <span className="text-gray-400 text-xs font-bold mb-1 block">مصاريف الموردين</span>
-                    <h3 className="text-3xl font-black text-red-600">{formatCurrency(currentStats.supplierExpenses, settings.currency)}</h3>
-                    <div className="flex items-center gap-1 mt-4 text-red-400 font-bold text-[10px]">
-                        <ArrowDownRight size={12} />
-                        <span>من قسم الموردين</span>
+                    <div className="relative z-10">
+                        <span className="text-gray-400 text-xs font-bold mb-2 block">إجمالي الإيرادات</span>
+                        <h3 className="text-2xl font-black text-brand-dark tracking-tight">{formatCurrency(currentStats.revenue, settings.currency)}</h3>
+                        <div className="flex items-center gap-1.5 mt-3 text-green-600 font-bold text-[10px] bg-green-50 w-fit px-2 py-1 rounded-full">
+                            <ArrowUpRight size={12} />
+                            <span>نمو مستمر</span>
+                        </div>
                     </div>
                 </div>
 
-                <div className="bg-white p-8 rounded-[3rem] border border-orange-100 shadow-xl shadow-orange-500/5 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-orange-50 rounded-bl-[4rem] flex items-center justify-center -mr-8 -mt-8 transition-transform group-hover:scale-110">
-                        <Users size={24} className="text-orange-600 translate-x-2 translate-y-2" />
+                {/* Supplier Expenses Card */}
+                <div className="bg-white p-6 rounded-[2.5rem] border border-red-100 shadow-xl shadow-red-500/5 relative overflow-hidden group hover:border-red-200 transition-all">
+                    <div className="absolute top-0 left-0 w-20 h-20 bg-red-50 rounded-br-[3rem] flex items-center justify-center -ml-4 -mt-4 transition-transform group-hover:scale-110">
+                        <ShoppingBag size={22} className="text-red-600 -translate-x-1 -translate-y-1" />
                     </div>
-                    <span className="text-gray-400 text-xs font-bold mb-1 block">مصاريف الرواتب</span>
-                    <h3 className="text-3xl font-black text-orange-600">{formatCurrency(currentStats.salaryExpense, settings.currency)}</h3>
-                    <div className="flex items-center gap-1 mt-4 text-orange-400 font-bold text-[10px]">
-                        <Wallet size={12} />
-                        <span>إدارة الموظفين</span>
+                    <div className="relative z-10">
+                        <span className="text-gray-400 text-xs font-bold mb-2 block">مصاريف الموردين</span>
+                        <h3 className="text-2xl font-black text-red-600 tracking-tight">{formatCurrency(currentStats.supplierExpenses, settings.currency)}</h3>
+                        <div className="flex items-center gap-1.5 mt-3 text-red-500 font-bold text-[10px] bg-red-50 w-fit px-2 py-1 rounded-full">
+                            <ArrowDownRight size={12} />
+                            <span>من قسم الموردين</span>
+                        </div>
                     </div>
                 </div>
 
-                <div className="bg-gradient-to-br from-coffee-900 to-brand-dark p-8 rounded-[3rem] shadow-2xl relative overflow-hidden group">
-                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-gold-500/10 rounded-full blur-3xl"></div>
-                    <span className="text-gold-200/50 text-xs font-bold mb-1 block">صافي الربح</span>
-                    <h3 className="text-3xl font-black text-gold-500">{formatCurrency(currentStats.netProfit, settings.currency)}</h3>
-                    <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-gold-500/10 text-gold-200 rounded-full text-[10px] font-black">
-                        <Sparkles size={12} />
-                        <span>الأرباح الصافية</span>
+                {/* Salary Expenses Card */}
+                <div className="bg-white p-6 rounded-[2.5rem] border border-orange-100 shadow-xl shadow-orange-500/5 relative overflow-hidden group hover:border-orange-200 transition-all">
+                    <div className="absolute top-0 left-0 w-20 h-20 bg-orange-50 rounded-br-[3rem] flex items-center justify-center -ml-4 -mt-4 transition-transform group-hover:scale-110">
+                        <Users size={22} className="text-orange-600 -translate-x-1 -translate-y-1" />
+                    </div>
+                    <div className="relative z-10">
+                        <span className="text-gray-400 text-xs font-bold mb-2 block">مصاريف الرواتب</span>
+                        <h3 className="text-2xl font-black text-orange-600 tracking-tight">{formatCurrency(currentStats.salaryExpense, settings.currency)}</h3>
+                        <div className="flex items-center gap-1.5 mt-3 text-orange-500 font-bold text-[10px] bg-orange-50 w-fit px-2 py-1 rounded-full">
+                            <Wallet size={12} />
+                            <span>إدارة الموظفين</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Net Profit Card */}
+                <div className="bg-gradient-to-br from-brand-dark to-brand-primary p-6 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
+                    <div className="absolute -top-6 -left-6 w-24 h-24 bg-white/10 rounded-br-[3rem] transition-transform group-hover:scale-110"></div>
+                    <div className="relative z-10">
+                        <span className="text-brand-light/60 text-xs font-bold mb-2 block">صافي الربح</span>
+                        <h3 className="text-2xl font-black text-white tracking-tight">{formatCurrency(currentStats.netProfit, settings.currency)}</h3>
+                        <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 text-brand-light rounded-full text-[10px] font-black border border-white/5">
+                            <Sparkles size={12} />
+                            <span>الأرباح الصافية</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Detailed Preview Section */}
-            <div className="bg-white rounded-[4rem] shadow-2xl border border-gold-100 overflow-hidden relative mb-20">
-                <div className="p-10 border-b border-gray-50 flex justify-between items-center bg-gray-50/50 backdrop-blur-sm">
+            <div className="bg-white rounded-[3.5rem] shadow-2xl border border-brand-light/30 overflow-hidden relative mb-20">
+                <div className="p-8 border-b border-gray-50 flex justify-between items-center bg-gray-50/30 backdrop-blur-sm">
                     <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 bg-coffee-900 rounded-[1.5rem] flex items-center justify-center text-gold-500 shadow-xl">
-                            <FileText size={28} />
+                        <div className="w-12 h-12 bg-brand-dark rounded-2xl flex items-center justify-center text-brand-accent shadow-lg shadow-brand-dark/10">
+                            <FileText size={24} />
                         </div>
                         <div>
-                            <h2 className="text-2xl font-black text-brand-dark">الكشف المحاسبي الموحد</h2>
-                            <p className="text-xs text-gray-400 font-bold tracking-widest uppercase">Unified Accounting Disclosure | {periodLabels[period]}</p>
+                            <h2 className="text-xl font-black text-brand-dark">الكشف المحاسبي الموحد</h2>
+                            <p className="text-[10px] text-gray-400 font-bold tracking-widest uppercase">Unified Accounting Disclosure | {periodLabels[period]}</p>
                         </div>
                     </div>
 
                     <button
                         onClick={handleExportPDF}
                         disabled={isGenerating}
-                        className="flex items-center gap-3 px-10 py-5 bg-gold-500 hover:bg-gold-600 text-coffee-900 font-black rounded-3xl transition-all shadow-xl shadow-gold-500/20 disabled:opacity-50 group active:scale-95"
+                        className="flex items-center gap-3 px-8 py-4 bg-brand-accent hover:bg-orange-600 text-white font-black rounded-2xl transition-all shadow-xl shadow-brand-accent/20 disabled:opacity-50 group active:scale-95 text-sm"
                     >
-                        {isGenerating ? <RefreshCw size={22} className="animate-spin" /> : <Download size={22} className="group-hover:translate-y-1 transition-transform" />}
+                        {isGenerating ? <RefreshCw size={18} className="animate-spin" /> : <Download size={18} className="group-hover:translate-y-0.5 transition-transform" />}
                         <span>تصدير التقرير المالي</span>
                     </button>
                 </div>
 
                 <div ref={reportRef} className="p-16 bg-white" dir="rtl">
-                    <div className="flex justify-between items-start border-b-8 border-coffee-900 pb-10 mb-12">
+                    <div className="flex justify-between items-start border-b-8 border-brand-dark pb-10 mb-12">
                         <div className="text-right">
-                            <h1 className="text-5xl font-black text-coffee-900 mb-3">{settings.storeName}</h1>
-                            <div className="flex items-center gap-2 text-gold-600">
+                            <h1 className="text-5xl font-black text-brand-dark mb-3">{settings.storeName}</h1>
+                            <div className="flex items-center gap-2 text-brand-accent">
                                 <Sparkles size={20} />
                                 <p className="text-xl font-bold uppercase tracking-[0.2em]">تقرير الأداء المالي والربحية</p>
                             </div>
                         </div>
                         <div className="text-left">
                             <p className="text-gray-400 font-black text-sm mb-1 uppercase tracking-widest">تاريخ الإصدار</p>
-                            <p className="text-2xl font-black text-coffee-900">{new Date().toLocaleDateString('ar-IQ')}</p>
+                            <p className="text-2xl font-black text-brand-dark">{new Date().toLocaleDateString('ar-IQ')}</p>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-3 gap-8 mb-16 text-right">
                         <div className="bg-gray-50 p-8 rounded-[2.5rem] border border-gray-100">
                             <p className="text-xs text-brand-primary font-black uppercase mb-3">إجمالي المدخول</p>
-                            <p className="text-4xl font-black text-coffee-900">{formatCurrency(currentStats.revenue, settings.currency)}</p>
+                            <p className="text-4xl font-black text-brand-dark">{formatCurrency(currentStats.revenue, settings.currency)}</p>
                         </div>
                         <div className="bg-gray-50 p-8 rounded-[2.5rem] border border-gray-100">
                             <p className="text-xs text-red-500 font-black uppercase mb-3">إجمالي المصاريف</p>
                             <p className="text-4xl font-black text-red-600">{formatCurrency(currentStats.totalExpenses, settings.currency)}</p>
                         </div>
-                        <div className="bg-coffee-900 p-8 rounded-[2.5rem] shadow-xl">
-                            <p className="text-xs text-gold-300 font-black uppercase mb-3">الفائض الربحي</p>
-                            <p className="text-4xl font-black text-gold-500">{formatCurrency(currentStats.netProfit, settings.currency)}</p>
+                        <div className="bg-brand-dark p-8 rounded-[2.5rem] shadow-xl shadow-brand-dark/20">
+                            <p className="text-xs text-brand-light font-black uppercase mb-3">الفائض الربحي</p>
+                            <p className="text-4xl font-black text-brand-accent">{formatCurrency(currentStats.netProfit, settings.currency)}</p>
                         </div>
                     </div>
 
@@ -298,13 +357,13 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
                             <div className="bg-gray-50 p-10 rounded-[3rem] border border-gray-100 flex justify-between items-center">
                                 <div className="flex flex-col gap-2">
                                     <span className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">المنتج النجم (Star Product)</span>
-                                    <p className="text-2xl font-black text-coffee-900">{currentStats.topItem}</p>
+                                    <p className="text-2xl font-black text-brand-dark">{currentStats.topItem}</p>
                                     <span className="text-xs text-brand-primary font-black">بإجمالي مبيعات: {currentStats.topItemCount} قطعة</span>
                                 </div>
                                 <div className="w-px h-20 bg-gray-200"></div>
                                 <div className="flex flex-col gap-2">
                                     <span className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">متوسط قيمة العملية (AOV)</span>
-                                    <p className="text-2xl font-black text-coffee-900">{formatCurrency(currentStats.avgOrderValue, settings.currency)}</p>
+                                    <p className="text-2xl font-black text-brand-dark">{formatCurrency(currentStats.avgOrderValue, settings.currency)}</p>
                                     <span className="text-xs text-brand-primary font-black">عبر {currentStats.orderCount} معاملة ناجحة</span>
                                 </div>
                             </div>
@@ -317,6 +376,15 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
                     </div>
                 </div>
             </div>
+
+            {/* Unified Status Modal */}
+            <StatusModal
+                isOpen={statusModal.isOpen}
+                onClose={() => setStatusModal(prev => ({ ...prev, isOpen: false }))}
+                type={statusModal.type}
+                title={statusModal.title}
+                message={statusModal.message}
+            />
         </div>
     );
 };

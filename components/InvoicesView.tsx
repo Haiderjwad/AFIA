@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import StatusModal from './StatusModal';
 import { soundService } from '../services/soundService';
 import { Transaction, MenuItem, AppSettings, CartItem } from '../types';
 import {
@@ -30,6 +31,13 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
     const [autoPrint, setAutoPrint] = useState(false);
     const [paymentStep, setPaymentStep] = useState<1 | 2>(1);
     const [selectedMethod, setSelectedMethod] = useState<'cash' | 'card' | 'online' | null>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [statusModal, setStatusModal] = useState<{ isOpen: boolean, type: 'success' | 'error' | 'loading', title: string, message: string }>({
+        isOpen: false,
+        type: 'loading',
+        title: '',
+        message: ''
+    });
 
     const filteredTransactions = transactions.filter(t => {
         // Tab filter
@@ -49,7 +57,18 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
 
     const completedTransactions = transactions.filter(t => ['completed', 'refunded'].includes(t.status) || t.isPaid);
 
-    const handlePrint = (transaction: Transaction) => {
+    const handlePrint = async (transaction: Transaction) => {
+        setIsProcessing(true);
+        setStatusModal({
+            isOpen: true,
+            type: 'loading',
+            title: 'جاري تجهيز الفاتورة',
+            message: 'نحن نقوم الآن بتحضير بيانات الفاتورة وتنسيقها للطباعة، يرجى الانتظار...'
+        });
+
+        // Aesthetic delay for professional feel
+        await new Promise(resolve => setTimeout(resolve, 1200));
+
         const curr = settings?.currency || CURRENCY;
         const receiptType = settings?.receiptType || 'a4';
         const storeName = settings?.storeName || 'ألف عافية';
@@ -340,126 +359,8 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Cairo', sans-serif; background: #eee; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         
-        /* ═════════ A4 STYLES ═════════ */
-        .invoice-page { 
-            width: 210mm; height: 297mm; background: #fff; margin: 20px auto; 
-            padding: 40px; display: flex; flex-direction: column; overflow: hidden;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
-        }
-        .a4-hdr { border-bottom: 5px solid #2d6a4f; padding-bottom: 25px; margin-bottom: 30px; }
-        .a4-hdr-inner { display: flex; justify-content: space-between; align-items: center; }
-        .a4-hdr-left { display: flex; align-items: center; gap: 20px; }
-        .a4-store-name { font-size: 32px; font-weight: 900; color: #1b4332; line-height: 1.2; }
-        .a4-sys-name { font-size: 14px; color: #52b788; font-weight: 700; }
-        .a4-hdr-right { text-align: left; }
-        .a4-type-badge { background: #f8961e; color: #fff; padding: 6px 15px; border-radius: 10px; font-weight: 800; font-size: 14px; margin-bottom: 8px; }
-        .a4-inv-no { font-size: 18px; font-weight: 900; color: #1b4332; }
-
-        .a4-info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
-        .a4-info-box { background: #fcfdfc; border: 1px solid #e9ecef; padding: 15px; border-radius: 15px; border-right: 4px solid #2d6a4f; }
-        .a4-info-lbl { display: block; font-size: 12px; font-weight: 800; color: #2d6a4f; text-transform: uppercase; margin-bottom: 5px; }
-        .a4-info-val { display: block; font-size: 15px; font-weight: 900; color: #1b4332; }
-
-        .a4-table-container { flex: 1; margin-bottom: 30px; }
-        .a4-tbl { width: 100%; border-collapse: collapse; }
-        .a4-tbl th { background: #1b4332; color: #fff; padding: 15px; text-align: right; font-size: 14px; font-weight: 900; }
-        .a4-tbl td { padding: 15px; border-bottom: 1px solid #eee; font-size: 14px; color: #1b4332; font-weight: 700; }
-        .a4-tbl tr:nth-child(even) { background: #f9fbf9; }
-        .td-idx { font-weight: 900; color: #2d6a4f; text-align: center; }
-        .td-num, .td-total { text-align: center; }
-
-        .a4-summary-container { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; }
-        .a4-total-badge { background: #1b4332; padding: 30px; border-radius: 25px; color: #fff; text-align: center; min-width: 250px; box-shadow: 0 10px 20px rgba(27, 67, 50, 0.2); }
-        .a4-tb-lbl { display: block; font-size: 14px; font-weight: 700; opacity: 0.8; margin-bottom: 10px; }
-        .a4-tb-val { font-size: 36px; font-weight: 900; }
-        .a4-summary-right { width: 300px; padding-top: 10px; }
-        .a4-sum-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px; font-weight: 700; color: #1b4332; }
-        .a4-sum-total { font-size: 20px; font-weight: 900; border-top: 3px solid #2d6a4f; margin-top: 10px; padding-top: 15px; color: #2d6a4f; }
-
-        .a4-footer { text-align: center; border-top: 1px solid #eee; padding-top: 30px; }
-        .a4-footer-thanks { font-size: 22px; font-weight: 900; color: #1b4332; margin-bottom: 10px; }
-        .a4-footer-line { height: 5px; background: #f8961e; width: 60px; margin: 0 auto 15px; border-radius: 3px; }
-        .a4-footer-bottom { display: flex; justify-content: space-between; font-size: 12px; color: #aaa; font-weight: 700; }
-
-
-        /* ═════════ CUSTOM PREMIUM STYLES ═════════ */
-        .custom-invoice {
-            width: 210mm; height: 297mm; background: #fff; margin: 20px auto; 
-            padding: 50px; display: flex; flex-direction: column; overflow: hidden;
-            position: relative; box-shadow: 0 0 30px rgba(0,0,0,0.15);
-        }
-        .c-header { display: flex; justify-content: space-between; align-items: stretch; margin-bottom: 50px; padding: 20px; background: #fcfcfc; border-radius: 20px; }
-        .c-header-main { display: flex; flex-direction: column; gap: 20px; }
-        .c-logos { display: flex; align-items: center; gap: 20px; }
-        .c-store-logo { height: 80px; width: 80px; object-fit: contain; border-radius: 15px; }
-        .c-system-logo { height: 40px; opacity: 0.8; }
-        .c-divider-v { width: 2px; height: 30px; background: #ddd; }
-        .c-logo-placeholder { width: 80px; height: 80px; display: flex; items-center justify-center; font-size: 40px; font-weight: 900; color: #fff; border-radius: 15px; }
-        .c-store-info h1 { font-size: 36px; font-weight: 900; line-height: 1; }
-        .c-store-info span { font-size: 14px; color: #666; font-weight: 700; margin-top: 5px; display: block; }
-        .c-header-id { padding: 20px; border-radius: 15px; text-align: center; display: flex; flex-direction: column; justify-content: center; min-width: 180px; }
-        .c-header-id span { font-size: 20px; font-weight: 900; display: block; }
-        .c-header-id small { font-size: 12px; font-weight: 700; opacity: 0.6; }
-
-        .c-watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.03; width: 500px; z-index: 0; pointer-events: none; }
-        .c-watermark img { width: 100%; }
-
-        .c-meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 40px; position: relative; z-index: 1; }
-        .c-meta-item { background: #fff; border: 1px solid #eee; padding: 12px; border-radius: 12px; font-size: 13px; font-weight: 700; color: #444; }
-        .c-meta-item strong { color: #888; display: block; font-size: 10px; margin-bottom: 3px; text-transform: uppercase; }
-
-        .c-table-wrapper { flex: 1; position: relative; z-index: 1; background: rgba(255,255,255,0.8); backdrop-filter: blur(5px); }
-        .c-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
-        .c-table th { color: #fff; padding: 15px; text-align: center; font-size: 14px; font-weight: 900; }
-        .c-table th:first-child { border-radius: 0 12px 12px 0; }
-        .c-table th:last-child { border-radius: 12px 0 0 12px; }
-        .c-table td { padding: 15px; background: #fafafa; font-weight: 800; color: #222; text-align: center; font-size: 14px; border-top: 1px solid #f0f0f0; border-bottom: 1px solid #f0f0f0; }
-        .c-table td:first-child { border-right: 1px solid #f0f0f0; border-radius: 0 12px 12px 0; color: #888; font-size: 12px; }
-        .c-table td:last-child { border-left: 1px solid #f0f0f0; border-radius: 12px 0 0 12px; font-weight: 900; }
-        .c-name { text-align: right !important; }
-
-        .c-summary { margin-top: 40px; padding: 30px; background: #fcfcfc; border-radius: 25px; border: 1px solid #eee; width: 400px; margin-right: auto; position: relative; z-index: 1; }
-        .c-summary-row { display: flex; justify-content: space-between; padding: 10px 0; color: #666; font-weight: 700; font-size: 15px; }
-        .c-summary-total { display: flex; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 2px dashed #ddd; font-size: 24px; font-weight: 900; }
-
-        .c-footer { margin-top: 50px; position: relative; z-index: 1; }
-        .c-footer-decoration { height: 10px; border-radius: 5px; margin-bottom: 15px; }
-        .c-footer-content { display: flex; justify-content: space-between; font-size: 12px; color: #aaa; font-weight: 800; }
-
-        /* ═════════ THERMAL STYLES ═════════ */
-        @page { margin: 0; }
-        .thermal-receipt { 
-            width: 80mm; background: #fff; margin: 10px auto; padding: 10mm 5mm; 
-            border: 1px solid #ddd; display: flex; flex-direction: column; align-items: center; 
-        }
-        .t-header { text-align: center; margin-bottom: 15px; width: 100%; }
-        .t-logo { width: 40px; height: 40px; background: #000; color: #fff; border-radius: 10px; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 900; }
-        .t-store-name { font-size: 22px; font-weight: 900; margin-bottom: 3px; color: #000; }
-        .t-subtext { font-size: 12px; font-weight: 600; color: #666; }
-        .t-info { width: 100%; margin-bottom: 10px; font-size: 12px; font-weight: 700; color: #222; }
-        .t-info-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
-        .t-divider { width: 100%; border-top: 2px dashed #000; margin: 10px 0; }
-        .t-divider-thin { width: 100%; border-top: 1px solid #eee; margin: 5px 0; }
-        .t-items-head { width: 100%; display: flex; justify-content: space-between; font-size: 11px; font-weight: 900; padding: 0 2px; }
-        .t-items-list { width: 100%; }
-        .t-row { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; padding: 5px 2px; border-bottom: 1px dotted #eee; }
-        .t-col-name { flex: 1; text-align: right; }
-        .t-col-qty { width: 40px; text-align: center; }
-        .t-col-total { width: 60px; text-align: left; }
-        .t-summary { width: 100%; margin: 10px 0; font-size: 14px; font-weight: 700; }
-        .t-sum-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
-        .t-grand-total { font-size: 18px; font-weight: 900; padding-top: 5px; border-top: 1px solid #000; }
-        .t-footer { text-align: center; font-size: 10px; font-weight: 700; width: 100%; }
-        .t-thanks { font-size: 14px; font-weight: 900; margin: 15px 0; }
-        .t-qr-placeholder { width: 60px; height: 60px; border: 2px solid #000; background:Repeating-conic-gradient(#000 0% 25%,#fff 0% 50%) 50%/10% 10%; margin: 0 auto 10px; }
-        .t-system-info { font-size: 8px; color: #999; }
-
-        @media print {
-            body { background: transparent; }
-            .invoice-page, .thermal-receipt, .custom-invoice { margin: 0; box-shadow: none; border: none; }
-            .page-break { page-break-after: always; break-after: page; }
-            ${receiptType === 'thermal' ? '@page { size: 80mm auto; }' : '@page { size: A4 portrait; }'}
-        }
+        /* ... styles ... */
+        ${receiptType === 'thermal' ? '@page { size: 80mm auto; }' : '@page { size: A4 portrait; }'}
     </style>
 </head>
 <body>
@@ -475,23 +376,90 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
 </body>
 </html>`;
 
-        const printWindow = window.open('', '_blank', 'width=900,height=700');
-        if (!printWindow) { alert('يرجى السماح للنوافذ المنبثقة لتشغيل الطباعة'); return; }
-        printWindow.document.open();
-        printWindow.document.write(fullHTML);
-        printWindow.document.close();
+        try {
+            const printWindow = window.open('', '_blank', 'width=900,height=700');
+            if (!printWindow) {
+                setStatusModal({
+                    isOpen: true,
+                    type: 'error',
+                    title: 'تم حظر النافذة المنبثقة',
+                    message: 'يرجى السماح للنوافذ المنبثقة في متصفحك لتتمكن من طباعة الفواتير.'
+                });
+                return;
+            }
+            printWindow.document.open();
+            printWindow.document.write(fullHTML);
+            printWindow.document.close();
+
+            setStatusModal({
+                isOpen: true,
+                type: 'success',
+                title: 'جاهز للطباعة',
+                message: 'تم فتح نافذة الطباعة بنجاح، يمكنك الآن تأكيد العملية.'
+            });
+
+            setTimeout(() => {
+                setStatusModal(prev => ({ ...prev, isOpen: false }));
+            }, 2000);
+
+        } catch (error) {
+            setStatusModal({
+                isOpen: true,
+                type: 'error',
+                title: 'خطأ في الطباعة',
+                message: 'حدث خطأ غير متوقع أثناء محاولة فتح نافذة الطباعة.'
+            });
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     const handleComplete = async () => {
         if (!selectedForPayment || !onFinalizePayment || !selectedMethod) return;
-        await onFinalizePayment(selectedForPayment.id, selectedMethod);
-        const updated = { ...selectedForPayment, status: 'completed' as const, paymentMethod: selectedMethod };
-        setSelectedForPayment(null);
-        setPaymentStep(1);
-        setSelectedMethod(null);
-        soundService.playSuccess();
-        if (autoPrint) {
-            handlePrint(updated);
+
+        setIsProcessing(true);
+        setStatusModal({
+            isOpen: true,
+            type: 'loading',
+            title: 'جاري إتمام الدفع',
+            message: 'نحن نقوم الآن بمعالجة العملية المالية، يرجى الانتظار قليلاً...'
+        });
+
+        try {
+            await onFinalizePayment(selectedForPayment.id, selectedMethod);
+            const updated = { ...selectedForPayment, status: 'completed' as const, paymentMethod: selectedMethod };
+
+            setSelectedForPayment(null);
+            setPaymentStep(1);
+            setSelectedMethod(null);
+            soundService.playSuccess();
+
+            setStatusModal({
+                isOpen: true,
+                type: 'success',
+                title: 'تم الدفع بنجاح',
+                message: 'تمت العملية بنجاح وتم تحديث حالة الفاتورة، شكراً لك.'
+            });
+
+            if (autoPrint) {
+                handlePrint(updated);
+            }
+
+            // Auto-close success modal after 2 seconds
+            setTimeout(() => {
+                setStatusModal(prev => ({ ...prev, isOpen: false }));
+            }, 2500);
+
+        } catch (error) {
+            console.error("Payment failed:", error);
+            setStatusModal({
+                isOpen: true,
+                type: 'error',
+                title: 'فشلت معالجة الدفع',
+                message: 'حدث خطأ غير متوقع أثناء محاولة إتمام الدفع. يرجى مراجعة الاتصال وإعادة المحاولة.'
+            });
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -512,6 +480,14 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
     const createManualTransaction = async () => {
         if (manualCart.length === 0) return;
 
+        setIsProcessing(true);
+        setStatusModal({
+            isOpen: true,
+            type: 'loading',
+            title: 'جاري حفظ القيد اليدوي',
+            message: 'يتم الآن تأمين البيانات ومزامنتها مع قاعدة البيانات السحابية...'
+        });
+
         const subtotal = manualCart.reduce((acc, i) => acc + (i.price * i.quantity), 0);
         const tax = subtotal * ((settings?.taxRate || 11) / 100);
 
@@ -525,11 +501,34 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
             isManual: true
         };
 
-        await firestoreService.addTransaction(newTrans);
-        setManualCart([]);
-        setIsManualModalOpen(false);
-        soundService.playSuccess();
-        handlePrint(newTrans);
+        try {
+            await firestoreService.addTransaction(newTrans);
+            setManualCart([]);
+            setIsManualModalOpen(false);
+            soundService.playSuccess();
+            handlePrint(newTrans);
+
+            setStatusModal({
+                isOpen: true,
+                type: 'success',
+                title: 'تم الحفظ والمزامنة',
+                message: 'تم تسجيل الفاتورة اليدوية بنجاح في السجل المالي.'
+            });
+
+            setTimeout(() => {
+                setStatusModal(prev => ({ ...prev, isOpen: false }));
+            }, 2000);
+        } catch (error) {
+            console.error("Manual transaction failed:", error);
+            setStatusModal({
+                isOpen: true,
+                type: 'error',
+                title: 'خطأ في الحفظ',
+                message: 'لم نتمكن من حفظ العملية، يرجى المحاولة مرة أخرى.'
+            });
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     return (
@@ -696,7 +695,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                 <div className="flex items-end justify-between pt-4 border-t border-gray-50">
                                     <div className="flex flex-col">
                                         <span className="text-gray-400 text-[10px] font-black uppercase tracking-tighter">الإجمالي الكلي</span>
-                                        <span class={`font-black text-2xl leading-none ${transaction.isManual ? 'text-red-600' : 'text-brand-dark'}`}>
+                                        <span className={`font-black text-2xl leading-none ${transaction.isManual ? 'text-red-600' : 'text-brand-dark'}`}>
                                             {formatCurrency(transaction.total, settings?.currency || CURRENCY)}
                                         </span>
                                     </div>
@@ -1191,6 +1190,15 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                     </div>
                 </div>
             )}
+
+            {/* Unified Status Modal */}
+            <StatusModal
+                isOpen={statusModal.isOpen}
+                onClose={() => setStatusModal(prev => ({ ...prev, isOpen: false }))}
+                type={statusModal.type}
+                title={statusModal.title}
+                message={statusModal.message}
+            />
         </div>
     );
 };

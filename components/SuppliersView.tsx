@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import StatusModal from './StatusModal';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import {
@@ -30,6 +31,12 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
   const [formData, setFormData] = useState<Partial<Supplier>>({});
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [statusModal, setStatusModal] = useState<{ isOpen: boolean, type: 'success' | 'error' | 'loading', title: string, message: string }>({
+    isOpen: false,
+    type: 'loading',
+    title: '',
+    message: ''
+  });
   const reportRef = useRef<HTMLDivElement>(null);
 
   // Removed internal fetchSuppliers as we use props for real-time sync
@@ -110,9 +117,15 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
 
   const generateReport = async (supplier?: Supplier) => {
     setIsExporting(true);
+    setStatusModal({
+      isOpen: true,
+      type: 'loading',
+      title: 'جاري إعداد التقرير',
+      message: 'نقوم الآن بتنظيم كشوفات الموردين وتدقيق البيانات للحصول على ملف PDF احترافي وعالي الدقة.'
+    });
 
-    // Aesthetic delay for the professional dialog
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Aesthetic delay for the professional feel (as requested)
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     try {
       if (!reportRef.current) return;
@@ -121,7 +134,20 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
         scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
-        logging: false
+        logging: false,
+        onclone: (clonedDoc) => {
+          // Fix for html2canvas oklch unsupported error
+          const elementsWithOklch = clonedDoc.querySelectorAll('*');
+          elementsWithOklch.forEach((el: any) => {
+            const style = window.getComputedStyle(el);
+            ['backgroundColor', 'color', 'borderColor', 'outlineColor'].forEach(prop => {
+              const value = style[prop as any];
+              if (value && value.includes('oklch')) {
+                el.style[prop] = 'rgb(45, 106, 79)'; // Default to brand primary fallback
+              }
+            });
+          });
+        }
       });
 
       const imgData = canvas.toDataURL('image/jpeg', 0.9);
@@ -130,14 +156,29 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
       pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Afia_Suppliers_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+      pdf.save(`تتقرير_الموردين_${new Date().toISOString().split('T')[0]}.pdf`);
 
-      setIsExporting(false);
-      soundService.playSuccess();
+      setStatusModal({
+        isOpen: true,
+        type: 'success',
+        title: 'اكتمل التصدير',
+        message: 'تم توليد كشف الموردين وحفظه بنجاح.'
+      });
+
+      setTimeout(() => {
+        setStatusModal(prev => ({ ...prev, isOpen: false }));
+      }, 2500);
+
     } catch (error) {
       console.error("Report generation failed:", error);
+      setStatusModal({
+        isOpen: true,
+        type: 'error',
+        title: 'فشل التصدير',
+        message: 'عذراً، حدث خطأ أثناء محاولة توليد تقرير الموردين.'
+      });
+    } finally {
       setIsExporting(false);
-      soundService.playError();
     }
   };
 
@@ -542,6 +583,7 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
           className="w-[210mm] bg-white p-[20mm] font-sans"
           style={{ direction: 'rtl' }}
         >
+          {/* ... existing template ... */}
           {/* Header */}
           <div className="flex justify-between items-center border-b-4 border-brand-dark pb-8 mb-10">
             <div className="flex items-center gap-6">
@@ -596,6 +638,15 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
           </div>
         </div>
       </div>
+
+      {/* Unified Status Modal */}
+      <StatusModal
+        isOpen={statusModal.isOpen}
+        onClose={() => setStatusModal(prev => ({ ...prev, isOpen: false }))}
+        type={statusModal.type}
+        title={statusModal.title}
+        message={statusModal.message}
+      />
     </div>
   );
 };

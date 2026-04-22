@@ -1,10 +1,10 @@
 import React from 'react';
-import { CheckCircle2, AlertCircle, X, Sparkles } from 'lucide-react';
+import { CheckCircle2, AlertCircle, X, Sparkles, RefreshCw } from 'lucide-react';
 
 interface StatusModalProps {
     isOpen: boolean;
     onClose: () => void;
-    type: 'success' | 'error' | 'warning';
+    type: 'success' | 'error' | 'warning' | 'loading';
     title: string;
     message: string;
 }
@@ -33,6 +33,13 @@ const StatusModal: React.FC<StatusModalProps> = ({ isOpen, onClose, type, title,
             icon: <AlertCircle size={48} className="text-orange-500" />,
             button: 'bg-orange-600 shadow-orange-600/20 hover:bg-orange-700',
             glow: 'bg-orange-500/10'
+        },
+        loading: {
+            bg: 'bg-brand-light/30',
+            text: 'text-brand-primary',
+            icon: <RefreshCw size={48} className="text-brand-primary animate-spin" />,
+            button: 'hidden',
+            glow: 'bg-brand-primary/10'
         }
     };
 

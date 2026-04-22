@@ -38,6 +38,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Status Modal State
   const [statusConfig, setStatusConfig] = useState<{
@@ -120,6 +121,14 @@ const InventoryView: React.FC<InventoryViewProps> = ({
     e.preventDefault();
     if (!formData.name || !formData.price || !formData.category || !formData.stock) return;
 
+    setIsProcessing(true);
+    setStatusConfig({
+      isOpen: true,
+      type: 'loading',
+      title: editingId ? 'جاري تحديث البيانات' : 'جاري إضافة المنتج',
+      message: 'يتم الآن مزامنة البيانات مع الخادم السحابي وتحديث قواعد البيانات، يرجى الانتظار...'
+    });
+
     const isIQD = settings.currency === 'د.ع' || settings.currency === 'IQD';
     const factor = isIQD ? 1000 : 1;
     const priceVal = parseFloat(formData.price) / factor;
@@ -161,18 +170,34 @@ const InventoryView: React.FC<InventoryViewProps> = ({
       }
       setIsModalOpen(false);
       setFormData({ name: '', price: '', category: '', stock: '', notes: '' });
+
+      setTimeout(() => {
+        setStatusConfig(prev => ({ ...prev, isOpen: false }));
+      }, 2000);
+
     } catch (error) {
+      console.error("Inventory error:", error);
       setStatusConfig({
         isOpen: true,
         type: 'error',
         title: 'فشلت العملية',
         message: 'حدث خطأ غير متوقع أثناء محاولة حفظ البيانات، يرجى المحاولة مرة أخرى.'
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const confirmDelete = async () => {
     if (itemToDelete) {
+      setIsProcessing(true);
+      setStatusConfig({
+        isOpen: true,
+        type: 'loading',
+        title: 'جاري حذف المنتج',
+        message: 'يتم الآن إزالة السجل نهائياً من قاعدة البيانات السحابية، يرجى الانتظار...'
+      });
+
       try {
         await onDeleteProduct(itemToDelete);
         setStatusConfig({
@@ -181,6 +206,10 @@ const InventoryView: React.FC<InventoryViewProps> = ({
           title: 'تم الحذف نهائياً',
           message: 'تمت إزالة المنتج من النظام ومن جميع الفروع والمزامنة السحابية.'
         });
+
+        setTimeout(() => {
+          setStatusConfig(prev => ({ ...prev, isOpen: false }));
+        }, 2000);
       } catch (error) {
         setStatusConfig({
           isOpen: true,
@@ -188,8 +217,10 @@ const InventoryView: React.FC<InventoryViewProps> = ({
           title: 'فشل الحذف',
           message: 'لم نتمكن من حذف المنتج حالياً، يرجى التأكد من اتصال الإنترنت.'
         });
+      } finally {
+        setIsProcessing(false);
+        setItemToDelete(null);
       }
-      setItemToDelete(null);
     }
   };
 

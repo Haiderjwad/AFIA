@@ -11,7 +11,22 @@ class SoundService {
     private enabled: boolean = true;
     private masterGain: GainNode | null = null;
 
-    constructor() { }
+    constructor() {
+        // Unlock AudioContext on first user interaction
+        const unlock = () => {
+            if (this.audioCtx && this.audioCtx.state === 'suspended') {
+                this.audioCtx.resume();
+            }
+            if (this.audioCtx && this.audioCtx.state === 'running') {
+                window.removeEventListener('click', unlock);
+                window.removeEventListener('touchstart', unlock);
+                window.removeEventListener('keydown', unlock);
+            }
+        };
+        window.addEventListener('click', unlock);
+        window.addEventListener('touchstart', unlock);
+        window.addEventListener('keydown', unlock);
+    }
 
     private initContext() {
         if (!this.audioCtx) {
@@ -24,8 +39,10 @@ class SoundService {
                 console.error("AudioContext initialization failed", e);
             }
         }
+
+        // Ensure it's resumed even if initialized later
         if (this.audioCtx && this.audioCtx.state === 'suspended') {
-            this.audioCtx.resume();
+            this.audioCtx.resume().catch(err => console.warn("AudioContext resume failed:", err));
         }
     }
 

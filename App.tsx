@@ -39,12 +39,14 @@ const App: React.FC = () => {
     // 1. Initial Seeding and Settings Check
     const initializeSystem = async () => {
       try {
-        await firestoreService.seedDatabase();
-        // The real-time listener will handle settings, but we need a baseline
+        // Run seeding in background, don't let it block critical UI
+        firestoreService.seedDatabase().catch(err => console.error("Seeding Error:", err));
+
+        // Try to get settings, but don't crash if it fails
         const initialSettings = await firestoreService.getSettings();
         if (initialSettings) setSettings(initialSettings);
       } catch (error) {
-        console.error("Initialization Error:", error);
+        console.warn("System settings fetch failed, using defaults:", error);
       }
     };
 
@@ -53,30 +55,51 @@ const App: React.FC = () => {
     // 2. Auth State Listener
     const unsubAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       setIsAuthLoading(true);
-      if (firebaseUser) {
-        let profile = await firestoreService.getEmployee(firebaseUser.uid);
-        if (!profile && firebaseUser.email) {
-          profile = await firestoreService.getEmployeeByEmail(firebaseUser.email);
-          if (profile) {
-            await firestoreService.syncEmployeeUid(firebaseUser.email, firebaseUser.uid);
+      try {
+        if (firebaseUser) {
+          let profile = null;
+          try {
+            profile = await firestoreService.getEmployee(firebaseUser.uid);
+            if (!profile && firebaseUser.email) {
+              profile = await firestoreService.getEmployeeByEmail(firebaseUser.email);
+              if (profile) {
+                await firestoreService.syncEmployeeUid(firebaseUser.email, firebaseUser.uid);
+              }
+            }
+          } catch (profileError) {
+            console.error("Error fetching employee profile:", profileError);
+            // Fallback for admin if offline
+            if (firebaseUser.email === 'admin@cafesun.com') {
+              profile = {
+                uid: firebaseUser.uid,
+                name: "مدير النظام (وضع عدم الاتصال)",
+                email: firebaseUser.email,
+                role: "admin",
+                permissions: ["all"],
+                employeeId: "EMP-001",
+                joinedAt: new Date().toISOString()
+              };
+            }
           }
-        }
 
-        if (profile) {
-          setCurrentUser(profile);
-          setIsAuthenticated(true);
+          if (profile) {
+            setCurrentUser(profile);
+            setIsAuthenticated(true);
+          } else {
+            setIsAuthenticated(false);
+            if (firebaseUser.email !== 'admin@cafesun.com') await signOut(auth);
+          }
         } else {
+          setCurrentUser(null);
           setIsAuthenticated(false);
-          if (firebaseUser.email !== 'admin@cafesun.com') await signOut(auth);
         }
-      } else {
-        setCurrentUser(null);
-        setIsAuthenticated(false);
+      } catch (error) {
+        console.error("Auth transformation error:", error);
+      } finally {
+        setIsAuthLoading(false);
+        // Minimum aesthetic delay to ensure smooth transition
+        setTimeout(() => setIsInitializing(false), 500);
       }
-      setIsAuthLoading(false);
-
-      // Minimum aesthetic delay to ensure smooth transition
-      setTimeout(() => setIsInitializing(false), 500);
     });
 
     return () => unsubAuth();
@@ -149,7 +172,7 @@ const App: React.FC = () => {
       unsubProducts = onSnapshot(collection(firestoreDb, "products"), (snapshot) => {
         const p = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as MenuItem));
         setProducts(p);
-      });
+      }, (error) => console.error("Products Snapshot Error:", error));
 
       unsubTransactions = onSnapshot(
         query(collection(firestoreDb, "transactions")),
@@ -157,14 +180,15 @@ const App: React.FC = () => {
           const t = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Transaction));
           t.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
           setTransactions(t);
-        }
+        },
+        (error) => console.error("Transactions Snapshot Error:", error)
       );
 
       unsubSettings = onSnapshot(doc(firestoreDb, "settings", "default"), (snapshot) => {
         if (snapshot.exists()) {
           setSettings(snapshot.data() as AppSettings);
         }
-      });
+      }, (error) => console.error("Settings Snapshot Error:", error));
 
       unsubNotifications = onSnapshot(
         query(collection(firestoreDb, "notifications"), orderBy("timestamp", "desc"), limit(10)),
@@ -184,18 +208,19 @@ const App: React.FC = () => {
               }
             }
           }
-        }
+        },
+        (error) => console.error("Notifications Snapshot Error:", error)
       );
 
       unsubEmployees = onSnapshot(collection(firestoreDb, "employees"), (snapshot) => {
         const e = snapshot.docs.map(doc => ({ ...doc.data(), uid: doc.id } as Employee));
         setEmployees(e);
-      });
+      }, (error) => console.error("Employees Snapshot Error:", error));
 
       unsubSuppliers = onSnapshot(collection(firestoreDb, "suppliers"), (snapshot) => {
         const s = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Supplier));
         setSuppliers(s);
-      });
+      }, (error) => console.error("Suppliers Snapshot Error:", error));
     }
 
     return () => {

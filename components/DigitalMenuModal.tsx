@@ -1,5 +1,6 @@
 
 import React, { useState, useRef } from 'react';
+import StatusModal from './StatusModal';
 import {
     X, QrCode, Download, Printer, Layout,
     CheckCircle2, Palette, Eye, Share2, FileText,
@@ -30,6 +31,12 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
     const [activeTab, setActiveTab] = useState<'design' | 'content'>('design');
     const [previewMode, setPreviewMode] = useState<'mobile' | 'poster'>('mobile');
     const [isExporting, setIsExporting] = useState(false);
+    const [statusModal, setStatusModal] = useState<{ isOpen: boolean, type: 'success' | 'error' | 'loading', title: string, message: string }>({
+        isOpen: false,
+        type: 'loading',
+        title: '',
+        message: ''
+    });
 
     const previewRef = useRef<HTMLDivElement>(null);
     const posterRef = useRef<HTMLDivElement>(null);
@@ -75,16 +82,28 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
             // Stage 4: Saving and cleanup
             pdf.save(`Al_Afia_Menu_${storeName.replace(/\s+/g, '_')}.pdf`);
 
-            // Professional feedback delay before closing
+            setIsExporting(false);
+            setStatusModal({
+                isOpen: true,
+                type: 'success',
+                title: 'اكتمل التوليد بنجاح',
+                message: 'تم إنشاء نسخة الـ PDF وحفظها على جهازك بنجاح. جاهزة للطباعة الآن.'
+            });
+
             setTimeout(() => {
-                setIsExporting(false);
+                setStatusModal(prev => ({ ...prev, isOpen: false }));
                 onClose();
-            }, 800);
+            }, 3000);
 
         } catch (error) {
             console.error("Critical Export Error:", error);
             setIsExporting(false);
-            alert("حدث خطأ أثناء توليد الملف، يرجى المحاولة مرة أخرى.");
+            setStatusModal({
+                isOpen: true,
+                type: 'error',
+                title: 'فشل التوليد',
+                message: 'عذراً، حدث خطأ تقني أثناء محاولة توليد رمز الـ QR. يرجى المحاولة مرة أخرى لاحقاً.'
+            });
         }
     };
 
@@ -463,6 +482,15 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
                     </div>
                 </div>
             )}
+
+            {/* Unified Status Modal */}
+            <StatusModal
+                isOpen={statusModal.isOpen}
+                onClose={() => setStatusModal(prev => ({ ...prev, isOpen: false }))}
+                type={statusModal.type}
+                title={statusModal.title}
+                message={statusModal.message}
+            />
         </div>
     );
 };
