@@ -48,7 +48,14 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
     const tax = subtotal * (settings.taxRate / 100);
     const discount = 0; // Placeholder
     const total = subtotal + tax - discount;
-    const change = cashReceived ? parseFloat(cashReceived) - total : 0;
+    const isIQD = settings.currency === 'د.ع' || settings.currency === 'IQD';
+
+    // Logic for change calculation in IQD:
+    // If we are in IQD mode, the 'total' is in units (e.g. 5) but displayed as '5,000'.
+    // The user input 'cashReceived' is expected to be in actual dinars (e.g. 5000).
+    const factor = isIQD ? 1000 : 1;
+    const changeActual = cashReceived ? parseFloat(cashReceived) - (total * factor) : 0;
+    const change = changeActual / factor; // Normalized back to units for formatCurrency
 
     // AI Upsell Hook
     useEffect(() => {
@@ -412,9 +419,9 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                                             </div>
 
                                             {cashReceived && (
-                                                <div className={`p-4 rounded-xl text-center border-2 ${change >= 0 ? 'bg-brand-light/30 border-brand-primary/20' : 'bg-red-50 border-red-200'}`}>
-                                                    <span className="block text-sm text-gray-500 mb-1">{change >= 0 ? 'الباقي للعميل' : 'المبلغ الناقص'}</span>
-                                                    <span className={`text-2xl font-bold ${change >= 0 ? 'text-brand-dark' : 'text-red-600'}`}>
+                                                <div className={`p-4 rounded-xl text-center border-2 ${changeActual >= 0 ? 'bg-brand-light/30 border-brand-primary/20' : 'bg-red-50 border-red-200'}`}>
+                                                    <span className="block text-sm text-gray-500 mb-1">{changeActual >= 0 ? 'الباقي للعميل' : 'المبلغ الناقص'}</span>
+                                                    <span className={`text-2xl font-bold ${changeActual >= 0 ? 'text-brand-dark' : 'text-red-600'}`}>
                                                         {formatCurrency(Math.abs(change), settings.currency)}
                                                     </span>
                                                 </div>

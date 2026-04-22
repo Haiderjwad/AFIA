@@ -38,8 +38,8 @@ class SoundService {
     }
 
     /**
-     * Professional UI Tick/Beep
-     * A sharp, clean, high-fidelity sound for fast interactions.
+     * Professional UI Tick
+     * High-fidelity 'glass touch' sound. Sharp, clean, and extremely responsive.
      */
     playClick() {
         if (!this.enabled) return;
@@ -47,26 +47,24 @@ class SoundService {
         if (!this.audioCtx || !this.masterGain) return;
 
         const time = this.audioCtx.currentTime;
+
+        // High-frequency Transient (Pointy click)
         const osc = this.audioCtx.createOscillator();
         const gain = this.audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(3200, time);
+        osc.frequency.exponentialRampToValueAtTime(1600, time + 0.02);
+        gain.gain.setValueAtTime(0.1, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.02);
 
-        // Dual Tone for "Premium" feel
+        // Mid-frequency Body (Soft impact)
         const osc2 = this.audioCtx.createOscillator();
         const gain2 = this.audioCtx.createGain();
-
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(1200, time);
-        osc.frequency.exponentialRampToValueAtTime(600, time + 0.08);
-
-        gain.gain.setValueAtTime(0.15, time);
-        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
-
         osc2.type = 'triangle';
-        osc2.frequency.setValueAtTime(2400, time);
-        osc2.frequency.exponentialRampToValueAtTime(1200, time + 0.05);
-
+        osc2.frequency.setValueAtTime(800, time);
+        osc2.frequency.exponentialRampToValueAtTime(400, time + 0.04);
         gain2.gain.setValueAtTime(0.05, time);
-        gain2.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+        gain2.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
 
         osc.connect(gain);
         gain.connect(this.masterGain);
@@ -74,14 +72,14 @@ class SoundService {
         gain2.connect(this.masterGain);
 
         osc.start(time);
-        osc.stop(time + 0.1);
+        osc.stop(time + 0.03);
         osc2.start(time);
-        osc2.stop(time + 0.1);
+        osc2.stop(time + 0.05);
     }
 
     /**
-     * Success Chime
-     * Upward melodic sequence (C5 -> E5 -> G5)
+     * Success Luxe Chime
+     * Harmonic pentatonic sequence for rewarding confirmations.
      */
     playSuccess() {
         if (!this.enabled) return;
@@ -89,30 +87,60 @@ class SoundService {
         if (!this.audioCtx || !this.masterGain) return;
 
         const time = this.audioCtx.currentTime;
-        const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+        // G Major Pentatonic: G5, B5, D6, G6
+        const notes = [783.99, 987.77, 1174.66, 1567.98];
 
         notes.forEach((freq, i) => {
             const osc = this.audioCtx.createOscillator();
             const gain = this.audioCtx.createGain();
 
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, time + i * 0.08);
+            osc.frequency.setValueAtTime(freq, time + i * 0.04);
 
-            gain.gain.setValueAtTime(0, time + i * 0.08);
-            gain.gain.linearRampToValueAtTime(0.1, time + i * 0.08 + 0.04);
-            gain.gain.exponentialRampToValueAtTime(0.001, time + i * 0.08 + 0.3);
+            gain.gain.setValueAtTime(0, time + i * 0.04);
+            gain.gain.linearRampToValueAtTime(0.08, time + i * 0.04 + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + i * 0.04 + 0.4);
 
             osc.connect(gain);
             gain.connect(this.masterGain!);
 
-            osc.start(time + i * 0.08);
-            osc.stop(time + i * 0.08 + 0.4);
+            osc.start(time + i * 0.04);
+            osc.stop(time + i * 0.04 + 0.5);
         });
     }
 
     /**
-     * Error Warning
-     * Dissident low-frequency pulses
+     * Professional Notification
+     * Soft double-pulse for incoming messages or kitchen alerts.
+     */
+    playNotification() {
+        if (!this.enabled) return;
+        this.initContext();
+        if (!this.audioCtx || !this.masterGain) return;
+
+        const time = this.audioCtx.currentTime;
+        [1200, 1200].forEach((freq, i) => {
+            const osc = this.audioCtx.createOscillator();
+            const gain = this.audioCtx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, time + i * 0.12);
+
+            gain.gain.setValueAtTime(0, time + i * 0.12);
+            gain.gain.linearRampToValueAtTime(0.1, time + i * 0.12 + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + i * 0.12 + 0.2);
+
+            osc.connect(gain);
+            gain.connect(this.masterGain!);
+
+            osc.start(time + i * 0.12);
+            osc.stop(time + i * 0.12 + 0.3);
+        });
+    }
+
+    /**
+     * Minimal Error Thud
+     * A subdued but clear dissonant warning.
      */
     playError() {
         if (!this.enabled) return;
@@ -120,21 +148,23 @@ class SoundService {
         if (!this.audioCtx || !this.masterGain) return;
 
         const time = this.audioCtx.currentTime;
-        [180, 140].forEach((freq, i) => {
+        const freqs = [150, 220]; // Low frequency thud
+
+        freqs.forEach((freq, i) => {
             const osc = this.audioCtx.createOscillator();
             const gain = this.audioCtx.createGain();
 
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(freq, time + i * 0.15);
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, time);
 
-            gain.gain.setValueAtTime(0.08, time + i * 0.15);
-            gain.gain.exponentialRampToValueAtTime(0.001, time + i * 0.15 + 0.3);
+            gain.gain.setValueAtTime(0.15, time);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.3);
 
             osc.connect(gain);
             gain.connect(this.masterGain!);
 
-            osc.start(time + i * 0.15);
-            osc.stop(time + i * 0.15 + 0.4);
+            osc.start(time);
+            osc.stop(time + 0.4);
         });
     }
 }

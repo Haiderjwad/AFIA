@@ -7,12 +7,15 @@
 export const formatCurrency = (amount: number, currencySymbol: string): string => {
     // Handle Iraqi Dinar (IQD)
     if (currencySymbol === 'د.ع' || currencySymbol === 'IQD') {
-        // IQD typically doesn't have decimals in commercial transactions
-        // We use thousand separators for high values (e.g. 150,000)
+        // Professional Iraqi Dinar logic: 
+        // In the local market, prices are often entered in units of thousands (e.g., 5 means 5,000).
+        // The user explicitly requested to add three zeros to represent the value in thousands.
+        const displayAmount = amount * 1000;
+
         const formatted = new Intl.NumberFormat('en-US', {
             minimumFractionDigits: 0,
             maximumFractionDigits: 0,
-        }).format(Math.round(amount));
+        }).format(Math.round(displayAmount));
 
         return `${formatted} د.ع`;
     }
@@ -39,8 +42,9 @@ export const formatCurrency = (amount: number, currencySymbol: string): string =
  */
 export const formatCompactCurrency = (amount: number, currencySymbol: string): string => {
     if (currencySymbol === 'د.ع' || currencySymbol === 'IQD') {
+        // Since base amount is in thousands, 1000 units = 1,000,000 (Million)
         if (amount >= 1000) {
-            return (amount / 1000).toFixed(amount % 1000 === 0 ? 0 : 1) + ' ألف د.ع';
+            return (amount / 1000).toFixed(amount % 1000 === 0 ? 0 : 1) + ' مليون د.ع';
         }
     }
     return formatCurrency(amount, currencySymbol);

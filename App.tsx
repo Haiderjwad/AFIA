@@ -180,6 +180,7 @@ const App: React.FC = () => {
               if (latestKitchenAlert && !sessionAlertedIds.has(latestKitchenAlert.id)) {
                 setActiveKitchenAlert(latestKitchenAlert);
                 setSessionAlertedIds(prev => new Set(prev).add(latestKitchenAlert.id));
+                soundService.playNotification();
               }
             }
           }
@@ -334,6 +335,7 @@ const App: React.FC = () => {
 
     setCart([]);
     setShowSuccessModal(true);
+    soundService.playSuccess();
     setTimeout(() => setShowSuccessModal(false), 2000);
   };
 

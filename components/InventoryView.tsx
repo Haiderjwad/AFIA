@@ -102,10 +102,13 @@ const InventoryView: React.FC<InventoryViewProps> = ({
   };
 
   const openEditModal = (product: MenuItem) => {
+    const isIQD = settings.currency === 'د.ع' || settings.currency === 'IQD';
+    const factor = isIQD ? 1000 : 1;
+
     setEditingId(product.id);
     setFormData({
       name: product.name,
-      price: product.price.toString(),
+      price: (product.price * factor).toString(),
       category: product.category,
       stock: product.stock.toString(),
       notes: product.notes || ''
@@ -117,7 +120,9 @@ const InventoryView: React.FC<InventoryViewProps> = ({
     e.preventDefault();
     if (!formData.name || !formData.price || !formData.category || !formData.stock) return;
 
-    const priceVal = parseFloat(formData.price);
+    const isIQD = settings.currency === 'د.ع' || settings.currency === 'IQD';
+    const factor = isIQD ? 1000 : 1;
+    const priceVal = parseFloat(formData.price) / factor;
     const stockVal = parseInt(formData.stock);
 
     try {

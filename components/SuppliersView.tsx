@@ -35,9 +35,16 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
   // Removed internal fetchSuppliers as we use props for real-time sync
 
   const handleOpenModal = (supplier?: Supplier) => {
+    const isIQD = settings.currency === 'د.ع' || settings.currency === 'IQD';
+    const factor = isIQD ? 1000 : 1;
+
     if (supplier) {
       setEditingSupplier(supplier);
-      setFormData(supplier);
+      setFormData({
+        ...supplier,
+        costPerUnit: supplier.costPerUnit * factor,
+        totalPaid: supplier.totalPaid * factor
+      });
     } else {
       setEditingSupplier(null);
       setFormData({
@@ -57,11 +64,20 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    const isIQD = settings.currency === 'د.ع' || settings.currency === 'IQD';
+    const factor = isIQD ? 1000 : 1;
+
+    const submissionData = {
+      ...formData,
+      costPerUnit: (formData.costPerUnit || 0) / factor,
+      totalPaid: (formData.totalPaid || 0) / factor
+    };
+
     try {
       if (editingSupplier) {
-        await firestoreService.updateSupplier(editingSupplier.id, formData);
+        await firestoreService.updateSupplier(editingSupplier.id, submissionData);
       } else {
-        await firestoreService.addSupplier(formData as Supplier);
+        await firestoreService.addSupplier(submissionData as Supplier);
       }
       soundService.playSuccess();
       setIsModalOpen(false);
