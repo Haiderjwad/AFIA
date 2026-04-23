@@ -90,7 +90,12 @@ export const DEFAULT_SETTINGS: AppSettings = {
     primaryColor: '#2d6a4f',
     layout: 'grid',
     showIngredients: true,
-    heroBanner: ''
+    heroBanner: '',
+    foodIcon: '🍔',
+    drinkIcon: '☕',
+    fontSize: 'medium',
+    cardStyle: 'elevated',
+    borderRadius: 'lg'
   }
 };
 

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Search, Coffee, Sparkles, Filter, Bell, CheckCircle2, PackageCheck, Plus, History, X, Clock, UtensilsCrossed } from 'lucide-react';
+import { Search, Coffee, Sparkles, Filter, Bell, CheckCircle2, PackageCheck, Plus, History, X, Clock, UtensilsCrossed, ShoppingCart } from 'lucide-react';
 import { MenuItem, AppSettings, Transaction, Employee } from '../types';
 import { formatCurrency } from '../utils/currencyUtils';
 
@@ -12,9 +12,14 @@ interface SalesViewProps {
     transactions: Transaction[];
     currentUser: Employee | null;
     onCompleteOrder: (id: string) => void;
+    onToggleReceiptPanel?: () => void;
+    cartCount?: number;
 }
 
-const SalesView: React.FC<SalesViewProps> = ({ products, addToCart, settings, readyOrders, transactions, currentUser, onCompleteOrder }) => {
+const SalesView: React.FC<SalesViewProps> = ({
+    products, addToCart, settings, readyOrders, transactions,
+    currentUser, onCompleteOrder, onToggleReceiptPanel, cartCount
+}) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [showReadyAlert, setShowReadyAlert] = useState(true);
@@ -124,7 +129,7 @@ const SalesView: React.FC<SalesViewProps> = ({ products, addToCart, settings, re
             {/* Products Grid */}
             <div className="flex-1 overflow-y-auto no-scrollbar pb-10">
                 {filteredProducts.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-7">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 gap-7">
                         {filteredProducts.map(product => (
                             <button
                                 key={product.id}
@@ -139,16 +144,16 @@ const SalesView: React.FC<SalesViewProps> = ({ products, addToCart, settings, re
                                 </div>
 
                                 <div className="text-center w-full">
-                                    <h3 className="font-extrabold text-brand-dark text-xl mb-1 leading-tight group-hover:text-brand-primary transition-colors">{product.name}</h3>
-                                    <p className="text-xs font-bold text-brand-secondary mb-4 opacity-70">{product.category}</p>
+                                    <h3 className="font-extrabold text-brand-dark text-lg md:text-xl mb-1 leading-tight group-hover:text-brand-primary transition-colors">{product.name}</h3>
+                                    <p className="text-[10px] md:text-xs font-bold text-brand-secondary mb-4 opacity-70">{product.category}</p>
                                     <div className="flex items-center justify-center gap-2 bg-brand-light/10 py-3 px-4 rounded-2xl group-hover:bg-brand-primary/5 transition-all">
-                                        <span className="text-xl font-black text-brand-accent">{formatCurrency(product.price, settings.currency)}</span>
+                                        <span className="text-lg md:text-xl font-black text-brand-accent">{formatCurrency(product.price, settings.currency)}</span>
                                     </div>
                                 </div>
 
                                 {/* Premium Accent */}
-                                <div className="mt-2 w-12 h-12 bg-brand-primary text-white rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all translate-y-6 group-hover:translate-y-0 shadow-lg shadow-brand-primary/20">
-                                    <Plus size={24} />
+                                <div className="mt-2 w-10 h-10 md:w-12 md:h-12 bg-brand-primary text-white rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all translate-y-6 group-hover:translate-y-0 shadow-lg shadow-brand-primary/20">
+                                    <Plus size={20} />
                                 </div>
                             </button>
                         ))}
@@ -160,6 +165,24 @@ const SalesView: React.FC<SalesViewProps> = ({ products, addToCart, settings, re
                     </div>
                 )}
             </div>
+
+            {/* Mobile Floating Cart Button */}
+            <button
+                onClick={onToggleReceiptPanel}
+                className="xl:hidden fixed bottom-6 left-6 z-[60] bg-brand-primary text-white p-5 rounded-full shadow-[0_15px_30px_rgba(45,106,79,0.4)] flex items-center gap-3 active:scale-90 transition-all animate-in slide-in-from-bottom-8 duration-500"
+            >
+                <div className="relative">
+                    <ShoppingCart size={28} />
+                    {cartCount && cartCount > 0 ? (
+                        <span className="absolute -top-3 -right-3 w-6 h-6 bg-brand-accent text-white rounded-full flex items-center justify-center text-[10px] font-black ring-4 ring-brand-primary shadow-lg">
+                            {cartCount}
+                        </span>
+                    ) : null}
+                </div>
+                <span className="font-black text-sm hidden sm:block">عرض السلة</span>
+            </button>
+
+
             {/* Activity Log Modal */}
             {showActivityLog && (
                 <div className="fixed inset-0 z-[200] bg-brand-dark/40 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">

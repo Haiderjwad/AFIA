@@ -17,7 +17,7 @@ import LowStockAlert from './components/LowStockAlert';
 import KitchenAlert from './components/KitchenAlert';
 import { CartItem, MenuItem, Transaction, AppSettings, Employee, Supplier, SystemNotification } from './types';
 import { CURRENCY, DEFAULT_SETTINGS } from './constants';
-import { X, CheckCircle, Wifi, WifiOff, Globe, ShoppingCart } from 'lucide-react';
+import { X, CheckCircle, Wifi, WifiOff, Globe, ShoppingCart, QrCode } from 'lucide-react';
 import { firestoreService } from './services/firestoreService';
 import { soundService } from './services/soundService';
 import { onSnapshot, collection, query, orderBy, doc, updateDoc, limit } from 'firebase/firestore';
@@ -25,6 +25,7 @@ import { db as firestoreDb, auth } from './firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import SplashScreen from './components/SplashScreen';
 import PublicMenuView from './components/PublicMenuView';
+import DigitalMenuView from './components/DigitalMenuView';
 
 
 const App: React.FC = () => {
@@ -552,6 +553,7 @@ const App: React.FC = () => {
       kitchen: 'المطبخ',
       invoices: 'الفواتير',
       inventory: 'المخزون',
+      digital_menu: 'المنيو الإلكتروني',
       suppliers: 'الموردين',
       reports: 'التقارير المفصلة',
       settings: 'الإعدادات'
@@ -591,6 +593,8 @@ const App: React.FC = () => {
             transactions={transactions}
             currentUser={currentUser}
             onCompleteOrder={handleSendToCashier}
+            onToggleReceiptPanel={() => setIsReceiptPanelOpen(!isReceiptPanelOpen)}
+            cartCount={cart.reduce((acc, item) => acc + item.quantity, 0)}
           />;
 
         }
@@ -613,6 +617,15 @@ const App: React.FC = () => {
             canManage={['admin', 'manager'].includes(role) || hasAll}
             initialSearchQuery={inventorySearchQuery}
             onSearchChange={setInventorySearchQuery}
+          />;
+        }
+        break;
+      case 'digital_menu':
+        if (['admin', 'manager'].includes(role) || hasAll) {
+          return <DigitalMenuView
+            products={products}
+            storeName={settings.storeName}
+            settings={settings}
           />;
         }
         break;
@@ -670,6 +683,8 @@ const App: React.FC = () => {
       transactions={transactions}
       currentUser={currentUser}
       onCompleteOrder={handleSendToCashier}
+      onToggleReceiptPanel={() => setIsReceiptPanelOpen(!isReceiptPanelOpen)}
+      cartCount={cart.reduce((acc, item) => acc + item.quantity, 0)}
     />;
     if (role === 'cashier') return <InvoicesView
       transactions={transactions}

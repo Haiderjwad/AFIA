@@ -72,17 +72,17 @@ const TopHeader: React.FC<TopHeaderProps> = ({
                     <Menu size={24} />
                 </button>
                 <div className="flex flex-col">
-                    <h1 className="text-xs font-black text-brand-primary uppercase tracking-widest">{settings?.storeName || 'ألف عافية'}</h1>
-                    <h2 className="text-xl font-black text-brand-dark">{activeTabTitle}</h2>
+                    <h1 className="text-[10px] font-black text-brand-primary uppercase tracking-widest">{settings?.storeName || 'ألف عافية'}</h1>
+                    <h2 className="text-lg md:text-xl font-black text-brand-dark leading-tight">{activeTabTitle}</h2>
                 </div>
                 <div className="w-1.5 h-10 bg-brand-accent rounded-full shadow-[0_0_10px_#F8961E]"></div>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3 md:gap-6">
 
                 {/* Connectivity Status */}
-                <div className="hidden md:flex items-center bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100">
+                <div className="hidden lg:flex items-center bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100">
                     {isOnline ? (
                         <div className="flex items-center gap-2 text-[10px] font-black text-green-700">
                             <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>

@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { MenuItem, AppSettings } from '../types';
 import { Package, Search, Filter, Plus, X, Tag, DollarSign, Coffee, Trash2, AlertTriangle, Edit, Layers, FileText, QrCode, ArrowLeft, Check, Coins } from 'lucide-react';
 import { formatCurrency } from '../utils/currencyUtils';
-import DigitalMenuModal from './DigitalMenuModal';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
 
 import StatusModal from './StatusModal';
@@ -36,7 +35,6 @@ const InventoryView: React.FC<InventoryViewProps> = ({
 }) => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isMenuModalOpen, setIsMenuModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -220,7 +218,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({
   };
 
   return (
-    <div className="flex-1 p-8 bg-brand-cream overflow-y-auto animate-in fade-in slide-in-from-bottom-4 relative premium-scrollbar">
+    <div className="view-container">
       {/* Background Patterns (Subtle) */}
       <div className="absolute top-0 left-0 w-64 h-64 opacity-5 pointer-events-none -translate-x-1/2 -translate-y-1/2">
         <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
@@ -229,26 +227,19 @@ const InventoryView: React.FC<InventoryViewProps> = ({
         <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
       </div>
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6 transition-all relative z-10">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 gap-6 transition-all relative z-10">
         <div>
-          <h1 className="text-4xl font-black text-brand-dark mb-2 tracking-tighter flex items-center gap-3">
+          <h1 className="text-2xl md:text-4xl font-black text-brand-dark mb-2 tracking-tighter flex items-center gap-3">
             <div className="w-2 h-10 bg-brand-primary rounded-full"></div>
             حوكمة الأصول والمخزون
           </h1>
-          <p className="text-brand-dark/40 font-bold text-sm">نظام تتبع المنتجات الرقمية والمخزون السحابي</p>
+          <p className="text-brand-dark/40 font-bold text-xs md:text-sm">نظام تتبع المنتجات الرقمية والمخزون السحابي</p>
         </div>
-        <div className="flex flex-wrap gap-4">
-          <button
-            onClick={() => setIsMenuModalOpen(true)}
-            className="bg-white border-2 border-brand-primary/10 text-brand-dark px-8 py-3.5 rounded-[1.8rem] transition-all shadow-sm flex items-center gap-3 font-black hover:border-brand-primary hover:bg-brand-primary/5 active:scale-95 group"
-          >
-            <QrCode size={20} className="text-brand-primary group-hover:rotate-12 transition-transform" />
-            توليد المنيو الذكي
-          </button>
+        <div className="flex flex-wrap gap-4 w-full lg:w-auto">
           {canManage && (
             <button
               onClick={openAddModal}
-              className="bg-brand-primary hover:bg-brand-secondary text-white px-10 py-3.5 rounded-[1.8rem] transition-all shadow-2xl shadow-brand-primary/20 flex items-center gap-3 font-black active:scale-95"
+              className="w-full lg:w-auto bg-brand-primary hover:bg-brand-secondary text-white px-10 py-3.5 rounded-[1.8rem] transition-all shadow-2xl shadow-brand-primary/20 flex items-center justify-center gap-3 font-black active:scale-95"
             >
               <Plus size={20} />
               إدراج أصل جديد
@@ -545,14 +536,6 @@ const InventoryView: React.FC<InventoryViewProps> = ({
         onConfirm={confirmDelete}
         title="حذف المنتج نهائياً؟"
         description="هل أنت متأكد من رغبتك في حذف هذا المنتج من المخزون؟ سيؤدي ذلك لإزالته من القائمة ومنيو العرض الإلكتروني فوراً."
-      />
-
-      <DigitalMenuModal
-        isOpen={isMenuModalOpen}
-        onClose={() => setIsMenuModalOpen(false)}
-        products={products}
-        storeName={storeName}
-        settings={settings}
       />
 
       <StatusModal

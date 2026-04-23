@@ -87,6 +87,11 @@ export interface AppSettings {
     layout: 'grid' | 'list';
     showIngredients: boolean;
     heroBanner?: string;
+    foodIcon?: string;
+    drinkIcon?: string;
+    fontSize?: 'small' | 'medium' | 'large';
+    cardStyle?: 'flat' | 'elevated' | 'glass';
+    borderRadius?: 'none' | 'sm' | 'md' | 'lg' | 'full';
   };
 }
 

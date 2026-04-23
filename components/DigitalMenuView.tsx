@@ -1,8 +1,7 @@
-
 import React, { useState, useRef } from 'react';
 import StatusModal from './StatusModal';
 import {
-    X, QrCode, Download, Printer, Layout,
+    QrCode, Download, Printer, Layout,
     CheckCircle2, Palette, Eye, Share2, FileText,
     Smartphone, Sparkles, Image as ImageIcon,
     Brush, Type, Settings2, Languages,
@@ -17,15 +16,13 @@ import { formatCurrency } from '../utils/currencyUtils';
 import { patchClonedSubtreeForHtml2Canvas } from '../utils/html2canvasCompat';
 import { firestoreService } from '../services/firestoreService';
 
-interface DigitalMenuModalProps {
+interface DigitalMenuViewProps {
     products: MenuItem[];
-    isOpen: boolean;
-    onClose: () => void;
     storeName: string;
     settings: AppSettings;
 }
 
-const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, onClose, storeName, settings }) => {
+const DigitalMenuView: React.FC<DigitalMenuViewProps> = ({ products, storeName, settings }) => {
 
     const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
     const [theme, setTheme] = useState<'modern' | 'classic' | 'minimal' | 'dark'>(settings?.digitalMenu?.theme || 'modern');
@@ -44,18 +41,24 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
         message: ''
     });
 
+    // Detailed customization states
+    const [foodIcon, setFoodIcon] = useState(settings?.digitalMenu?.foodIcon || '🍔');
+    const [drinkIcon, setDrinkIcon] = useState(settings?.digitalMenu?.drinkIcon || '☕');
+    const [fontSize, setFontSize] = useState<'small' | 'medium' | 'large'>(settings?.digitalMenu?.fontSize || 'medium');
+    const [cardStyle, setCardStyle] = useState<'flat' | 'elevated' | 'glass'>(settings?.digitalMenu?.cardStyle || 'elevated');
+    const [borderRadius, setBorderRadius] = useState<'none' | 'sm' | 'md' | 'lg' | 'full'>(settings?.digitalMenu?.borderRadius || 'lg');
+    const [selectedPreviewProduct, setSelectedPreviewProduct] = useState<MenuItem | null>(null);
+
     const previewRef = useRef<HTMLDivElement>(null);
     const posterRef = useRef<HTMLDivElement>(null);
     const exportRef = useRef<HTMLDivElement>(null);
 
-    // Synchronize selected products when modal opens or products data changes
+    // Synchronize selected products when products data changes
     React.useEffect(() => {
-        if (isOpen && products.length > 0 && selectedProducts.length === 0) {
+        if (products.length > 0 && selectedProducts.length === 0) {
             setSelectedProducts(products.map(p => p.id));
         }
-    }, [isOpen, products]);
-
-    if (!isOpen) return null;
+    }, [products]);
 
     const exportProfessionalPDF = async () => {
         if (!exportRef.current || isExporting) return;
@@ -119,7 +122,6 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
 
             setTimeout(() => {
                 setStatusModal(prev => ({ ...prev, isOpen: false }));
-                onClose();
             }, 3000);
 
         } catch (error) {
@@ -152,7 +154,13 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
                     layout,
                     primaryColor,
                     showIngredients,
-                    heroBanner: storeDescription
+                    heroBanner: storeDescription,
+                    foodIcon,
+                    drinkIcon,
+                    fontSize,
+                    cardStyle,
+                    borderRadius,
+                    selectedProducts
                 }
             };
             await firestoreService.updateSettings(updatedSettings);
@@ -216,17 +224,8 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
     const currentTheme = themeConfig[theme];
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-brand-dark/90 backdrop-blur-2xl animate-in fade-in duration-500" dir="rtl">
-            <div className="bg-white w-full max-w-7xl h-[92vh] rounded-[4rem] shadow-4xl overflow-hidden flex flex-col md:flex-row animate-in zoom-in-95 duration-700 border-4 border-white/20 relative">
-
-                {/* Global Close Button - Moved to corner for better accessibility */}
-                {/* Global Close Button - Moved for better visibility */}
-                <button
-                    onClick={onClose}
-                    className="absolute top-6 left-6 z-[250] w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-red-500 text-white rounded-[1.2rem] backdrop-blur-xl border border-white/20 transition-all shadow-2xl group"
-                >
-                    <X size={24} className="group-hover:rotate-90 transition-transform duration-300" />
-                </button>
+        <div className="flex-1 flex flex-col h-full bg-brand-cream animate-in fade-in duration-700 overflow-hidden relative" dir="rtl">
+            <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative border-t border-brand-primary/5">
 
                 {/* 1. Control Panel (Sidebar) */}
                 <div className="w-full md:w-[400px] bg-gray-50/50 border-l border-brand-primary/5 flex flex-col h-full relative shrink-0">
@@ -321,6 +320,79 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
                                     </div>
                                 </section>
 
+                                {/* Detailed Customization */}
+                                <section className="space-y-6">
+                                    <h3 className="text-[10px] items-center gap-2 flex font-black text-brand-secondary uppercase tracking-widest">
+                                        <div className="w-2 h-2 bg-brand-primary rounded-full"></div>
+                                        تفاصيل الأيقونات والخطوط
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[9px] font-black text-gray-400 mr-2 uppercase">أيقونة الأكل</label>
+                                            <input
+                                                type="text"
+                                                value={foodIcon}
+                                                onChange={(e) => setFoodIcon(e.target.value)}
+                                                className="w-full p-4 bg-white border-2 border-brand-primary/5 rounded-2xl text-center text-xl shadow-inner focus:border-brand-primary transition-all outline-none"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[9px] font-black text-gray-400 mr-2 uppercase">أيقونة المشروبات</label>
+                                            <input
+                                                type="text"
+                                                value={drinkIcon}
+                                                onChange={(e) => setDrinkIcon(e.target.value)}
+                                                className="w-full p-4 bg-white border-2 border-brand-primary/5 rounded-2xl text-center text-xl shadow-inner focus:border-brand-primary transition-all outline-none"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-[9px] font-black text-gray-400 mr-2 uppercase">حجم الخط</label>
+                                        <div className="flex bg-gray-100 p-1 rounded-2xl gap-1">
+                                            {(['small', 'medium', 'large'] as const).map((size) => (
+                                                <button
+                                                    key={size}
+                                                    onClick={() => setFontSize(size)}
+                                                    className={`flex-1 py-3 rounded-xl font-black text-[9px] transition-all ${fontSize === size ? 'bg-white shadow-md text-brand-primary' : 'text-gray-400'}`}
+                                                >
+                                                    {size === 'small' ? 'صغير' : size === 'medium' ? 'متوسط' : 'كبير'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-[9px] font-black text-gray-400 mr-2 uppercase">نمط الكارت</label>
+                                        <div className="flex bg-gray-100 p-1 rounded-2xl gap-1">
+                                            {(['flat', 'elevated', 'glass'] as const).map((style) => (
+                                                <button
+                                                    key={style}
+                                                    onClick={() => setCardStyle(style)}
+                                                    className={`flex-1 py-3 rounded-xl font-black text-[9px] transition-all ${cardStyle === style ? 'bg-white shadow-md text-brand-primary' : 'text-gray-400'}`}
+                                                >
+                                                    {style === 'flat' ? 'بسيط' : style === 'elevated' ? 'بارز' : 'زجاجي'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-[9px] font-black text-gray-400 mr-2 uppercase">تدوير الحواف</label>
+                                        <div className="flex bg-gray-100 p-1 rounded-2xl gap-1">
+                                            {(['none', 'sm', 'md', 'lg', 'full'] as const).map((radius) => (
+                                                <button
+                                                    key={radius}
+                                                    onClick={() => setBorderRadius(radius)}
+                                                    className={`flex-1 py-3 rounded-xl font-black text-[9px] transition-all ${borderRadius === radius ? 'bg-white shadow-md text-brand-primary' : 'text-gray-400'}`}
+                                                >
+                                                    {radius}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </section>
+
                                 {/* Branding Info */}
                                 <section className="space-y-6">
                                     <h3 className="text-[10px] items-center gap-2 flex font-black text-brand-secondary uppercase tracking-widest">
@@ -331,10 +403,9 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
                                         <textarea
                                             value={storeDescription}
                                             onChange={(e) => setStoreDescription(e.target.value)}
-                                            className="w-full p-6 bg-white rounded-3xl border-2 border-brand-primary/5 outline-none focus:border-brand-primary focus:ring-8 focus:ring-brand-primary/5 text-sm font-bold min-h-[120px] resize-none shadow-inner transition-all no-scrollbar"
+                                            className="w-full p-6 bg-white rounded-3xl border-2 border-brand-primary/5 outline-none focus:border-brand-primary focus:ring-8 focus:ring-brand-primary/5 text-sm font-bold min-h-[100px] resize-none shadow-inner transition-all no-scrollbar"
                                             placeholder="اكتب شيئاً جميلاً لعملائك..."
                                         />
-                                        <div className="absolute bottom-4 left-4 text-[8px] font-black opacity-20 uppercase tracking-widest">Description</div>
                                     </div>
                                 </section>
                             </>
@@ -376,18 +447,26 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
                         )}
                     </div>
 
-                    {/* Sidebar Footer */}
+                    {/* Sidebar Footer - Dynamic Action Button */}
                     <div className="p-10 bg-white border-t border-brand-primary/5">
                         <button
-                            onClick={exportProfessionalPDF}
-                            disabled={previewMode !== 'poster' || isExporting}
-                            className={`w-full py-6 rounded-[2rem] font-black text-lg flex items-center justify-center gap-4 transition-all active:scale-95 group shadow-3xl ${previewMode === 'poster'
-                                ? 'bg-brand-dark hover:bg-brand-primary text-white shadow-brand-dark/20 cursor-pointer'
-                                : 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-80 shadow-none'
+                            onClick={previewMode === 'mobile' ? handleSaveMenuConfig : exportProfessionalPDF}
+                            disabled={isSaving || isExporting}
+                            className={`w-full py-6 rounded-[2rem] font-black text-lg flex items-center justify-center gap-4 transition-all active:scale-95 group shadow-3xl ${isSaving || isExporting ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
+                                previewMode === 'mobile' ? 'bg-brand-primary hover:bg-brand-primary/90 text-white shadow-brand-primary/20' : 'bg-brand-dark hover:bg-brand-primary text-white shadow-brand-dark/20'
                                 }`}
                         >
-                            <QrCode size={28} className={`${previewMode === 'poster' ? 'group-hover:rotate-12' : ''} transition-transform`} />
-                            {previewMode === 'poster' ? 'توليد ملصق QR فخيم (PDF)' : 'شاهد الملصق لتفعيل التنزيل'}
+                            {previewMode === 'mobile' ? (
+                                <>
+                                    {isSaving ? <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <CheckCircle2 size={28} className="group-hover:scale-110 transition-transform" />}
+                                    <span>{isSaving ? 'جاري الحفظ...' : 'حفظ واجهة وتصميم المنيو'}</span>
+                                </>
+                            ) : (
+                                <>
+                                    {isExporting ? <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <QrCode size={28} className="group-hover:rotate-12 transition-transform" />}
+                                    <span>{isExporting ? 'جاري التوليد...' : 'توليد QR كود وتصديره كـ PDF'}</span>
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>
@@ -401,26 +480,16 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
                             onClick={() => setPreviewMode('mobile')}
                             className={`flex items-center gap-2 px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition-all ${previewMode === 'mobile' ? 'bg-brand-primary text-white shadow-lg shadow-brand-primary/20 scale-110' : 'text-white/30 hover:text-white/60'}`}
                         >
-                            <Smartphone size={14} /> Live Mobile View
+                            <Smartphone size={14} /> التصميم والمعاينة
                         </button>
                         <div className="w-px h-4 bg-white/10"></div>
                         <button
                             onClick={() => setPreviewMode('poster')}
                             className={`flex items-center gap-2 px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition-all ${previewMode === 'poster' ? 'bg-brand-secondary text-white shadow-lg shadow-brand-secondary/20 scale-110' : 'text-white/30 hover:text-white/60'}`}
                         >
-                            <Printer size={14} /> A4 Poster Preview
+                            <Printer size={14} /> مراجعة وصل QR Code
                         </button>
                         <div className="flex-1"></div>
-                        {previewMode === 'mobile' && (
-                            <button
-                                onClick={handleSaveMenuConfig}
-                                disabled={isSaving}
-                                className="bg-brand-primary hover:bg-brand-primary/90 text-white px-6 py-2.5 rounded-2xl font-black text-[10px] flex items-center gap-2 shadow-xl shadow-brand-primary/20 transition-all active:scale-95 disabled:opacity-50"
-                            >
-                                {isSaving ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <CheckCircle2 size={14} />}
-                                اعتماد وحفظ تصميم المنيو
-                            </button>
-                        )}
                     </div>
 
                     <div className="flex-1 p-8 md:p-16 overflow-y-auto premium-scrollbar flex items-start justify-center relative">
@@ -429,62 +498,130 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-brand-primary/5 rounded-full blur-[100px] pointer-events-none"></div>
 
                         {previewMode === 'mobile' && (
-                            <div className="flex flex-col gap-8 items-center relative z-10 animate-in fade-in zoom-in duration-500">
-                                <div className="w-[320px] h-[640px] bg-brand-dark rounded-[3.5rem] p-3 shadow-4xl relative border-[12px] border-white/5 ring-[1px] ring-white/10 overflow-hidden group">
+                            <div className="flex flex-col gap-8 items-center relative z-10 animate-in fade-in zoom-in duration-500 w-full h-full justify-center py-10">
+                                {/* Larger Phone Frame */}
+                                <div className="w-[420px] h-[850px] bg-brand-dark rounded-[4rem] p-4 shadow-5xl relative border-[12px] border-white/5 ring-[1px] ring-white/10 overflow-hidden group shrink-0">
                                     {/* Phone Speaker/Camera Notch */}
-                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-white/5 rounded-b-3xl z-30 shadow-inner"></div>
+                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-white/5 rounded-b-3xl z-40 shadow-inner flex items-center justify-center">
+                                        <div className="w-8 h-1.5 bg-white/10 rounded-full"></div>
+                                    </div>
 
                                     <div
                                         ref={previewRef}
-                                        className={`w-full h-full overflow-y-auto phone-scrollbar rounded-[2.8rem] transition-all duration-700 ${currentTheme.bg} ${currentTheme.text} relative pb-12`}
+                                        className={`w-full h-full overflow-y-auto no-scrollbar rounded-[3.2rem] transition-all duration-700 ${currentTheme.bg} ${currentTheme.text} relative pb-12`}
                                         dir="rtl">
 
+                                        {/* Product Detail Overlay (Professional) */}
+                                        {selectedPreviewProduct && (
+                                            <div className="absolute inset-0 z-[100] bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                                                <div className={`absolute bottom-0 left-0 right-0 ${currentTheme.bg} rounded-t-[3.5rem] p-10 space-y-8 animate-in slide-in-from-bottom duration-500 shadow-5xl border-t border-white/10`}>
+                                                    <div className="flex justify-between items-start">
+                                                        <div className={`w-20 h-20 rounded-3xl flex items-center justify-center text-4xl shadow-2xl ${cardStyle === 'glass' ? 'bg-white/10 backdrop-blur-md' : 'bg-white shadow-xl'}`}>
+                                                            {['Coffee', 'Tea', 'Juice'].includes(selectedPreviewProduct.category) ? drinkIcon : foodIcon}
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setSelectedPreviewProduct(null)}
+                                                            className="w-12 h-12 rounded-2xl bg-black/10 flex items-center justify-center text-xl hover:bg-red-500 hover:text-white transition-all"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    </div>
+                                                    <div className="space-y-4">
+                                                        <h2 className="text-3xl font-black">{selectedPreviewProduct.name}</h2>
+                                                        <p className="text-sm opacity-60 font-bold">{selectedPreviewProduct.notes || "تذوق الطعم الفريد المحضر خصيصاً بمكونات طازجة وجودة عالية لتلبي توقعاتكم الراقية."}</p>
+                                                        <div className="flex items-center justify-between pt-6">
+                                                            <div className="text-2xl font-black" style={{ color: currentTheme.accent }}>
+                                                                {formatCurrency(selectedPreviewProduct.price, settings.currency)}
+                                                            </div>
+                                                            <div className="px-6 py-3 rounded-2xl bg-brand-primary/10 text-brand-primary font-black text-xs">
+                                                                {selectedPreviewProduct.category}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {/* Inner Shadow for depth */}
-                                        <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_50px_rgba(0,0,0,0.05)] rounded-[2.8rem]"></div>
+                                        <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_80px_rgba(0,0,0,0.08)] rounded-[3.2rem]"></div>
 
                                         {/* Preview Content */}
-                                        <div className="p-8">
-                                            <div className="text-center mt-10 mb-10">
-                                                <div className={`w-24 h-24 mx-auto rounded-3xl shadow-xl flex items-center justify-center mb-6 overflow-hidden transition-all duration-1000 bg-white`}>
+                                        <div className="p-10">
+                                            <div className="text-center mt-12 mb-12">
+                                                <div className={`w-28 h-28 mx-auto rounded-[2.5rem] shadow-2xl flex items-center justify-center mb-8 overflow-hidden transition-all duration-1000 bg-white ring-8 ring-white/10`}>
                                                     {settings?.storeLogo ? (
                                                         <img src={settings.storeLogo} alt={storeName} className="w-full h-full object-cover" />
                                                     ) : (
-                                                        <img src="/branding/afia_logo.png" alt="Afia" className="w-full h-full object-contain p-4" />
+                                                        <img src="/branding/afia_logo.png" alt="Afia" className="w-full h-full object-contain p-5" />
                                                     )}
                                                 </div>
-                                                <h1 className="text-2xl font-black mb-3 tracking-tighter">{storeName}</h1>
+                                                <h1 className="text-3xl font-black mb-4 tracking-tighter">{storeName}</h1>
 
-                                                <div className={`w-10 h-1 bg-current opacity-10 mx-auto rounded-full mb-4`}></div>
-                                                <p className="text-[10px] opacity-60 leading-relaxed font-bold px-2">{storeDescription}</p>
+                                                <div className={`w-12 h-1.5 bg-current opacity-10 mx-auto rounded-full mb-6`}></div>
+                                                <p className="text-xs opacity-60 leading-relaxed font-bold px-4">{storeDescription}</p>
                                             </div>
 
-                                            <div className="space-y-4">
-                                                {filteredProducts.map(p => (
-                                                    <div key={p.id} className={`p-4 rounded-[1.8rem] border transition-all duration-500 hover:scale-[1.03] ${currentTheme.card} ${layout === 'list' ? 'flex gap-3 items-center' : ''}`}>
+                                            <div className={`grid gap-5 ${layout === 'grid' ? 'grid-cols-1' : 'grid-cols-1'}`}>
+                                                {products.map(p => {
+                                                    const isSelected = selectedProducts.includes(p.id);
+                                                    const hasStock = (p.stock ?? 0) > 0;
+                                                    const isAvailable = isSelected && hasStock;
+
+                                                    return (
                                                         <div
-                                                            style={{ backgroundColor: currentTheme.accent }}
-                                                            className={`w-12 h-12 shrink-0 rounded-2xl flex items-center justify-center text-xl shadow-sm text-white/90 backdrop-blur-sm border border-white/10 ${layout === 'grid' ? 'mb-3' : ''}`}
+                                                            key={p.id}
+                                                            onClick={() => isAvailable ? setSelectedPreviewProduct(p) : null}
+                                                            className={`group cursor-pointer p-5 transition-all duration-500 relative flex flex-col ${currentTheme.card} ${!isAvailable ? 'opacity-50 grayscale contrast-[0.8] cursor-not-allowed' : 'hover:scale-[1.02] active:scale-95'} ${cardStyle === 'elevated' ? 'shadow-xl hover:shadow-2xl' :
+                                                                cardStyle === 'glass' ? 'bg-white/10 backdrop-blur-md border-white/20 shadow-none' : 'shadow-sm'
+                                                                } ${borderRadius === 'none' ? 'rounded-none' :
+                                                                    borderRadius === 'sm' ? 'rounded-xl' :
+                                                                        borderRadius === 'md' ? 'rounded-2xl' :
+                                                                            borderRadius === 'lg' ? 'rounded-[2rem]' : 'rounded-full'
+                                                                }`}
                                                         >
-                                                            {p.category === 'Coffee' ? '☕' : p.category === 'Tea' ? '🍵' : '🍔'}
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex justify-between items-start mb-0.5">
-                                                                <h4 className="font-black text-[11px] truncate">{p.name}</h4>
-                                                                <span
-                                                                    style={{ color: currentTheme.accent }}
-                                                                    className={`text-[11px] font-black shrink-0`}
+                                                            {!isAvailable && (
+                                                                <div className="absolute top-3 left-3 z-20">
+                                                                    <span className="bg-red-500 text-white text-[8px] font-black px-2 py-0.5 rounded-full shadow-lg flex items-center gap-1">
+                                                                        غير متوفر
+                                                                    </span>
+                                                                </div>
+                                                            )}
+
+                                                            <div className={`${layout === 'list' ? 'flex items-center gap-5' : ''}`}>
+                                                                <div
+                                                                    style={{ backgroundColor: isAvailable ? currentTheme.accent : '#9ca3af' }}
+                                                                    className={`w-14 h-14 shrink-0 rounded-2xl flex items-center justify-center text-2xl shadow-lg text-white/90 backdrop-blur-sm border border-white/10 transition-transform ${isAvailable ? 'group-hover:rotate-6' : ''} ${layout === 'grid' ? 'mb-4' : ''}`}
                                                                 >
-                                                                    {formatCurrency(p.price, settings.currency)}
-                                                                </span>
+                                                                    {['Coffee', 'Tea', 'Juice'].includes(p.category) ? drinkIcon : foodIcon}
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex justify-between items-start mb-1">
+                                                                        <h4 className={`font-black truncate ${fontSize === 'small' ? 'text-xs' :
+                                                                            fontSize === 'medium' ? 'text-sm' : 'text-lg'
+                                                                            }`}>{p.name}</h4>
+                                                                        {isAvailable && (
+                                                                            <span
+                                                                                style={{ color: currentTheme.accent }}
+                                                                                className={`font-black shrink-0 ${fontSize === 'small' ? 'text-[10px]' :
+                                                                                    fontSize === 'medium' ? 'text-xs' : 'text-base'
+                                                                                    }`}
+                                                                            >
+                                                                                {formatCurrency(p.price, settings.currency)}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="text-[10px] opacity-50 line-clamp-1 font-bold group-hover:opacity-80 transition-opacity">
+                                                                        {isAvailable ? (p.notes || "تذوق الطعم الأصيل والوصفة السرية لعافية.") : "هذا الصنف غير متوفر حالياً لعملائك."}
+                                                                    </p>
+                                                                </div>
                                                             </div>
-                                                            <p className="text-[7px] opacity-50 line-clamp-1 font-bold">{p.notes || "تذوق الطعم الأصيل"}</p>
                                                         </div>
-                                                    </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
 
-                                            <div className="mt-16 text-center opacity-20 text-[6px] font-black uppercase tracking-[0.4em] pb-10">
-                                                &bull; Powered by Al Afia Cloud &bull;
+                                            <div className="mt-20 text-center opacity-20 text-[8px] font-black uppercase tracking-[0.5em] pb-12">
+                                                &bull; Powered by Al Afia Smart Cloud &bull;
                                             </div>
                                         </div>
                                     </div>
@@ -557,7 +694,7 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
                                                 <div style={{ fontSize: '16px', fontWeight: 800, letterSpacing: '6px', color: 'rgba(45,106,79,0.55)', textTransform: 'uppercase' }}>SCAN THE MENU</div>
                                                 <div style={{ background: '#ffffff', padding: '16px', borderRadius: '16px', border: '1px solid rgba(45,106,79,0.1)' }}>
                                                     <QRCodeCanvas
-                                                        value={`${window.location.origin}/menu`}
+                                                        value={`https://afia-seven.vercel.app/menu`}
                                                         size={320}
                                                         level="H"
                                                         includeMargin={false}
@@ -619,7 +756,7 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
                                                 <div style={{ fontSize: '16px', fontWeight: 800, letterSpacing: '6px', color: 'rgba(45,106,79,0.55)', textTransform: 'uppercase' }}>SCAN THE MENU</div>
                                                 <div style={{ background: '#ffffff', padding: '16px', borderRadius: '16px', border: '1px solid rgba(45,106,79,0.1)' }}>
                                                     <QRCodeCanvas
-                                                        value={`${window.location.origin}/menu`}
+                                                        value={`https://afia-seven.vercel.app/menu`}
                                                         size={320}
                                                         level="H"
                                                         includeMargin={false}
@@ -707,4 +844,4 @@ const DigitalMenuModal: React.FC<DigitalMenuModalProps> = ({ products, isOpen, o
     );
 };
 
-export default DigitalMenuModal;
+export default DigitalMenuView;

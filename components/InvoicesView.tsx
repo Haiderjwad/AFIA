@@ -956,7 +956,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
     };
 
     return (
-        <div className="flex-1 p-8 bg-brand-cream overflow-y-auto no-scrollbar relative" dir="rtl">
+        <div className="view-container">
             {/* Background Patterns (Subtle) */}
             <div className="absolute top-0 left-0 w-64 h-64 opacity-5 pointer-events-none -translate-x-1/2 -translate-y-1/2">
                 <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
@@ -967,33 +967,35 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
 
 
             {/* Header Section */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-10 gap-6 transition-all relative z-10">
                 <div>
-                    <h1 className="text-4xl font-black text-brand-dark mb-2">إدارة الفواتير المميزة</h1>
-                    <p className="text-brand-dark/40 font-bold">نظام ذكي للتحصيل والطباعة المتعددة</p>
+                    <h1 className="text-2xl md:text-4xl font-black text-brand-dark mb-2">إدارة الفواتير المميزة</h1>
+                    <p className="text-brand-dark/40 font-bold text-xs md:text-base">نظام ذكي للتحصيل والطباعة المتعددة</p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-4">
-                    {/* Log Button */}
-                    <button
-                        onClick={() => setIsLogOpen(true)}
-                        className="group flex items-center gap-3 bg-white text-brand-dark border-2 border-brand-primary/10 px-8 py-3 rounded-2xl font-black shadow-sm hover:border-brand-primary active:scale-95 transition-all"
-                    >
-                        <History size={20} className="text-brand-primary group-hover:rotate-[-45deg] transition-transform" />
-                        سجل الفواتير
-                    </button>
+                <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-4 w-full xl:w-auto">
+                    <div className="grid grid-cols-2 sm:flex gap-3">
+                        {/* Log Button */}
+                        <button
+                            onClick={() => setIsLogOpen(true)}
+                            className="group flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white text-brand-dark border-2 border-brand-primary/10 px-4 md:px-8 py-3 rounded-2xl font-black shadow-sm hover:border-brand-primary active:scale-95 transition-all text-xs md:text-sm"
+                        >
+                            <History size={18} className="text-brand-primary group-hover:rotate-[-45deg] transition-transform" />
+                            سجل الفواتير
+                        </button>
 
-                    <button
-                        onClick={() => setIsManualModalOpen(true)}
-                        className="flex items-center gap-3 bg-brand-secondary hover:bg-brand-secondary/90 text-white px-8 py-3 rounded-2xl font-black shadow-xl shadow-brand-secondary/20 active:scale-95 transition-all"
-                    >
-                        <Plus size={20} /> قيد يدوي
-                    </button>
+                        <button
+                            onClick={() => setIsManualModalOpen(true)}
+                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-brand-secondary hover:bg-brand-secondary/90 text-white px-4 md:px-8 py-3 rounded-2xl font-black shadow-xl shadow-brand-secondary/20 active:scale-95 transition-all text-xs md:text-sm"
+                        >
+                            <Plus size={18} /> قيد يدوي
+                        </button>
+                    </div>
 
-                    <div className="flex bg-white p-1 rounded-3xl shadow-sm border border-brand-primary/10">
+                    <div className="flex bg-white p-1 rounded-3xl shadow-sm border border-brand-primary/10 overflow-hidden">
                         <button
                             onClick={() => setActiveTab('pending')}
-                            className={`px-8 py-3 rounded-2xl font-black transition-all flex items-center gap-2 ${activeTab === 'pending' ? 'bg-brand-primary text-white shadow-xl shadow-brand-primary/20' : 'text-brand-dark/40 hover:bg-brand-light/30'}`}
+                            className={`flex-1 sm:flex-none px-4 md:px-8 py-3 rounded-2xl font-black transition-all flex items-center justify-center gap-2 text-xs md:text-sm ${activeTab === 'pending' ? 'bg-brand-primary text-white shadow-xl shadow-brand-primary/20' : 'text-brand-dark/40 hover:bg-brand-light/30'}`}
                         >
                             <ListFilter size={18} /> العالقة
                             {transactions.filter(t => t.status === 'waiting_payment').length > 0 && (
@@ -1004,7 +1006,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                         </button>
                         <button
                             onClick={() => setActiveTab('all')}
-                            className={`px-8 py-3 rounded-2xl font-black transition-all ${activeTab === 'all' ? 'bg-brand-primary text-white shadow-xl shadow-brand-primary/20' : 'text-brand-dark/40 hover:bg-brand-light/30'}`}
+                            className={`flex-1 sm:flex-none px-4 md:px-8 py-3 rounded-2xl font-black transition-all text-xs md:text-sm ${activeTab === 'all' ? 'bg-brand-primary text-white shadow-xl shadow-brand-primary/20' : 'text-brand-dark/40 hover:bg-brand-light/30'}`}
                         >
                             الكل
                         </button>
@@ -1012,12 +1014,12 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
 
                     <div
                         onClick={() => setAutoPrint(!autoPrint)}
-                        className="flex items-center gap-3 bg-white px-6 py-3 rounded-2xl border border-brand-primary/10 cursor-pointer hover:bg-brand-light/5 transition-all shadow-sm"
+                        className="flex items-center justify-center gap-3 bg-white px-6 py-3 rounded-2xl border border-brand-primary/10 cursor-pointer hover:bg-brand-light/5 transition-all shadow-sm"
                     >
-                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all border-2 ${autoPrint ? 'bg-brand-primary border-transparent' : 'bg-transparent border-gray-200'}`}>
+                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all border-2 shrink-0 ${autoPrint ? 'bg-brand-primary border-transparent' : 'bg-transparent border-gray-200'}`}>
                             {autoPrint && <Check size={14} className="text-white" />}
                         </div>
-                        <span className="text-xs font-black text-brand-dark">طباعة الفاتورة فوراً بعد الدفع</span>
+                        <span className="text-[10px] md:text-xs font-black text-brand-dark whitespace-nowrap">طباعة فورية</span>
                     </div>
                 </div>
             </div>

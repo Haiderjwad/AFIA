@@ -104,3 +104,144 @@
         display: none;
     }
 }
+
+/* Premium Layout Utilities */
+.view-container {
+    @apply flex-1 p-4 md:p-8 overflow-y-auto bg-brand-cream pb-20 relative;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    animation: fadeIn 0.5s ease-out forwards;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card-grid {
+    @apply grid gap-4 md:gap-6;
+}
+
+/* Tablet specific optimizations */
+@media (min-width: 768px) and (max-width: 1279px) {
+    .tablet-cols-2 {
+        @apply grid-cols-2;
+    }
+
+    .tablet-cols-3 {
+        @apply grid-cols-3;
+    }
+}
+
+/* Mobile specific font scaling */
+@media (max-width: 640px) {
+    .mobile-text-sm {
+        font-size: 0.875rem;
+    }
+
+    .mobile-text-xs {
+        font-size: 0.75rem;
+    }
+
+    .mobile-hide {
+        display: none !important;
+    }
+}
+
+@media (max-width: 1024px) {
+    .tablet-hide {
+        display: none !important;
+    }
+}
+
+/* Custom Animation Utilities (Tailwind v4 Compatibility) */
+.animate-in {
+    animation-duration: 0.5s;
+    animation-fill-mode: forwards;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-in {
+    animation-name: fadeInOnly;
+}
+
+.zoom-in {
+    animation-name: zoomIn;
+}
+
+.zoom-in-95 {
+    animation-name: zoomIn95;
+}
+
+.slide-in-from-bottom-4 {
+    animation-name: slideInBottom;
+}
+
+.slide-in-from-top-4 {
+    animation-name: slideInTop;
+}
+
+@keyframes fadeInOnly {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes zoomIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes zoomIn95 {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes slideInBottom {
+    from {
+        opacity: 0;
+        transform: translateY(1rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInTop {
+    from {
+        opacity: 0;
+        transform: translateY(-1rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

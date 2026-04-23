@@ -306,7 +306,7 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
   // Loading state handled globally in App.tsx or implicitly by being an empty array initially
 
   return (
-    <div className="flex-1 p-8 bg-brand-cream overflow-y-auto no-scrollbar relative" dir="rtl">
+    <div className="view-container">
       {/* Background Patterns (Subtle) */}
       <div className="absolute top-0 left-0 w-64 h-64 opacity-5 pointer-events-none -translate-x-1/2 -translate-y-1/2">
         <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
@@ -317,21 +317,21 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
 
 
       {/* Premium Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-10 gap-6 transition-all relative z-10 text-right">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-brand-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand-primary/20">
-              <Truck size={22} />
+            <div className="w-8 h-8 md:w-10 md:h-10 bg-brand-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand-primary/20 shrink-0">
+              <Truck size={20} className="md:w-[22px] md:h-[22px]" />
             </div>
-            <h1 className="text-4xl font-black text-brand-dark">شركاء النجاح</h1>
+            <h1 className="text-2xl md:text-4xl font-black text-brand-dark">شركاء النجاح</h1>
           </div>
-          <p className="text-brand-dark/40 font-bold pr-1">إدارة شاملة للموردين، التكاليف، وحركة التوريد</p>
+          <p className="text-brand-dark/40 font-bold pr-1 text-xs md:text-sm">إدارة شاملة للموردين، التكاليف، وحركة التوريد</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="grid grid-cols-1 sm:flex items-center gap-4 w-full xl:w-auto">
           <button
             onClick={() => generateReport()}
-            className="group flex items-center gap-3 bg-white text-brand-dark border-2 border-brand-primary/10 px-8 py-4 rounded-2xl font-black shadow-sm hover:border-brand-primary active:scale-95 transition-all"
+            className="group flex-1 sm:flex-none flex items-center justify-center gap-3 bg-white text-brand-dark border-2 border-brand-primary/10 px-6 md:px-8 py-3 md:py-4 rounded-2xl font-black shadow-sm hover:border-brand-primary active:scale-95 transition-all text-sm md:text-base"
           >
             <FileText size={20} className="text-brand-primary group-hover:rotate-6 transition-transform" />
             الكشف العام
@@ -339,7 +339,7 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
 
           <button
             onClick={() => handleOpenModal()}
-            className="flex items-center gap-3 bg-brand-primary hover:bg-brand-dark text-white px-10 py-4 rounded-2xl font-black shadow-xl shadow-brand-primary/20 active:scale-95 transition-all group"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-3 bg-brand-primary hover:bg-brand-dark text-white px-6 md:px-10 py-3 md:py-4 rounded-2xl font-black shadow-xl shadow-brand-primary/20 active:scale-95 transition-all group text-sm md:text-base"
           >
             <Plus size={20} className="group-hover:rotate-90 transition-transform" /> إضافة مورد جديد
           </button>
@@ -420,7 +420,7 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
       </div>
 
       {/* Grid of Suppliers */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 pb-20">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8 pb-20">
         {filteredSuppliers.map(supplier => (
           <div key={supplier.id} className="bg-white rounded-[4rem] p-10 shadow-xl border border-transparent hover:border-brand-primary/20 hover:shadow-2xl transition-all group flex flex-col relative overflow-hidden">
             <div className={`absolute top-0 left-0 w-2 h-full ${supplier.frequency === 'daily' ? 'bg-green-500' : supplier.frequency === 'weekly' ? 'bg-blue-500' : supplier.frequency === 'monthly' ? 'bg-orange-500' : 'bg-brand-dark'}`}></div>

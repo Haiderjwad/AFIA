@@ -835,6 +835,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                       { id: 'invoices', label: 'الفواتير', icon: '📄' },
                       { id: 'inventory', label: 'المخزون', icon: '📦' },
                       { id: 'suppliers', label: 'الموردين', icon: '🚚' },
+                      { id: 'digital_menu', label: 'المنيو الرقمي', icon: '📱' },
                       { id: 'reports', label: 'التقارير', icon: '📈' },
                       { id: 'settings', label: 'الإعدادات', icon: '⚙️' }
                     ].map(perm => (
