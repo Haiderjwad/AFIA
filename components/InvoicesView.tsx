@@ -20,7 +20,7 @@ interface InvoicesViewProps {
     settings?: AppSettings;
 }
 
-const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePayment, canFinalize, products = [], settings }) => {
+const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePayment, canFinalize, products = [], settings, currentUser }) => {
     const [activeTab, setActiveTab] = useState<'all' | 'pending'>('pending');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedForPayment, setSelectedForPayment] = useState<Transaction | null>(null);
@@ -42,13 +42,14 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
     const filteredTransactions = transactions.filter(t => {
         // Tab filter
         // Tab filter: Pending shows all active orders that are NOT yet paid
-        if (activeTab === 'pending' && (['completed', 'refunded'].includes(t.status) || t.isPaid)) return false;
+        if (activeTab === 'pending' && (t.status !== 'waiting_payment' || t.isPaid)) return false;
 
         // All tab shows historical (completed/refunded/paid)
         if (activeTab === 'all' && !(['completed', 'refunded'].includes(t.status) || t.isPaid)) return false;
 
         // Search filter
         const matchesSearch = t.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (t as any).originalIds?.some((id: string) => id.toLowerCase().includes(searchQuery.toLowerCase())) ||
             t.items.some(i => i.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
             (t.tableNumber && t.tableNumber.toLowerCase().includes(searchQuery.toLowerCase()));
 
@@ -67,7 +68,8 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
         const others: Transaction[] = [];
 
         filteredTransactions.forEach(t => {
-            if (t.tableNumber && !['completed', 'refunded', 'cancelled'].includes(t.status) && !t.isPaid) {
+            // Only group physical tables, exclude Takeaway (should be unique)
+            if (t.tableNumber && t.tableNumber !== 'Takeaway' && !['completed', 'refunded', 'cancelled'].includes(t.status) && !t.isPaid) {
                 if (!tableGroups[t.tableNumber]) tableGroups[t.tableNumber] = [];
                 tableGroups[t.tableNumber].push(t);
             } else {
@@ -94,10 +96,19 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                 const combinedTotal = group.reduce((sum, t) => sum + t.total, 0);
                 const allIds = group.map(t => t.id);
 
+                // Determine priority status: If any item is ready/waiting, the whole group is billable
+                let priorityStatus = group[0].status;
+                const hasWaiting = group.some(gt => gt.status === 'waiting_payment');
+                const hasReady = group.some(gt => gt.status === 'ready');
+
+                if (hasWaiting) priorityStatus = 'waiting_payment';
+                else if (hasReady) priorityStatus = 'ready';
+
                 // Create a Virtual Master Transaction
                 mergedList.push({
-                    ...group[0], // Base info from the first one
+                    ...group[0], // Base info from the newest one
                     id: `GROUP-${tableNum}`,
+                    status: priorityStatus,
                     items: Object.values(itemMap),
                     total: combinedTotal,
                     originalIds: allIds,
@@ -1135,9 +1146,21 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                         <div className="flex items-center gap-2 bg-orange-50 text-orange-600 px-4 py-1.5 rounded-2xl text-xs font-black animate-pulse border border-orange-100">
                                             <Clock size={14} /> بانتظار الدفع
                                         </div>
+                                    ) : transaction.status === 'ready' ? (
+                                        <div className="flex items-center gap-2 bg-brand-accent/10 text-brand-accent px-4 py-1.5 rounded-2xl text-xs font-black animate-bounce border border-brand-accent/20">
+                                            <PackageCheck size={14} /> جاهز للتحصيل
+                                        </div>
                                     ) : (
-                                        <div className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-1.5 rounded-2xl text-xs font-black border border-green-100">
-                                            <CheckCircle size={14} /> {transaction.status === 'completed' ? 'مكتملة' : 'تم الاسترجاع'}
+                                        <div className={`flex items-center gap-2 px-4 py-1.5 rounded-2xl text-xs font-black border ${transaction.status === 'completed' ? 'bg-green-50 text-green-700 border-green-100' :
+                                            transaction.status === 'refunded' ? 'bg-red-50 text-red-700 border-red-100' :
+                                                transaction.status === 'cancelled' ? 'bg-gray-100 text-gray-500 border-gray-200' :
+                                                    'bg-blue-50 text-blue-600 border-blue-100'
+                                            }`}>
+                                            {transaction.status === 'completed' && <CheckCircle size={14} />}
+                                            {transaction.status === 'completed' ? 'مكتملة' :
+                                                transaction.status === 'refunded' ? 'مسترجعة' :
+                                                    transaction.status === 'cancelled' ? 'ملغاة' :
+                                                        transaction.status === 'preparing' ? 'جاري التحضير' : 'في طلبات المطبخ'}
                                         </div>
                                     )}
                                     <div className="text-[10px] text-gray-400 font-bold bg-gray-50 px-2 py-1 rounded-lg">
@@ -1377,68 +1400,82 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                     <div className="bg-[#fdfaf7] w-full max-w-5xl h-[90vh] rounded-[4rem] shadow-4xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-10 duration-500">
                         <div className="p-10 border-b border-brand-primary/10 bg-white flex justify-between items-center">
                             <div className="flex items-center gap-6">
-                                <div className="w-20 h-20 bg-brand-accent text-white rounded-[2rem] flex items-center justify-center shadow-xl shadow-brand-accent/20">
-                                    <History size={40} />
+                                <div className="w-20 h-20 bg-brand-primary text-white rounded-[2rem] flex items-center justify-center shadow-xl shadow-brand-primary/20">
+                                    <Banknote size={40} />
                                 </div>
                                 <div>
-                                    <h2 className="text-4xl font-black text-brand-dark mb-1">سجل الفواتير المؤرشفة</h2>
-                                    <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">ARCHIVED FINANCIAL INTELLIGENCE</p>
+                                    <h2 className="text-4xl font-black text-brand-dark mb-1">سجل التحصيل اليومي</h2>
+                                    <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">PERSONAL FINANCIAL COLLECTION LOG</p>
                                 </div>
                             </div>
-                            <button
-                                onClick={() => setIsLogOpen(false)}
-                                className="w-14 h-14 flex items-center justify-center bg-gray-100 text-gray-400 hover:bg-red-500 hover:text-white rounded-2xl transition-all shadow-sm"
-                            >
-                                <X size={32} />
-                            </button>
+                            <div className="flex gap-4">
+                                <div className="bg-emerald-50 px-6 py-2 rounded-2xl border border-emerald-100 text-center">
+                                    <p className="text-[10px] font-black text-emerald-600 uppercase mb-1">إجمالي تحصيلي اليوم</p>
+                                    <p className="font-black text-xl text-emerald-700">
+                                        {formatCurrency(transactions
+                                            .filter(t => t.cashierPerson === currentUser?.name && t.isPaid && new Date(t.date).toDateString() === new Date().toDateString())
+                                            .reduce((sum, t) => sum + t.total, 0), settings?.currency || CURRENCY)}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setIsLogOpen(false)}
+                                    className="w-14 h-14 flex items-center justify-center bg-gray-100 text-gray-400 hover:bg-red-500 hover:text-white rounded-2xl transition-all shadow-sm"
+                                >
+                                    <X size={32} />
+                                </button>
+                            </div>
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-10 space-y-6 no-scrollbar">
-                            {completedTransactions.length === 0 ? (
-                                <div className="h-full flex flex-col items-center justify-center text-gray-300 opacity-30">
-                                    <FileText size={120} />
-                                    <p className="text-2xl font-black mt-4 uppercase">No History Found</p>
+                            <p className="text-[10px] font-black text-brand-primary uppercase tracking-widest px-6">عمليات التحصيل التي قمت بها اليوم ✨</p>
+                            {transactions.filter(t => t.cashierPerson === currentUser?.name && t.isPaid && new Date(t.date).toDateString() === new Date().toDateString()).length === 0 ? (
+                                <div className="h-full flex flex-col items-center justify-center text-gray-300 opacity-30 py-20">
+                                    <History size={120} />
+                                    <p className="text-2xl font-black mt-4 uppercase">No Collections Found Today</p>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 gap-4">
-                                    {completedTransactions.map(t => (
-                                        <div
-                                            key={t.id}
-                                            onClick={() => { setViewingTransaction(t); setIsLogOpen(false); }}
-                                            className="bg-white p-6 rounded-[2.5rem] border border-brand-primary/10 shadow-sm hover:shadow-xl transition-all flex items-center justify-between cursor-pointer group"
-                                        >
-                                            <div className="flex items-center gap-6">
-                                                <div className={`h-16 px-4 rounded-2xl flex flex-col items-center justify-center font-black transition-all ${t.isManual || !t.tableNumber ? 'bg-red-50 text-red-600' : 'bg-brand-light/30 text-brand-primary group-hover:bg-brand-primary group-hover:text-white'}`}>
-                                                    <span className="text-[10px] opacity-60 uppercase mb-0.5">{t.tableNumber === 'Takeaway' ? 'استلام' : t.tableNumber ? 'طاولة' : 'نوع'}</span>
-                                                    <span className="text-lg">{t.tableNumber === 'Takeaway' ? 'سفري 🛍️' : t.tableNumber ? `#${t.tableNumber}` : 'يدوي'}</span>
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <p className="font-black text-coffee-900 text-lg uppercase tracking-tighter">
-                                                        {t.tableNumber === 'Takeaway' ? 'طلب سفري خارجي' : t.tableNumber ? `طلب الطاولة ${t.tableNumber}` : 'طلب يدوي طوارئ'}
-                                                    </p>
+                                    {transactions
+                                        .filter(t => t.cashierPerson === currentUser?.name && t.isPaid && new Date(t.date).toDateString() === new Date().toDateString())
+                                        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                        .map(t => (
+                                            <div
+                                                key={t.id}
+                                                onClick={() => { setViewingTransaction(t); setIsLogOpen(false); }}
+                                                className="bg-white p-6 rounded-[2.5rem] border border-brand-primary/10 shadow-sm hover:shadow-xl transition-all flex items-center justify-between cursor-pointer group"
+                                            >
+                                                <div className="flex items-center gap-6">
+                                                    <div className={`h-16 px-4 rounded-2xl flex flex-col items-center justify-center font-black transition-all ${t.isManual || !t.tableNumber ? 'bg-red-50 text-red-600' : 'bg-brand-light/30 text-brand-primary group-hover:bg-brand-primary group-hover:text-white'}`}>
+                                                        <span className="text-[10px] opacity-60 uppercase mb-0.5">{t.tableNumber === 'Takeaway' ? 'استلام' : t.tableNumber ? 'طاولة' : 'نوع'}</span>
+                                                        <span className="text-lg">{t.tableNumber === 'Takeaway' ? 'سفري 🛍️' : t.tableNumber ? `#${t.tableNumber}` : 'يدوي'}</span>
+                                                    </div>
+                                                    <div className="space-y-1 text-right">
+                                                        <p className="font-black text-coffee-900 text-lg uppercase tracking-tighter">
+                                                            تم تحصيل مبلغ الفاتورة بنجاح
+                                                        </p>
 
-                                                    <div className="flex items-center gap-4 text-xs text-gray-400 font-bold">
-                                                        <span className="flex items-center gap-1"><Calendar size={12} /> {new Date(t.date).toLocaleDateString()}</span>
-                                                        <span className="flex items-center gap-1"><Clock size={12} /> {new Date(t.date).toLocaleTimeString()}</span>
-                                                        <span className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 rounded-md text-[10px]">#{t.id.slice(-8)}</span>
-                                                        <span className="px-2 py-0.5 bg-brand-primary/10 text-brand-primary rounded-md text-[10px]">{t.paymentMethod === 'cash' ? 'نقدي' : t.paymentMethod === 'card' ? 'بطاقة' : 'إلكتروني'}</span>
+                                                        <div className="flex items-center gap-4 text-xs text-gray-400 font-bold">
+                                                            <span className="flex items-center gap-1"><Calendar size={12} /> {new Date(t.date).toLocaleDateString()}</span>
+                                                            <span className="flex items-center gap-1"><Clock size={12} /> {new Date(t.date).toLocaleTimeString()}</span>
+                                                            <span className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 rounded-md text-[10px]">#{t.id.slice(-8)}</span>
+                                                            <span className="px-2 py-0.5 bg-brand-primary/10 text-brand-primary rounded-md text-[10px]">{t.paymentMethod === 'cash' ? 'نقدي' : t.paymentMethod === 'card' ? 'بطاقة' : 'إلكتروني'}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                            <div className="flex items-center gap-8">
-                                                <div className="text-right">
-                                                    <p className="text-xs text-gray-400 font-bold uppercase mb-1">Final Amount</p>
-                                                    <p className="text-2xl font-black text-brand-dark">{formatCurrency(t.total, settings?.currency || CURRENCY)}</p>
+                                                <div className="flex items-center gap-8">
+                                                    <div className="text-right">
+                                                        <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">المبلغ المحصل</p>
+                                                        <p className="text-2xl font-black text-brand-dark">{formatCurrency(t.total, settings?.currency || CURRENCY)}</p>
+                                                    </div>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handlePrint(t); }}
+                                                        className="w-14 h-14 bg-brand-light/40 text-brand-primary rounded-3xl flex items-center justify-center hover:bg-brand-primary hover:text-white transition-all"
+                                                    >
+                                                        <Printer size={24} />
+                                                    </button>
                                                 </div>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handlePrint(t); }}
-                                                    className="w-14 h-14 bg-brand-light/40 text-brand-primary rounded-3xl flex items-center justify-center hover:bg-brand-primary hover:text-white transition-all"
-                                                >
-                                                    <Printer size={24} />
-                                                </button>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))}
                                 </div>
                             )}
                         </div>

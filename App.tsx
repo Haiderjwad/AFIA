@@ -674,6 +674,7 @@ const App: React.FC = () => {
             canFinalize={['admin', 'manager', 'cashier'].includes(role) || hasAll}
             products={products}
             settings={settings}
+            currentUser={currentUser}
           />;
         }
         break;

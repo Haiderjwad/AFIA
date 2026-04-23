@@ -31,7 +31,7 @@ const SalesView: React.FC<SalesViewProps> = ({
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [showActivityLog, setShowActivityLog] = useState(false);
-    const [activityTab, setActivityTab] = useState<'active' | 'cancelled'>('active');
+    const [activityTab, setActivityTab] = useState<'active' | 'completed' | 'cancelled'>('active');
     const [tablesOpen, setTablesOpen] = useState(true);
     const [manualOccupied, setManualOccupied] = useState<Set<string>>(new Set());
 
@@ -489,13 +489,19 @@ const SalesView: React.FC<SalesViewProps> = ({
                                     onClick={() => setActivityTab('active')}
                                     className={`flex-1 py-4 rounded-[1.5rem] font-black text-xs uppercase transition-all ${activityTab === 'active' ? 'bg-white text-brand-primary shadow-xl shadow-gray-200/50' : 'text-gray-400'}`}
                                 >
-                                    الطلبات النشطة
+                                    النشطة
+                                </button>
+                                <button
+                                    onClick={() => setActivityTab('completed')}
+                                    className={`flex-1 py-4 rounded-[1.5rem] font-black text-xs uppercase transition-all ${activityTab === 'completed' ? 'bg-white text-emerald-600 shadow-xl shadow-gray-200/50' : 'text-gray-400'}`}
+                                >
+                                    المنجزة ({transactions.filter(t => t.salesPerson === currentUser?.name && t.status === 'completed' && new Date(t.date).toDateString() === new Date().toDateString()).length})
                                 </button>
                                 <button
                                     onClick={() => setActivityTab('cancelled')}
                                     className={`flex-1 py-4 rounded-[1.5rem] font-black text-xs uppercase transition-all ${activityTab === 'cancelled' ? 'bg-white text-rose-500 shadow-xl shadow-gray-200/50' : 'text-gray-400'}`}
                                 >
-                                    الملغاة ({transactions.filter(t => t.salesPerson === currentUser?.name && t.status === 'cancelled').length})
+                                    الملغاة
                                 </button>
                             </div>
 
@@ -533,29 +539,32 @@ const SalesView: React.FC<SalesViewProps> = ({
                                         <div className="pt-6 border-t border-gray-100">
                                             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 mb-4">قيد التحضير</p>
                                             <div className="space-y-4">
-                                                {transactions.filter(t => t.salesPerson === currentUser?.name && ['pending', 'preparing'].includes(t.status)).map(order => (
-                                                    <div key={order.id} className="bg-white border-2 border-gray-50 p-5 rounded-[2rem] flex justify-between items-center group hover:border-brand-primary/20 transition-all">
-                                                        <div className="flex items-center gap-5">
-                                                            <div className="w-12 h-12 bg-gray-50 text-gray-400 rounded-2xl flex items-center justify-center font-black">
-                                                                {order.tableNumber === 'Takeaway' ? 'SB' : order.tableNumber}
+                                                {transactions
+                                                    .filter(t => t.salesPerson === currentUser?.name && ['pending', 'preparing'].includes(t.status))
+                                                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                                    .map(order => (
+                                                        <div key={order.id} className="bg-white border-2 border-gray-50 p-5 rounded-[2rem] flex justify-between items-center group hover:border-brand-primary/20 transition-all">
+                                                            <div className="flex items-center gap-5">
+                                                                <div className="w-12 h-12 bg-gray-50 text-gray-400 rounded-2xl flex items-center justify-center font-black">
+                                                                    {order.tableNumber === 'Takeaway' ? 'SB' : order.tableNumber}
+                                                                </div>
+                                                                <div>
+                                                                    <p className="font-black text-brand-dark text-sm">{order.tableNumber === 'Takeaway' ? 'طلب سفري' : `طاولة ${order.tableNumber}`}</p>
+                                                                    <p className="text-[10px] text-gray-400 font-bold">{new Date(order.date).toLocaleTimeString('ar-EG')}</p>
+                                                                </div>
                                                             </div>
-                                                            <div>
-                                                                <p className="font-black text-brand-dark text-sm">{order.tableNumber === 'Takeaway' ? 'طلب سفري' : `طاولة ${order.tableNumber}`}</p>
-                                                                <p className="text-[10px] text-gray-400 font-bold">{new Date(order.date).toLocaleTimeString('ar-EG')}</p>
+                                                            <div className="flex items-center gap-4">
+                                                                <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase ${order.status === 'pending' ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                                                                    {order.status === 'pending' ? 'في الانتظار' : 'جاري العمل'}
+                                                                </span>
+                                                                {order.status === 'pending' && (
+                                                                    <button onClick={() => onCancelOrder?.(order.id)} className="w-10 h-10 flex items-center justify-center text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
+                                                                        <X size={18} />
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         </div>
-                                                        <div className="flex items-center gap-4">
-                                                            <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase ${order.status === 'pending' ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                                                                {order.status === 'pending' ? 'في الانتظار' : 'جاري العمل'}
-                                                            </span>
-                                                            {order.status === 'pending' && (
-                                                                <button onClick={() => onCancelOrder?.(order.id)} className="w-10 h-10 flex items-center justify-center text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
-                                                                    <X size={18} />
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                                    ))}
                                             </div>
                                         </div>
 
@@ -566,6 +575,41 @@ const SalesView: React.FC<SalesViewProps> = ({
                                             </div>
                                         )}
                                     </>
+                                ) : activityTab === 'completed' ? (
+                                    <div className="space-y-4">
+                                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest px-2">طلبات منجزة اليوم ✨</p>
+                                        {transactions
+                                            .filter(t => t.salesPerson === currentUser?.name && t.status === 'completed' && new Date(t.date).toDateString() === new Date().toDateString())
+                                            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                            .map(order => (
+                                                <div key={order.id} className="bg-emerald-50/30 p-6 rounded-[2.5rem] border border-emerald-100/50 flex justify-between items-center group hover:bg-emerald-50 transition-all cursor-pointer">
+                                                    <div className="flex items-center gap-5">
+                                                        <div className="w-14 h-14 bg-emerald-500 text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-lg shadow-emerald-500/20">
+                                                            {order.tableNumber === 'Takeaway' ? 'SB' : order.tableNumber}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-black text-brand-dark text-lg">{order.tableNumber === 'Takeaway' ? 'طلب سفري منجز' : `طاولة ${order.tableNumber}`}</p>
+                                                            <div className="flex items-center gap-2 text-[10px] text-emerald-600 font-black uppercase">
+                                                                <CheckCircle size={12} />
+                                                                <span>تم التسليم بنجاح</span>
+                                                                <span className="text-gray-300 mx-1">|</span>
+                                                                <span className="text-gray-400">{new Date(order.date).toLocaleTimeString('ar-EG')}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-[10px] font-black text-gray-400 uppercase mb-1">القيمة</p>
+                                                        <p className="font-black text-emerald-600">{formatCurrency(order.total, settings.currency)}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        {transactions.filter(t => t.salesPerson === currentUser?.name && t.status === 'completed' && new Date(t.date).toDateString() === new Date().toDateString()).length === 0 && (
+                                            <div className="text-center py-20 bg-gray-50 rounded-[3rem] border-2 border-dashed border-gray-100">
+                                                <PackageCheck size={48} className="mx-auto mb-4 text-gray-200" />
+                                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">لم يتم إنجاز طلبات بعد</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 ) : (
                                     <div className="space-y-4">
                                         {transactions.filter(t => t.salesPerson === currentUser?.name && t.status === 'cancelled').map(order => (

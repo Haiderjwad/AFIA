@@ -22,6 +22,7 @@ interface KitchenViewProps {
 const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, user, lowStockThreshold = 10, onCancelOrder, transactions: allTransactions = [] }) => {
     const [orders, setOrders] = useState<Transaction[]>([]);
     const [activeTab, setActiveTab] = useState<'live' | 'cancelled'>('live');
+    const [showHistory, setShowHistory] = useState(false);
     const [loading, setLoading] = useState(true);
     const [loadingOrderId, setLoadingOrderId] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -160,24 +161,34 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, user, lowStockThres
                 </div>
 
                 <div className="flex flex-wrap gap-4 items-center">
-                    <div className="flex bg-white rounded-2xl p-1 border border-brand-primary/10 shadow-sm">
+                    <button
+                        onClick={() => setShowHistory(true)}
+                        className="bg-white h-14 px-6 rounded-2xl border border-white shadow-lg shadow-gray-200/50 font-black text-brand-dark flex items-center gap-3 hover:scale-105 transition-all text-xs active:scale-95"
+                    >
+                        <div className="w-8 h-8 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-600">
+                            <History size={16} />
+                        </div>
+                        إنجازاتي
+                    </button>
+
+                    <div className="flex bg-white rounded-2xl p-1 border border-brand-primary/10 shadow-sm h-14 items-center px-2">
                         <button
                             onClick={() => setActiveTab('live')}
-                            className={`px-6 py-2.5 rounded-xl font-black text-sm transition-all ${activeTab === 'live' ? 'bg-brand-primary text-white shadow-lg' : 'text-brand-dark/40 hover:text-brand-primary'}`}
+                            className={`px-6 py-2 rounded-xl font-black text-xs transition-all h-10 ${activeTab === 'live' ? 'bg-brand-primary text-white shadow-lg' : 'text-brand-dark/40 hover:text-brand-primary'}`}
                         >
                             الطلبات الحالية
                         </button>
                         <button
                             onClick={() => setActiveTab('cancelled')}
-                            className={`px-6 py-2.5 rounded-xl font-black text-sm transition-all ${activeTab === 'cancelled' ? 'bg-red-600 text-white shadow-lg' : 'text-brand-dark/40 hover:text-red-600'}`}
+                            className={`px-6 py-2 rounded-xl font-black text-xs transition-all h-10 ${activeTab === 'cancelled' ? 'bg-red-600 text-white shadow-lg' : 'text-brand-dark/40 hover:text-red-600'}`}
                         >
                             الملغاة ({orders.filter(o => o.status === 'cancelled').length})
                         </button>
                     </div>
 
-                    <div className={`px-6 py-3 rounded-2xl shadow-sm border border-brand-primary/10 bg-white flex items-center gap-3 transition-all ${isOnline ? '' : 'bg-red-50 border-red-200 animate-pulse'}`}>
+                    <div className={`px-6 h-14 rounded-2xl shadow-sm border border-brand-primary/10 bg-white flex items-center gap-3 transition-all ${isOnline ? '' : 'bg-red-50 border-red-200 animate-pulse'}`}>
                         <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                        <span className={`font-bold text-sm ${isOnline ? 'text-brand-dark' : 'text-red-700'}`}>
+                        <span className={`font-bold text-xs ${isOnline ? 'text-brand-dark' : 'text-red-700'}`}>
                             {isOnline ? 'البث المباشر متصل' : 'أوفلاين'}
                         </span>
                     </div>
@@ -348,6 +359,77 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, user, lowStockThres
                             <p className="font-bold">لا توجد طلبات ملغاة اليوم</p>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* Kitchen Achievement Log Modal */}
+            {showHistory && (
+                <div className="fixed inset-0 z-[600] flex justify-end animate-in fade-in duration-300" dir="rtl">
+                    <div className="absolute inset-0 bg-brand-dark/40 backdrop-blur-md" onClick={() => setShowHistory(false)} />
+                    <div className="relative w-full max-w-lg bg-white h-full shadow-[0_0_100px_rgba(0,0,0,0.2)] flex flex-col animate-in slide-in-from-left duration-500">
+                        <div className="p-10 bg-brand-primary text-white relative">
+                            <div className="flex items-center gap-5">
+                                <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center text-white">
+                                    <ChefHat size={32} />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-black tracking-tight uppercase">سجل الإنجازات اليومي</h2>
+                                    <p className="text-white/40 text-xs font-bold uppercase tracking-widest mt-1">Daily Kitchen Achievements</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowHistory(false)} className="absolute top-10 left-10 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all">
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div className="p-8 flex-1 overflow-y-auto no-scrollbar">
+                            <div className="space-y-6">
+                                <p className="text-[10px] font-black text-brand-primary uppercase tracking-widest px-2">تم تجهيزها بواسطتك اليوم ✨</p>
+                                {allTransactions
+                                    .filter(t => t.kitchenPerson === user?.name && ['ready', 'completed'].includes(t.status) && new Date(t.date).toDateString() === new Date().toDateString())
+                                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                    .map(order => (
+                                        <div key={order.id} className="bg-brand-primary/5 p-6 rounded-[2.5rem] border border-brand-primary/10 flex justify-between items-center group hover:bg-brand-primary/10 transition-all">
+                                            <div className="flex items-center gap-5">
+                                                <div className="w-14 h-14 bg-brand-primary text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-lg shadow-brand-primary/20">
+                                                    {order.tableNumber === 'Takeaway' ? 'SB' : order.tableNumber}
+                                                </div>
+                                                <div>
+                                                    <p className="font-black text-brand-dark text-lg">{order.tableNumber === 'Takeaway' ? 'طلب سفري' : `طاولة ${order.tableNumber}`}</p>
+                                                    <div className="flex items-center gap-2 text-[10px] text-brand-primary font-black uppercase">
+                                                        <CheckCircle size={12} />
+                                                        <span>تم التجهيز بنجاح</span>
+                                                        <span className="text-gray-300 mx-1">|</span>
+                                                        <span className="text-gray-400">{new Date(order.date).toLocaleTimeString('ar-EG')}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex -space-x-2 rtl:space-x-reverse">
+                                                {order.items.slice(0, 3).map((item, i) => (
+                                                    <div key={i} className="w-8 h-8 rounded-full bg-white border-2 border-brand-primary/10 flex items-center justify-center text-[10px] font-black text-brand-dark shadow-sm">
+                                                        {item.quantity}
+                                                    </div>
+                                                ))}
+                                                {order.items.length > 3 && (
+                                                    <div className="w-8 h-8 rounded-full bg-brand-primary text-white flex items-center justify-center text-[8px] font-black border-2 border-white shadow-sm">
+                                                        +{order.items.length - 3}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                {allTransactions.filter(t => t.kitchenPerson === user?.name && ['ready', 'completed'].includes(t.status) && new Date(t.date).toDateString() === new Date().toDateString()).length === 0 && (
+                                    <div className="text-center py-20 bg-gray-50 rounded-[3rem] border-2 border-dashed border-gray-100">
+                                        <History size={48} className="mx-auto mb-4 text-gray-200" />
+                                        <p className="text-xs font-black text-gray-400 uppercase tracking-widest">لم يتم إنجاز طلبات بعد</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="p-8 bg-gray-50 border-t border-gray-100 flex justify-center text-gray-400 text-[10px] font-black uppercase tracking-[.2em]">
+                            Kitchen Performance Tracking System
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
