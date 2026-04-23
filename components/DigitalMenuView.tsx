@@ -110,7 +110,7 @@ const DigitalMenuView: React.FC<DigitalMenuViewProps> = ({ products, storeName, 
             pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
 
             // Stage 4: Saving and cleanup
-            pdf.save(`Al_Afia_QR_Menu_${settings.storeName.replace(/\s+/g, '_')}.pdf`);
+            pdf.save(`SoftyCode_QR_Menu_${settings.storeName.replace(/\s+/g, '_')}.pdf`);
 
             setIsExporting(false);
             setStatusModal({
@@ -621,7 +621,7 @@ const DigitalMenuView: React.FC<DigitalMenuViewProps> = ({ products, storeName, 
                                             </div>
 
                                             <div className="mt-20 text-center opacity-20 text-[8px] font-black uppercase tracking-[0.5em] pb-12">
-                                                &bull; Powered by Al Afia Smart Cloud &bull;
+                                                &bull; Powered by SoftyCode Smart Cloud &bull;
                                             </div>
                                         </div>
                                     </div>
@@ -675,7 +675,7 @@ const DigitalMenuView: React.FC<DigitalMenuViewProps> = ({ products, storeName, 
                                             {/* System Badge */}
                                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', background: '#2d6a4f', color: '#ffffff', padding: '12px 28px', borderRadius: '100px', boxShadow: '0 8px 24px rgba(45,106,79,0.3)', direction: 'ltr' }}>
                                                 <img src="/branding/afia_logo.png" alt="" style={{ width: '28px', height: '28px', objectFit: 'contain', filter: 'brightness(0) invert(1)' }} />
-                                                <span style={{ fontSize: '18px', fontWeight: 800, letterSpacing: '0', direction: 'rtl', textAlign: 'right', whiteSpace: 'nowrap' }}>نظام ألف عافية للأعمال</span>
+                                                <span style={{ fontSize: '18px', fontWeight: 800, letterSpacing: '0', direction: 'rtl', textAlign: 'right', whiteSpace: 'nowrap' }}>نظام سوفتي كود للأعمال</span>
                                             </div>
                                         </div>
 
@@ -712,7 +712,7 @@ const DigitalMenuView: React.FC<DigitalMenuViewProps> = ({ products, storeName, 
                                         {/* FOOTER BAND */}
                                         <div style={{ width: '100%', background: '#1a3a2a', padding: '28px 60px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '18px', flexShrink: 0, marginTop: 'auto', direction: 'ltr' }}>
                                             <img src="/branding/afia_logo.png" alt="Afia" style={{ width: '44px', height: '44px', objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.9 }} />
-                                            <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '14px', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase' }}>Powered by Al Afia Smart Systems</div>
+                                            <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '14px', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase' }}>Powered by SoftyCode Smart Systems</div>
                                         </div>
                                     </div>{/* end posterRef inner */}
                                 </div>{/* end preview wrapper */}
@@ -738,7 +738,7 @@ const DigitalMenuView: React.FC<DigitalMenuViewProps> = ({ products, storeName, 
                                             <h1 style={{ fontFamily: 'inherit', fontWeight: 900, fontSize: storeName.length > 16 ? '56px' : storeName.length > 10 ? '72px' : '88px', color: '#1a3a2a', lineHeight: 1.05, letterSpacing: '0', margin: '0 0 24px 0', textAlign: 'center', wordBreak: 'break-word', direction: 'rtl' }}>{storeName}</h1>
                                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', background: '#2d6a4f', color: '#ffffff', padding: '12px 28px', borderRadius: '100px', boxShadow: '0 8px 24px rgba(45,106,79,0.3)', direction: 'ltr' }}>
                                                 <img src="/branding/afia_logo.png" alt="" style={{ width: '28px', height: '28px', objectFit: 'contain', filter: 'brightness(0) invert(1)' }} />
-                                                <span style={{ fontSize: '18px', fontWeight: 800, letterSpacing: '0', direction: 'rtl', textAlign: 'right', whiteSpace: 'nowrap' }}>نظام ألف عافية للأعمال</span>
+                                                <span style={{ fontSize: '18px', fontWeight: 800, letterSpacing: '0', direction: 'rtl', textAlign: 'right', whiteSpace: 'nowrap' }}>نظام سوفتي كود للأعمال</span>
                                             </div>
                                         </div>
 
@@ -774,7 +774,7 @@ const DigitalMenuView: React.FC<DigitalMenuViewProps> = ({ products, storeName, 
                                         {/* FOOTER BAND */}
                                         <div style={{ width: '100%', background: '#1a3a2a', padding: '28px 60px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '18px', flexShrink: 0, marginTop: 'auto', direction: 'ltr' }}>
                                             <img src="/branding/afia_logo.png" alt="Afia" style={{ width: '44px', height: '44px', objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.9 }} />
-                                            <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '14px', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase' }}>Powered by Al Afia Smart Systems</div>
+                                            <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '14px', fontWeight: 800, letterSpacing: '2px', textTransform: 'uppercase' }}>Powered by SoftyCode Smart Systems</div>
                                         </div>
                                     </div>
                                 </div>{/* end hidden export div */}

@@ -57,8 +57,7 @@ const TopHeader: React.FC<TopHeaderProps> = ({
         return roles[role] || role;
     };
 
-    const kitchenWarnings = notifications.filter(n => n.type === 'kitchen_warning' && !n.read).length;
-    const notificationCount = readyOrders.length + lowStockItems.length + kitchenWarnings;
+    const notificationCount = readyOrders.length + lowStockItems.length;
 
     return (
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-brand-primary/10 px-4 md:px-8 flex items-center justify-between z-40 sticky top-0" dir="rtl">
@@ -72,7 +71,7 @@ const TopHeader: React.FC<TopHeaderProps> = ({
                     <Menu size={24} />
                 </button>
                 <div className="flex flex-col">
-                    <h1 className="text-[10px] font-black text-brand-primary uppercase tracking-widest">{settings?.storeName || 'ألف عافية'}</h1>
+                    <h1 className="text-[10px] font-black text-brand-primary uppercase tracking-widest">{settings?.storeName || 'سوفتي كود'}</h1>
                     <h2 className="text-lg md:text-xl font-black text-brand-dark leading-tight">{activeTabTitle}</h2>
                 </div>
                 <div className="w-1.5 h-10 bg-brand-accent rounded-full shadow-[0_0_10px_#F8961E]"></div>
@@ -166,28 +165,6 @@ const TopHeader: React.FC<TopHeaderProps> = ({
                                             <div className="flex items-center justify-between">
                                                 <p className="text-[10px] text-gray-400">الكمية: {item.stock} وحدة</p>
                                                 <span className="text-[9px] text-brand-primary font-black group-hover:translate-x-1 transition-transform">انتقال للمنتجات ←</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                                {notifications.filter(n => n.type === 'kitchen_warning').map(n => (
-                                    <div
-                                        key={n.id}
-                                        onClick={() => {
-                                            onNavigate('inventory', undefined, { productSearch: n.productName });
-                                            setShowNotifications(false);
-                                        }}
-                                        className="p-4 border-b border-gray-50 bg-red-50/20 hover:bg-red-50 transition-colors flex items-start gap-3 text-right cursor-pointer group"
-                                    >
-                                        <div className="p-2 bg-red-100 text-red-600 rounded-xl shadow-sm group-hover:scale-110 transition-transform">
-                                            <ChefHat size={16} />
-                                        </div>
-                                        <div className="flex-1">
-                                            <p className="text-sm font-black text-brand-dark group-hover:text-red-700 transition-colors">تنبيه حرج من المطبخ!</p>
-                                            <p className="text-[10px] text-red-700 font-bold mb-1">{n.message}</p>
-                                            <div className="flex items-center justify-between">
-                                                <p className="text-[9px] text-gray-400 font-bold">{new Date(n.timestamp).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</p>
-                                                <span className="text-[9px] text-red-600 font-black group-hover:translate-x-1 transition-transform">عرض المنتج ←</span>
                                             </div>
                                         </div>
                                     </div>

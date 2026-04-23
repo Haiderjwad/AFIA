@@ -96,8 +96,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, setActiveItem, user, sett
           </div>
         </nav>
 
-        <div className="mt-auto opacity-40 text-[10px] font-black text-brand-secondary uppercase tracking-[0.3em] -rotate-90 pb-16">
-          Alf Afia
+        <div className="mt-auto opacity-40 text-[9px] font-black text-brand-secondary uppercase tracking-[0.2em] -rotate-90 pb-16 whitespace-nowrap">
+          SoftyCode
         </div>
       </div>
     </>

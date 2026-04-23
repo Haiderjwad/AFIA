@@ -207,16 +207,11 @@ const App: React.FC = () => {
           const n = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as SystemNotification));
           setNotifications(n);
 
-          // Check for new kitchen warnings for Sales/Cashier/Admin
+          // Check for low stock alerts (only)
           if (currentUser) {
             const role = currentUser.role.toLowerCase();
             if (['admin', 'manager', 'cashier', 'sales'].includes(role)) {
-              const latestKitchenAlert = n.find(notif => notif.type === 'kitchen_warning' && !notif.read);
-              if (latestKitchenAlert && !sessionAlertedIds.has(latestKitchenAlert.id)) {
-                setActiveKitchenAlert(latestKitchenAlert);
-                setSessionAlertedIds(prev => new Set(prev).add(latestKitchenAlert.id));
-                soundService.playNotification();
-              }
+              // Kitchen warnings removed as per request
             }
           }
         },
@@ -350,18 +345,22 @@ const App: React.FC = () => {
       const subtotal = consolidatedItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
       const taxAmount = subtotal * (settings.taxRate / 100);
 
-      // Keep the master's current status — do NOT reset to 'pending'
-      // But if it was 'pending', re-trigger kitchen view with updated items
+      // Preserve existing status: a 'preparing' order stays 'preparing'
+      // A 'pending' order stays 'pending' — kitchen picks it naturally
       await firestoreService.updateTransaction(masterOrder.id, {
         items: consolidatedItems,
         total: subtotal + taxAmount,
-        // Preserve existing status: a 'preparing' order stays 'preparing'
-        // A 'pending' order stays 'pending' — kitchen picks it naturally
+        isUpdated: true, // Mark as updated for kitchen notification
         notes: notes
           ? (masterOrder.notes ? `${masterOrder.notes} | ${notes}` : notes)
           : masterOrder.notes,
         salesPerson: currentUser?.name || 'Unknown'
       });
+
+      // Update Stock for new items!
+      for (const cartItem of cart) {
+        await firestoreService.decrementStock(cartItem.id, cartItem.quantity);
+      }
 
       // Clean up any OTHER early-stage duplicates for the same table
       // (edge case: multiple pending orders for same table)
@@ -395,6 +394,11 @@ const App: React.FC = () => {
       };
 
       await firestoreService.addTransaction(newTransaction);
+
+      // Update Stock for new transaction!
+      for (const cartItem of cart) {
+        await firestoreService.decrementStock(cartItem.id, cartItem.quantity);
+      }
     }
 
     setCart([]);
@@ -411,14 +415,33 @@ const App: React.FC = () => {
     });
   };
 
+  const handleCancelOrder = async (orderId: string) => {
+    // 1. Get the transaction to replenish stock
+    const transaction = transactions.find(t => t.id === orderId);
+    if (transaction) {
+      // 2. Replenish stock
+      for (const item of transaction.items) {
+        // Use decrement with negative quantity to increment
+        await firestoreService.decrementStock(item.id, -item.quantity);
+      }
+
+      // 3. Update status to cancelled
+      await firestoreService.updateTransaction(orderId, {
+        status: 'cancelled',
+        notes: transaction.notes ? `${transaction.notes} | [ملغي]` : '[طلب ملغي]'
+      });
+
+      soundService.playSuccess();
+    }
+  };
+
   const handleFinalizePayment = async (transactionId: string, paymentMethod: 'cash' | 'card' | 'online') => {
     // 1. Update stock atomically
     const transaction = transactions.find(t => t.id === transactionId);
     if (transaction) {
-      for (const cartItem of transaction.items) {
-        // Atomic decrement avoids race conditions between multiple users
-        await firestoreService.decrementStock(cartItem.id, cartItem.quantity);
-      }
+      // Stock is now updated immediately when sent to kitchen, 
+      // so we don't update it again here to avoid double decrement.
+      console.log("Stock already updated at order submission");
     }
 
     // 2. Finalize Transaction (Smart Logic)
@@ -593,6 +616,7 @@ const App: React.FC = () => {
             transactions={transactions}
             currentUser={currentUser}
             onCompleteOrder={handleSendToCashier}
+            onCancelOrder={handleCancelOrder}
             onToggleReceiptPanel={() => setIsReceiptPanelOpen(!isReceiptPanelOpen)}
             cartCount={cart.reduce((acc, item) => acc + item.quantity, 0)}
           />;
@@ -601,7 +625,7 @@ const App: React.FC = () => {
         break;
       case 'kitchen':
         if (['admin', 'manager', 'kitchen', 'cook', 'chef'].includes(role) || perms.includes('kitchen') || hasAll) {
-          return <KitchenView isOnline={isOnline} user={currentUser} />;
+          return <KitchenView isOnline={isOnline} user={currentUser} onCancelOrder={handleCancelOrder} transactions={transactions} />;
         }
         break;
       case 'inventory':
@@ -862,16 +886,7 @@ const App: React.FC = () => {
         />
       )}
 
-      {activeKitchenAlert && (
-        <KitchenAlert
-          notification={activeKitchenAlert}
-          onClose={() => setActiveKitchenAlert(null)}
-          onNavigateToInventory={(productName) => {
-            handleDashboardNavigate('inventory', undefined, { productSearch: productName });
-            setActiveKitchenAlert(null);
-          }}
-        />
-      )}
+      {/* Kitchen Warning Removed */}
     </div>
   );
 };

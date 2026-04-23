@@ -177,8 +177,8 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                     <div className="w-24 h-24 mb-4 drop-shadow-xl hover:scale-110 transition-transform duration-300">
                         <img src="/branding/afia_logo.png" alt="Logo" className="w-full h-full object-contain" />
                     </div>
-                    <h2 className="text-3xl font-black text-brand-dark tracking-tight mb-1">{"ألف عافية"}</h2>
-                    <span className="text-brand-accent text-xs tracking-[0.2em] uppercase font-black">Digital POS System</span>
+                    <h2 className="text-3xl font-black text-brand-dark tracking-tight mb-1">{"سوفتي كود"}</h2>
+                    <span className="text-brand-accent text-xs tracking-[0.2em] uppercase font-black">Restaurants & Cafes POS</span>
                 </div>
 
                 {/* Takeaway Toggle */}

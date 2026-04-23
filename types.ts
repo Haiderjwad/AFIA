@@ -37,12 +37,13 @@ export interface Transaction {
   date: string;
   items: CartItem[];
   total: number;
-  status: 'pending' | 'preparing' | 'ready' | 'waiting_payment' | 'completed' | 'refunded';
+  status: 'pending' | 'preparing' | 'ready' | 'waiting_payment' | 'completed' | 'refunded' | 'cancelled';
   paymentMethod: 'cash' | 'card' | 'online';
   tableNumber?: string;
   isPaid?: boolean;
   notes?: string;
   isManual?: boolean;
+  isUpdated?: boolean;
   salesPerson?: string;     // Who took the order
   kitchenPerson?: string;   // Who prepared the order
   deliveredBy?: string;     // Who delivered it to table

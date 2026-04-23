@@ -71,7 +71,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
 
         const curr = settings?.currency || CURRENCY;
         const receiptType = settings?.receiptType || 'a4';
-        const storeName = settings?.storeName || 'ألف عافية';
+        const storeName = settings?.storeName || 'سوفتي كود';
         const taxRate = settings?.taxRate || 11;
 
         const grandSubtotal = transaction.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
@@ -105,7 +105,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                     <div class="t-meta">
                         <div class="t-meta-row"><span>طريقة الدفع:</span> <strong>${pmtText}</strong></div>
                         ${transaction.tableNumber ? `<div class="t-meta-row"><span>رقم الطاولة:</span> <strong>${transaction.tableNumber}</strong></div>` : ''}
-                        <div class="t-meta-row"><span>الموظف:</span> <span>${transaction.salesPerson || 'نظام ألف عافية'}</span></div>
+                        <div class="t-meta-row"><span>الموظف:</span> <span>${transaction.salesPerson || 'نظام سوفتي كود'}</span></div>
                     </div>
 
                     <div class="t-divider"></div>
@@ -148,8 +148,8 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                             <rect x="98" y="0" width="2" height="20" fill="black" />
                         </svg>
                         <p class="t-thanks text-bold">نسعد دائماً بخدمتكم</p>
-                        <p class="t-sys-info">Powered by <strong>Al-Afia POS</strong></p>
-                        <p class="t-web">www.alafia.iq</p>
+                        <p class="t-sys-info">Powered by <strong>SoftyCode POS</strong></p>
+                        <p class="t-web">www.softycode.com</p>
                     </div>
                 </div>
             `;
@@ -195,7 +195,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
       <img src="${settings?.storeLogo || '/branding/afia_logo.png'}" class="a4-logo" />
       <div>
         <div class="a4-biz-name">${storeName}</div>
-        <div class="a4-biz-sub">التميز في خدمة الضيافة &nbsp;|&nbsp; Excellence in Hospitality</div>
+        <div class="a4-biz-sub">سوفتي كود للحلول الرقمية &nbsp;|&nbsp; SoftyCode Digital Solutions</div>
       </div>
     </div>
     <div class="a4-hdr-right">
@@ -229,7 +229,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
     <div class="a4-meta-sep"></div>
     <div class="a4-meta-cell">
       <span class="a4-meta-k">الموظف</span>
-      <span class="a4-meta-v">${transaction.salesPerson || 'ألف عافية'}</span>
+      <span class="a4-meta-v">${transaction.salesPerson || 'سوفتي كود'}</span>
     </div>
   </div>
 
@@ -296,7 +296,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
   <div class="a4-footer">
     <div class="a4-footer-bar"></div>
     <div class="a4-footer-content">
-      <span>نظام ألف عافية للمطاعم &middot; Al-Afia POS &middot; www.alafia.iq</span>
+      <span>نظام سوفتي كود للمطاعم &middot; SoftyCode POS &middot; www.softycode.com</span>
       <span>صفحة ${pageIndex + 1} من ${totalPgs} &nbsp;&mdash;&nbsp; تم الإصدار إلكترونياً</span>
     </div>
   </div>
@@ -349,7 +349,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
 
                 <div class="l-customer-panel">
                     <div class="l-panel-item"><strong>مكان الطلب:</strong> <span>${transaction.tableNumber || 'توصيل / سفري'}</span></div>
-                    <div class="l-panel-item"><strong>الموظف:</strong> <span>${transaction.salesPerson || 'نظام ألف عافية'}</span></div>
+                    <div class="l-panel-item"><strong>الموظف:</strong> <span>${transaction.salesPerson || 'نظام سوفتي كود'}</span></div>
                     <div class="l-panel-item"><strong>طريقة السداد:</strong> <span>${pmtText}</span></div>
                     <div class="l-panel-item"><strong>حالة القيد:</strong> <span style="color:${brandColor}">مكتمل ومرحل</span></div>
                 </div>
@@ -391,7 +391,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                             <span>التحقق الرقمي</span>
                         </div>
                         <div class="l-thanks-msg">شكراً لكم لاختياركم ${storeName}</div>
-                        <div class="l-sys-tag">صفحة ${pageIndex + 1} &middot; الف ألف عافية</div>
+                        <div class="l-sys-tag">صفحة ${pageIndex + 1} &middot; سوفتي كود</div>
                     </div>
                 </div>
             </div>`;

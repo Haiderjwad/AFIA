@@ -12,18 +12,20 @@ interface SalesViewProps {
     transactions: Transaction[];
     currentUser: Employee | null;
     onCompleteOrder: (id: string) => void;
+    onCancelOrder?: (id: string) => void;
     onToggleReceiptPanel?: () => void;
     cartCount?: number;
 }
 
 const SalesView: React.FC<SalesViewProps> = ({
     products, addToCart, settings, readyOrders, transactions,
-    currentUser, onCompleteOrder, onToggleReceiptPanel, cartCount
+    currentUser, onCompleteOrder, onCancelOrder, onToggleReceiptPanel, cartCount
 }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [showReadyAlert, setShowReadyAlert] = useState(true);
     const [showActivityLog, setShowActivityLog] = useState(false);
+    const [activityTab, setActivityTab] = useState<'active' | 'cancelled'>('active');
 
     const categories = ['all', ...Array.from(new Set(products.map(p => p.category)))];
 
@@ -206,75 +208,136 @@ const SalesView: React.FC<SalesViewProps> = ({
                         </div>
 
                         <div className="p-8 overflow-y-auto no-scrollbar space-y-8">
-                            {/* Sent Orders */}
-                            <div>
-                                <h3 className="font-extrabold text-brand-dark mb-4 flex items-center gap-2">
-                                    <Clock size={18} className="text-orange-500" /> طلبات أرسلتها (قيد التحضير)
-                                </h3>
-                                <div className="space-y-3">
-                                    {transactions
-                                        .filter(t => t.salesPerson === currentUser?.name && ['pending', 'preparing'].includes(t.status))
-                                        .map(order => (
-                                            <div key={order.id} className="flex justify-between items-center bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="bg-white w-10 h-10 rounded-xl flex items-center justify-center font-black text-brand-primary shadow-sm border border-brand-primary/5 text-xs">
-                                                        {order.tableNumber === 'Takeaway' ? 'SB' : order.tableNumber || '??'}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-black text-brand-dark text-sm">
-                                                            {order.tableNumber === 'Takeaway' ? 'طلب سفري' : `طاولة ${order.tableNumber}`}
-                                                        </p>
-                                                        <p className="text-[10px] text-gray-400 font-bold">{new Date(order.date).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</p>
-                                                    </div>
-                                                </div>
-                                                <span className="px-3 py-1 bg-orange-100 text-orange-600 rounded-lg text-[10px] font-black uppercase">
-                                                    {order.status === 'pending' ? 'انتظار' : 'تحضير'}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    {transactions.filter(t => t.salesPerson === currentUser?.name && ['pending', 'preparing'].includes(t.status)).length === 0 && (
-                                        <p className="text-center py-4 text-gray-400 text-xs font-bold">لا توجد طلبات قيد التحضير حالياً</p>
-                                    )}
-                                </div>
+                            <div className="flex bg-gray-100 p-1.5 rounded-2xl mb-4">
+                                <button
+                                    onClick={() => setActivityTab('active')}
+                                    className={`flex-1 py-3 rounded-xl font-black text-sm transition-all ${activityTab === 'active' ? 'bg-white text-brand-primary shadow-sm' : 'text-gray-400 hover:text-brand-primary'}`}
+                                >
+                                    الطلبات النشطة
+                                </button>
+                                <button
+                                    onClick={() => setActivityTab('cancelled')}
+                                    className={`flex-1 py-3 rounded-xl font-black text-sm transition-all ${activityTab === 'cancelled' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-400 hover:text-red-600'}`}
+                                >
+                                    الطلبات الملغاة ({transactions.filter(t => t.salesPerson === currentUser?.name && t.status === 'cancelled').length})
+                                </button>
                             </div>
 
-                            {/* Received Orders */}
-                            <div>
-                                <h3 className="font-extrabold text-brand-dark mb-4 flex items-center gap-2">
-                                    <PackageCheck size={18} className="text-brand-primary" /> طلبات جاهزة للاستلام
-                                </h3>
-                                <div className="space-y-3">
+                            {activityTab === 'active' ? (
+                                <>
+                                    {/* Sent Orders */}
+                                    <div>
+                                        <h3 className="font-extrabold text-brand-dark mb-4 flex items-center gap-2">
+                                            <Clock size={18} className="text-orange-500" /> طلبات أرسلتها (قيد التحضير)
+                                        </h3>
+                                        <div className="space-y-3">
+                                            {transactions
+                                                .filter(t => t.salesPerson === currentUser?.name && ['pending', 'preparing'].includes(t.status))
+                                                .map(order => (
+                                                    <div key={order.id} className="flex justify-between items-center bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="bg-white w-10 h-10 rounded-xl flex items-center justify-center font-black text-brand-primary shadow-sm border border-brand-primary/5 text-xs">
+                                                                {order.tableNumber === 'Takeaway' ? 'SB' : order.tableNumber || '??'}
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-black text-brand-dark text-sm">
+                                                                    {order.tableNumber === 'Takeaway' ? 'طلب سفري' : `طاولة ${order.tableNumber}`}
+                                                                </p>
+                                                                <p className="text-[10px] text-gray-400 font-bold">{new Date(order.date).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="px-3 py-1 bg-orange-100 text-orange-600 rounded-lg text-[10px] font-black uppercase">
+                                                                {order.status === 'pending' ? 'انتظار' : 'تحضير'}
+                                                            </span>
+                                                            {order.status === 'pending' && (
+                                                                <button
+                                                                    onClick={() => onCancelOrder?.(order.id)}
+                                                                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                                    title="إلغاء الطلب"
+                                                                >
+                                                                    <X size={16} />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            {transactions.filter(t => t.salesPerson === currentUser?.name && ['pending', 'preparing'].includes(t.status)).length === 0 && (
+                                                <p className="text-center py-4 text-gray-400 text-xs font-bold">لا توجد طلبات قيد التحضير حالياً</p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Received Orders */}
+                                    <div>
+                                        <h3 className="font-extrabold text-brand-dark mb-4 flex items-center gap-2">
+                                            <PackageCheck size={18} className="text-brand-primary" /> طلبات جاهزة للاستلام
+                                        </h3>
+                                        <div className="space-y-3">
+                                            {transactions
+                                                .filter(t => t.status === 'ready')
+                                                .map(order => (
+                                                    <div key={order.id} className="flex justify-between items-center bg-brand-light/5 p-4 rounded-2xl border border-brand-primary/10">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="bg-brand-primary text-white w-10 h-10 rounded-xl flex items-center justify-center font-black shadow-sm text-xs">
+                                                                {order.tableNumber === 'Takeaway' ? 'SB' : order.tableNumber || '??'}
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-black text-brand-dark text-sm">
+                                                                    {order.tableNumber === 'Takeaway' ? 'طلب سفري' : `طاولة ${order.tableNumber}`}
+                                                                </p>
+                                                                <p className="text-[10px] text-brand-primary/60 font-bold">بواسطة المطبخ: {order.kitchenPerson || '---'}</p>
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => {
+                                                                onCompleteOrder(order.id);
+                                                                setShowActivityLog(false);
+                                                            }}
+                                                            className="bg-brand-primary text-white px-4 py-2 rounded-xl text-[10px] font-black hover:bg-brand-secondary transition-all"
+                                                        >
+                                                            تسجيل استلام
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            {transactions.filter(t => t.status === 'ready').length === 0 && (
+                                                <p className="text-center py-4 text-gray-400 text-xs font-bold">لا توجد طلبات جاهزة حالياً</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                /* Cancelled Orders List */
+                                <div className="space-y-4">
                                     {transactions
-                                        .filter(t => t.status === 'ready')
+                                        .filter(t => t.salesPerson === currentUser?.name && t.status === 'cancelled')
                                         .map(order => (
-                                            <div key={order.id} className="flex justify-between items-center bg-brand-light/5 p-4 rounded-2xl border border-brand-primary/10">
+                                            <div key={order.id} className="bg-red-50/50 p-6 rounded-3xl border border-red-100 flex justify-between items-center opacity-80 grayscale-[0.3] hover:grayscale-0 transition-all">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="bg-brand-primary text-white w-10 h-10 rounded-xl flex items-center justify-center font-black shadow-sm text-xs">
-                                                        {order.tableNumber === 'Takeaway' ? 'SB' : order.tableNumber || '??'}
+                                                    <div className="bg-red-100 text-red-600 w-12 h-12 rounded-2xl flex items-center justify-center font-black shadow-inner">
+                                                        <X size={24} />
                                                     </div>
                                                     <div>
-                                                        <p className="font-black text-brand-dark text-sm">
-                                                            {order.tableNumber === 'Takeaway' ? 'طلب سفري' : `طاولة ${order.tableNumber}`}
-                                                        </p>
-                                                        <p className="text-[10px] text-brand-primary/60 font-bold">بواسطة المطبخ: {order.kitchenPerson || '---'}</p>
+                                                        <h4 className="font-extrabold text-brand-dark">
+                                                            {order.tableNumber === 'Takeaway' ? 'طلب سفري ملغي' : `طاولة ${order.tableNumber} (ملغي)`}
+                                                        </h4>
+                                                        <p className="text-[10px] text-red-600 font-bold">تم الإلغاء وتعديل المخزون ✓</p>
                                                     </div>
                                                 </div>
-                                                <button
-                                                    onClick={() => {
-                                                        onCompleteOrder(order.id);
-                                                        setShowActivityLog(false);
-                                                    }}
-                                                    className="bg-brand-primary text-white px-4 py-2 rounded-xl text-[10px] font-black hover:bg-brand-secondary transition-all"
-                                                >
-                                                    تسجيل استلام
-                                                </button>
+                                                <div className="text-left">
+                                                    <p className="text-[10px] text-gray-400 font-bold">{new Date(order.date).toLocaleDateString('ar-EG')} | {new Date(order.date).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</p>
+                                                    <span className="text-[10px] font-black text-brand-dark px-2 bg-white rounded-md border border-gray-100">#{order.id.slice(-4)}</span>
+                                                </div>
                                             </div>
                                         ))}
-                                    {transactions.filter(t => t.status === 'ready').length === 0 && (
-                                        <p className="text-center py-4 text-gray-400 text-xs font-bold">لا توجد طلبات جاهزة حالياً</p>
+                                    {transactions.filter(t => t.salesPerson === currentUser?.name && t.status === 'cancelled').length === 0 && (
+                                        <div className="text-center py-20 opacity-20">
+                                            <X size={64} className="mx-auto mb-4" />
+                                            <p className="font-black">لا توجد طلبات ملغاة</p>
+                                        </div>
                                     )}
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </div>
                 </div>
