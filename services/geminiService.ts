@@ -4,20 +4,20 @@ import { Transaction } from "../types";
 // Initialize Gemini safely
 // We use a lazy getter to ensure env vars are ready and to catch initialization errors gracefully.
 let ai: GoogleGenAI | null = null;
-const MODEL_NAME = 'gemini-2.5-flash';
+const MODEL_NAME = 'gemini-1.5-flash';
 
 const getAi = () => {
-    if (!ai) {
-        // Safely check for process to avoid ReferenceError in browser environments that don't shim it immediately
-        const apiKey = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : undefined;
-        
-        if (apiKey) {
-            ai = new GoogleGenAI({ apiKey });
-        } else {
-            console.warn("API_KEY is missing.");
-        }
+  if (!ai) {
+    // Safely check for process to avoid ReferenceError in browser environments that don't shim it immediately
+    const apiKey = (typeof process !== 'undefined' && process.env) ? process.env.API_KEY : undefined;
+
+    if (apiKey) {
+      ai = new GoogleGenAI({ apiKey });
+    } else {
+      console.warn("API_KEY is missing.");
     }
-    return ai;
+  }
+  return ai;
 };
 
 export const generateSalesInsight = async (totalRevenue: number, transactionCount: number): Promise<string> => {

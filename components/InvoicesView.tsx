@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import StatusModal from './StatusModal';
 import { soundService } from '../services/soundService';
 import { Transaction, MenuItem, AppSettings, CartItem } from '../types';
@@ -14,7 +14,7 @@ import { formatCurrency } from '../utils/currencyUtils';
 
 interface InvoicesViewProps {
     transactions: Transaction[];
-    onFinalizePayment?: (id: string, method: 'cash' | 'card' | 'online') => Promise<void>;
+    onFinalizePayment?: (id: string | string[], method: 'cash' | 'card' | 'online') => Promise<void>;
     canFinalize?: boolean;
     products?: MenuItem[];
     settings?: AppSettings;
@@ -54,6 +54,63 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
 
         return matchesSearch;
     });
+
+    // ════════════════════════════════════════════════════════════════
+    // PROFESSIONAL INVOICE MERGING LOGIC
+    // Merges transactions for the same table into a single viewable invoice
+    // if they are not yet paid/completed.
+    // ════════════════════════════════════════════════════════════════
+    const displayTransactions = useMemo(() => {
+        if (activeTab !== 'pending') return filteredTransactions;
+
+        const tableGroups: Record<string, Transaction[]> = {};
+        const others: Transaction[] = [];
+
+        filteredTransactions.forEach(t => {
+            if (t.tableNumber && !['completed', 'refunded', 'cancelled'].includes(t.status) && !t.isPaid) {
+                if (!tableGroups[t.tableNumber]) tableGroups[t.tableNumber] = [];
+                tableGroups[t.tableNumber].push(t);
+            } else {
+                others.push(t);
+            }
+        });
+
+        const mergedList: any[] = [];
+        Object.entries(tableGroups).forEach(([tableNum, group]) => {
+            if (group.length > 1) {
+                // Perform deep merge of items
+                const itemMap: Record<string, any> = {};
+                group.forEach(t => {
+                    t.items.forEach(item => {
+                        const key = item.id;
+                        if (itemMap[key]) {
+                            itemMap[key].quantity += item.quantity;
+                        } else {
+                            itemMap[key] = { ...item };
+                        }
+                    });
+                });
+
+                const combinedTotal = group.reduce((sum, t) => sum + t.total, 0);
+                const allIds = group.map(t => t.id);
+
+                // Create a Virtual Master Transaction
+                mergedList.push({
+                    ...group[0], // Base info from the first one
+                    id: `GROUP-${tableNum}`,
+                    items: Object.values(itemMap),
+                    total: combinedTotal,
+                    originalIds: allIds,
+                    isMerged: true,
+                    groupCount: group.length
+                });
+            } else if (group.length === 1) {
+                mergedList.push(group[0]);
+            }
+        });
+
+        return [...mergedList, ...others].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [filteredTransactions, activeTab]);
 
     const completedTransactions = transactions.filter(t => ['completed', 'refunded'].includes(t.status) || t.isPaid);
 
@@ -850,7 +907,8 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
         });
 
         try {
-            await onFinalizePayment(selectedForPayment.id, selectedMethod);
+            const targetId = (selectedForPayment as any).originalIds || selectedForPayment.id;
+            await onFinalizePayment(targetId, selectedMethod);
             const updated = { ...selectedForPayment, status: 'completed' as const, paymentMethod: selectedMethod };
 
             setSelectedForPayment(null);
@@ -1038,13 +1096,13 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
 
             {/* Transactions Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
-                {filteredTransactions.length === 0 ? (
+                {displayTransactions.length === 0 ? (
                     <div className="col-span-full flex flex-col items-center justify-center py-24 text-gray-400 bg-white/50 rounded-[3rem] border-2 border-dashed border-gold-100">
                         <Coffee size={80} className="mb-4 opacity-10" />
                         <p className="font-bold text-xl">لا توجد سجلات مطابقة لهذا البحث</p>
                     </div>
                 ) : (
-                    filteredTransactions.map((transaction) => (
+                    displayTransactions.map((transaction) => (
                         <div
                             key={transaction.id}
                             onClick={() => setViewingTransaction(transaction)}
@@ -1065,7 +1123,11 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                     <span className="text-lg whitespace-nowrap font-black">
                                         {transaction.tableNumber === 'Takeaway' ? 'طلب سفري 🛍️' : transaction.tableNumber ? `طاولة ${transaction.tableNumber}` : 'يدوي طوارئ'}
                                     </span>
-
+                                    {transaction.isMerged && (
+                                        <span className="text-[9px] bg-brand-dark text-brand-accent px-2 py-0.5 rounded-full mt-1 animate-pulse">
+                                            فاتورة مدمجة ({transaction.groupCount} طلبات)
+                                        </span>
+                                    )}
                                 </div>
 
                                 <div className="flex flex-col items-end gap-2">
@@ -1592,16 +1654,16 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
 
                                     <div className="flex gap-4">
                                         <button
-                                            onClick={() => setPaymentStep(1)}
-                                            className="flex-1 py-5 rounded-[2rem] bg-gray-100 text-gray-400 font-black text-sm hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
-                                        >
-                                            <ChevronLeft size={18} /> تراجع
-                                        </button>
-                                        <button
                                             onClick={handleComplete}
                                             className="flex-[2] py-5 rounded-[2rem] bg-brand-primary text-white font-black text-lg hover:bg-brand-secondary transition-all shadow-2xl shadow-brand-primary/30 flex items-center justify-center gap-3 active:scale-95"
                                         >
                                             <CheckCircle size={24} /> تم استلام المبلغ
+                                        </button>
+                                        <button
+                                            onClick={() => setPaymentStep(1)}
+                                            className="flex-1 py-5 rounded-[2rem] bg-gray-100 text-gray-400 font-black text-sm hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <ChevronLeft size={18} /> تراجع
                                         </button>
                                     </div>
 

@@ -34,12 +34,6 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ isOpen, onClose
 
                     <div className="grid grid-cols-2 gap-4 w-full">
                         <button
-                            onClick={onClose}
-                            className="py-5 px-6 bg-brand-light/20 text-brand-primary rounded-[1.8rem] font-black hover:bg-brand-primary hover:text-white transition-all active:scale-95 flex items-center justify-center gap-2"
-                        >
-                            تراجع
-                        </button>
-                        <button
                             onClick={() => {
                                 onConfirm();
                                 onClose();
@@ -48,6 +42,12 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ isOpen, onClose
                         >
                             <Trash2 size={20} />
                             تأكيد الحذف
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className="py-5 px-6 bg-brand-light/20 text-brand-primary rounded-[1.8rem] font-black hover:bg-brand-primary hover:text-white transition-all active:scale-95 flex items-center justify-center gap-2"
+                        >
+                            تراجع
                         </button>
                     </div>
                 </div>

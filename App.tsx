@@ -26,6 +26,7 @@ import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebas
 import SplashScreen from './components/SplashScreen';
 import PublicMenuView from './components/PublicMenuView';
 import DigitalMenuView from './components/DigitalMenuView';
+import StatusModal from './components/StatusModal';
 
 
 const App: React.FC = () => {
@@ -34,6 +35,7 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [isSplashDone, setIsSplashDone] = useState(false); // tracks splash bar completion
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isPublicMenu, setIsPublicMenu] = useState(false);
 
@@ -47,23 +49,7 @@ const App: React.FC = () => {
 
 
   useEffect(() => {
-    // 1. Initial Seeding and Settings Check
-    const initializeSystem = async () => {
-      try {
-        // Run seeding in background, don't let it block critical UI
-        firestoreService.seedDatabase().catch(err => console.error("Seeding Error:", err));
-
-        // Try to get settings, but don't crash if it fails
-        const initialSettings = await firestoreService.getSettings();
-        if (initialSettings) setSettings(initialSettings);
-      } catch (error) {
-        console.warn("System settings fetch failed, using defaults:", error);
-      }
-    };
-
-    initializeSystem();
-
-    // 2. Auth State Listener
+    // Auth State Listener
     const unsubAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       setIsAuthLoading(true);
       try {
@@ -108,8 +94,8 @@ const App: React.FC = () => {
         console.error("Auth transformation error:", error);
       } finally {
         setIsAuthLoading(false);
-        // Minimum aesthetic delay to ensure smooth transition
-        setTimeout(() => setIsInitializing(false), 500);
+        // Minimum aesthetic delay — splash will control its own lifetime via onComplete
+        setTimeout(() => setIsInitializing(false), 300);
       }
     });
 
@@ -175,6 +161,7 @@ const App: React.FC = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isReceiptPanelOpen, setIsReceiptPanelOpen] = useState(false);
+  const [selectedTableNumber, setSelectedTableNumber] = useState<string>('');
 
   useEffect(() => {
     let unsubProducts: any, unsubTransactions: any, unsubSettings: any, unsubNotifications: any, unsubEmployees: any, unsubSuppliers: any;
@@ -227,6 +214,19 @@ const App: React.FC = () => {
         const s = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Supplier));
         setSuppliers(s);
       }, (error) => console.error("Suppliers Snapshot Error:", error));
+
+      // 4. Initial Seeding and Settings Check (Only when authenticated)
+      const initSettings = async () => {
+        try {
+          // Attempt seeding/defaults if auth is present
+          firestoreService.seedDatabase().catch(() => { /* silent in dev */ });
+          const sessSettings = await firestoreService.getSettings();
+          if (sessSettings) setSettings(sessSettings);
+        } catch (e) {
+          // Silent fallback
+        }
+      };
+      initSettings();
     }
 
     return () => {
@@ -435,33 +435,28 @@ const App: React.FC = () => {
     }
   };
 
-  const handleFinalizePayment = async (transactionId: string, paymentMethod: 'cash' | 'card' | 'online') => {
-    // 1. Update stock atomically
-    const transaction = transactions.find(t => t.id === transactionId);
-    if (transaction) {
-      // Stock is now updated immediately when sent to kitchen, 
-      // so we don't update it again here to avoid double decrement.
-      console.log("Stock already updated at order submission");
-    }
+  const handleFinalizePayment = async (transactionIds: string | string[], paymentMethod: 'cash' | 'card' | 'online') => {
+    const ids = Array.isArray(transactionIds) ? transactionIds : [transactionIds];
 
-    // 2. Finalize Transaction (Smart Logic)
-    const currentTrans = transactions.find(t => t.id === transactionId);
-    if (currentTrans) {
-      // If order is ready or waiting, it's fully done. 
-      // If it's still pending/preparing, it's paid but stays in kitchen.
-      let finalStatus = currentTrans.status;
-      if (currentTrans.status === 'ready' || currentTrans.status === 'waiting_payment') {
-        finalStatus = 'completed';
+    for (const transactionId of ids) {
+      // Finalize Transaction (Smart Logic)
+      const currentTrans = transactions.find(t => t.id === transactionId);
+      if (currentTrans) {
+        // If order is ready or waiting, it's fully done. 
+        // If it's still pending/preparing, it's paid but stays in kitchen.
+        let finalStatus = currentTrans.status;
+        if (currentTrans.status === 'ready' || currentTrans.status === 'waiting_payment') {
+          finalStatus = 'completed';
+        }
+
+        await firestoreService.updateTransaction(transactionId, {
+          status: finalStatus,
+          paymentMethod: paymentMethod,
+          isPaid: true,
+          cashierPerson: currentUser?.name || 'Unknown'
+        });
       }
-
-      await firestoreService.updateTransaction(transactionId, {
-        status: finalStatus,
-        paymentMethod: paymentMethod,
-        isPaid: true,
-        cashierPerson: currentUser?.name || 'Unknown'
-      });
     }
-
   };
 
   const handleSidebarNavigation = (tab: string) => {
@@ -502,15 +497,31 @@ const App: React.FC = () => {
 
   // Cart Logic
   const addToCart = (product: MenuItem) => {
+    // 1. Get the latest product state to ensure we have the most recent stock count
+    const currentProduct = products.find(p => p.id === product.id);
+
+    if (!currentProduct || currentProduct.stock <= 0) {
+      soundService.playError();
+      return;
+    }
+
     setCart((prev) => {
       const existing = prev.find((item) => item.id === product.id);
+
+      // 2. Prevent adding more than what's available in stock
       if (existing) {
+        if (existing.quantity >= currentProduct.stock) {
+          soundService.playError();
+          return prev;
+        }
         return prev.map((item) =>
           item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
+
       return [...prev, { ...product, quantity: 1 }];
     });
+
     // Optional: Open panel on mobile when adding first item
     if (cart.length === 0 && window.innerWidth < 1280) {
       setIsReceiptPanelOpen(true);
@@ -619,6 +630,8 @@ const App: React.FC = () => {
             onCancelOrder={handleCancelOrder}
             onToggleReceiptPanel={() => setIsReceiptPanelOpen(!isReceiptPanelOpen)}
             cartCount={cart.reduce((acc, item) => acc + item.quantity, 0)}
+            selectedTableNumber={selectedTableNumber}
+            onSelectTable={setSelectedTableNumber}
           />;
 
         }
@@ -709,6 +722,8 @@ const App: React.FC = () => {
       onCompleteOrder={handleSendToCashier}
       onToggleReceiptPanel={() => setIsReceiptPanelOpen(!isReceiptPanelOpen)}
       cartCount={cart.reduce((acc, item) => acc + item.quantity, 0)}
+      selectedTableNumber={selectedTableNumber}
+      onSelectTable={setSelectedTableNumber}
     />;
     if (role === 'cashier') return <InvoicesView
       transactions={transactions}
@@ -729,8 +744,9 @@ const App: React.FC = () => {
     />;
   };
 
-  if (isInitializing || isAuthLoading) {
-    return <SplashScreen />;
+  // Show splash while: auth hasn't resolved OR splash bar isn't done yet
+  if (isInitializing || isAuthLoading || !isSplashDone) {
+    return <SplashScreen onComplete={() => setIsSplashDone(true)} />;
   }
 
   // Digital Menu Public View (Bypass Auth)
@@ -805,17 +821,13 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {showSuccessModal && (
-          <div className="absolute inset-0 bg-black/60 z-[60] flex items-center justify-center backdrop-blur-sm">
-            <div className="bg-white rounded-3xl p-10 flex flex-col items-center gap-6 shadow-2xl animate-in zoom-in-95 duration-300 max-w-sm text-center">
-              <div className="w-24 h-24 rounded-full flex items-center justify-center mb-2 bg-green-100 text-green-600">
-                <CheckCircle size={60} />
-              </div>
-              <h2 className="text-2xl font-bold text-coffee-900">تمت العملية بنجاح!</h2>
-              <p className="text-gray-500">تم تسجيل الفاتورة في النظام.</p>
-            </div>
-          </div>
-        )}
+        <StatusModal
+          isOpen={showSuccessModal}
+          onClose={() => setShowSuccessModal(false)}
+          type="success"
+          title="تم إرسال الطلب بنجاح!"
+          message="تم تسجيل طلبات الطاولة وإرسال التنبيهات للمطبخ بنجاح، العملية مؤمنة ومسجلة في النظام."
+        />
       </div>
 
       {activeTab === 'sales' && (
@@ -830,6 +842,9 @@ const App: React.FC = () => {
           userRole={currentUser?.role || 'sales'}
           isOpen={isReceiptPanelOpen}
           onClose={() => setIsReceiptPanelOpen(false)}
+          tableNumber={selectedTableNumber}
+          onTableChange={setSelectedTableNumber}
+          products={products}
         />
       )}
 

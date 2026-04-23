@@ -623,17 +623,17 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
 
               <div className="pt-10 flex gap-4">
                 <button
+                  type="submit"
+                  className="flex-[2] py-6 rounded-[2.2rem] bg-brand-primary text-white font-black shadow-2xl shadow-brand-primary/20 hover:bg-brand-dark transition-all active:scale-95 flex items-center justify-center gap-3"
+                >
+                  <Check size={24} /> {editingSupplier ? 'حفظ التعديلات' : 'تأكيد الإضافة'}
+                </button>
+                <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
                   className="flex-1 py-6 rounded-[2.2rem] bg-gray-50 text-brand-dark/40 font-black hover:bg-gray-100 transition-all active:scale-95 border-2 border-transparent"
                 >
                   إلغاء التوريد
-                </button>
-                <button
-                  type="submit"
-                  className="flex-[2] py-6 rounded-[2.2rem] bg-brand-primary text-white font-black shadow-2xl shadow-brand-primary/20 hover:bg-brand-dark transition-all active:scale-95 flex items-center justify-center gap-3"
-                >
-                  <Check size={24} /> {editingSupplier ? 'حفظ التعديلات' : 'تأكيد الإضافة'}
                 </button>
               </div>
             </form>

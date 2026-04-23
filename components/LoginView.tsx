@@ -63,7 +63,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
       >
         <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] shadow-[0_20px_60px_rgba(45,106,79,0.12),0_4px_20px_rgba(0,0,0,0.06)] border border-white/70 overflow-hidden">
 
-          {/* Status bar */}
+          {/* Status bar — rounded-t inherits card curve via parent overflow-hidden */}
           <div className={`h-10 flex items-center justify-center gap-2 transition-all duration-500 ${isOnline ? '' : 'animate-pulse'}`}
             style={{ background: isOnline ? 'linear-gradient(90deg, #1B4332, #2D6A4F, #52B788)' : 'linear-gradient(90deg, #dc2626, #e11d48)' }}>
             <div className={`w-1.5 h-1.5 rounded-full bg-white ${isOnline ? '' : 'animate-ping'}`} />
@@ -88,15 +88,14 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                 </div>
               </div>
 
-              {/* Main Arabic name with gradient */}
-              <h1 className="mb-0.5 font-black leading-tight text-center" style={{ fontSize: '2rem' }}>
+              {/* Main Arabic name — paddingBottom prevents gradient-text descender clipping */}
+              <h1 className="mb-0.5 font-black text-center" style={{ fontSize: '2rem', lineHeight: 1.3, paddingBottom: '0.08em' }}>
                 <span
                   style={{
                     background: 'linear-gradient(135deg, #1B4332 0%, #2D6A4F 55%, #52B788 100%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                     backgroundClip: 'text',
-                    filter: 'drop-shadow(0 1px 4px rgba(45,106,79,0.2))',
                     display: 'block',
                   }}
                 >
@@ -117,7 +116,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
 
               {/* Arabic subtitle — warm orange */}
               <p className="font-bold text-center mb-3" style={{ fontSize: '1rem', color: '#F8961E', letterSpacing: '0.02em', textShadow: '0 1px 8px rgba(248,150,30,0.2)' }}>
-                للمطاعم و الكفيهات
+                للمطاعم و الكافيهات
               </p>
 
               {/* English badge */}

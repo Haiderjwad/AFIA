@@ -1,23 +1,32 @@
 
 import React, { useEffect, useState } from 'react';
 
-const SplashScreen: React.FC = () => {
+interface SplashScreenProps {
+    onComplete?: () => void;
+}
+
+const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     const [progress, setProgress] = useState(0);
     const [isReady, setIsReady] = useState(false);
 
     useEffect(() => {
-        // Trigger animation after mount
+        // Trigger entrance animation after mount
         const readyTimer = setTimeout(() => setIsReady(true), 100);
 
+        // Progress bar at fixed speed — always ~3 seconds total regardless of auth state
         const timer = setInterval(() => {
             setProgress(prev => {
-                if (prev >= 100) {
+                const next = prev + 2;
+                if (next >= 100) {
                     clearInterval(timer);
+                    // Notify parent that splash is done after a short hold
+                    setTimeout(() => onComplete?.(), 400);
                     return 100;
                 }
-                return prev + 2;
+                return next;
             });
-        }, 30);
+        }, 60); // 60ms × 50 steps = 3 seconds
+
         return () => {
             clearInterval(timer);
             clearTimeout(readyTimer);
@@ -25,7 +34,7 @@ const SplashScreen: React.FC = () => {
     }, []);
 
     return (
-        <div className="fixed inset-0 z-[9999] overflow-hidden" style={{ background: 'linear-gradient(160deg, #f5fbf7 0%, #fef9f4 50%, #f5fbf7 100%)' }}>
+        <div className="fixed inset-0 z-[9999]" style={{ background: 'linear-gradient(160deg, #f5fbf7 0%, #fef9f4 50%, #f5fbf7 100%)', overflow: 'hidden' }}>
 
             {/* Decorative blobs */}
             <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full opacity-20 pointer-events-none" style={{ background: 'radial-gradient(circle, #2D6A4F 0%, transparent 70%)' }} />
@@ -65,17 +74,18 @@ const SplashScreen: React.FC = () => {
                     className="text-center transition-all duration-1000 delay-200"
                     style={{ opacity: isReady ? 1 : 0, transform: isReady ? 'translateY(0)' : 'translateY(24px)' }}
                 >
-                    {/* Arabic primary name */}
+                    {/* Arabic primary name — padding prevents gradient-text bottom clipping */}
                     <div className="mb-1" dir="rtl">
                         <span
-                            className="font-black tracking-tight leading-none block"
+                            className="font-black tracking-tight block"
                             style={{
                                 fontSize: 'clamp(2.8rem, 8vw, 4.5rem)',
+                                lineHeight: 1.25,
+                                paddingBottom: '0.1em', /* prevents descender clip */
                                 background: 'linear-gradient(135deg, #1B4332 0%, #2D6A4F 50%, #52B788 100%)',
                                 WebkitBackgroundClip: 'text',
                                 WebkitTextFillColor: 'transparent',
                                 backgroundClip: 'text',
-                                filter: 'drop-shadow(0 2px 8px rgba(45,106,79,0.25))',
                             }}
                         >
                             سوفتي كود
@@ -101,7 +111,7 @@ const SplashScreen: React.FC = () => {
                                 textShadow: '0 1px 12px rgba(248,150,30,0.25)',
                             }}
                         >
-                            للمطاعم و الكفيهات
+                            للمطاعم و الكافيهات
                         </span>
                     </div>
 
