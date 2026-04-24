@@ -232,4 +232,4 @@ const TopHeader: React.FC<TopHeaderProps> = ({
     );
 };
 
-export default TopHeader;
+export default React.memo(TopHeader);

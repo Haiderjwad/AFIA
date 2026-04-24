@@ -42,10 +42,10 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 
             {/* Subtle leaf watermarks */}
             <div className="absolute top-6 right-6 w-40 h-40 opacity-[0.06] pointer-events-none">
-                <img src="/branding/afia_logo.png" className="w-full h-full object-contain" alt="" />
+                <img src="/branding/afia_logo.webp" className="w-full h-full object-contain" alt="" />
             </div>
             <div className="absolute bottom-6 left-6 w-40 h-40 opacity-[0.06] pointer-events-none rotate-180">
-                <img src="/branding/afia_logo.png" className="w-full h-full object-contain" alt="" />
+                <img src="/branding/afia_logo.webp" className="w-full h-full object-contain" alt="" />
             </div>
 
             {/* Center content */}
@@ -62,7 +62,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                     <div className="absolute inset-0 rounded-full border-2 border-[#2D6A4F]/10 scale-110" />
                     <div className="w-44 h-44 md:w-56 md:h-56 relative z-10 drop-shadow-2xl">
                         <img
-                            src="/branding/afia_logo.png"
+                            src="/branding/afia_logo.webp"
                             alt="SoftyCode Logo"
                             className="w-full h-full object-contain"
                         />

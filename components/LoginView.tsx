@@ -50,7 +50,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
 
       {/* Watermark logo */}
       <div className="absolute bottom-10 right-10 w-80 h-80 opacity-[0.04] pointer-events-none rotate-12">
-        <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
+        <img src="/branding/afia_logo.webp" alt="" className="w-full h-full object-contain" />
       </div>
 
       {/* Card */}
@@ -84,7 +84,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                 <div
                   className="w-24 h-24 relative z-10 drop-shadow-xl hover:scale-105 transition-transform duration-300"
                 >
-                  <img src="/branding/afia_logo.png" alt="SoftyCode Logo" className="w-full h-full object-contain" />
+                  <img src="/branding/afia_logo.webp" alt="SoftyCode Logo" className="w-full h-full object-contain" />
                 </div>
               </div>
 

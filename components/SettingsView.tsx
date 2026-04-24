@@ -296,8 +296,39 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                           const file = e.target.files?.[0];
                           if (file) {
                             const reader = new FileReader();
-                            reader.onloadend = () => {
-                              handleChange('storeLogo', reader.result as string);
+                            reader.onload = (event) => {
+                              const img = new Image();
+                              img.onload = () => {
+                                // Create a canvas to resize/compress the image
+                                const canvas = document.createElement('canvas');
+                                let width = img.width;
+                                let height = img.height;
+
+                                // Max dimensions for logo
+                                const MAX_SIZE = 512;
+                                if (width > height) {
+                                  if (width > MAX_SIZE) {
+                                    height *= MAX_SIZE / width;
+                                    width = MAX_SIZE;
+                                  }
+                                } else {
+                                  if (height > MAX_SIZE) {
+                                    width *= MAX_SIZE / height;
+                                    height = MAX_SIZE;
+                                  }
+                                }
+
+                                canvas.width = width;
+                                canvas.height = height;
+                                const ctx = canvas.getContext('2d');
+                                if (ctx) {
+                                  ctx.drawImage(img, 0, 0, width, height);
+                                  // Export as compressed WebP or JPEG
+                                  const compressedDataUrl = canvas.toDataURL('image/webp', 0.8);
+                                  handleChange('storeLogo', compressedDataUrl);
+                                }
+                              };
+                              img.src = event.target?.result as string;
                             };
                             reader.readAsDataURL(file);
                           }

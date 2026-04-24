@@ -591,4 +591,4 @@ const ProductRow = React.memo(({ product, index, lowStockThreshold, settings, ca
   );
 });
 
-export default InventoryView;
+export default React.memo(InventoryView);

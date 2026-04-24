@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
     Search, Coffee, Plus, History, X, Clock, PackageCheck,
     ShoppingCart, UtensilsCrossed, CheckCircle2, ChevronDown, ChevronUp,
@@ -24,7 +24,86 @@ interface SalesViewProps {
     onSelectTable: (num: string) => void;
 }
 
-const SalesView: React.FC<SalesViewProps> = ({
+// ── TABLE ITEM COMPONENT (Standalone for Performance) ────────────────
+interface TableItemProps {
+    num: string;
+    isSelected: boolean;
+    status: 'available' | 'occupied' | 'ready' | 'manual';
+    readyOrder?: Transaction;
+    onClick: (num: string, readyOrderId?: string) => void;
+    onDoubleClick: (num: string) => void;
+}
+
+const TableItem = React.memo<TableItemProps>(({ num, isSelected, status, readyOrder, onClick, onDoubleClick }) => {
+    const isAvailable = status === 'available';
+    const isManual = status === 'manual';
+    const isOccupied = status === 'occupied';
+    const isReady = status === 'ready';
+
+    let themeColor = "emerald";
+    let statusText = "متاح";
+    let Icon = CheckCircle2;
+
+    if (isReady) {
+        themeColor = "amber";
+        statusText = "جاهز للتسليم";
+        Icon = Bell;
+    } else if (isOccupied) {
+        themeColor = "rose";
+        statusText = "مشغول";
+        Icon = Utensils;
+    } else if (isManual) {
+        themeColor = "orange";
+        statusText = "محجوز";
+        Icon = Layers;
+    }
+
+    const colors: any = {
+        emerald: { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", icon: "text-emerald-500", shadow: "shadow-emerald-500/10", accent: "bg-emerald-500" },
+        rose: { bg: "bg-rose-50", border: "border-rose-200", text: "text-rose-700", icon: "text-rose-500", shadow: "shadow-rose-500/10", accent: "bg-rose-500" },
+        orange: { bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-700", icon: "text-orange-500", shadow: "shadow-orange-500/10", accent: "bg-orange-500" },
+        amber: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", icon: "text-amber-500", shadow: "shadow-amber-500/10", accent: "bg-amber-500" },
+    };
+
+    const c = colors[themeColor];
+
+    return (
+        <div className="flex flex-col items-center group w-28 sm:w-32 lg:w-40">
+            <button
+                onClick={() => onClick(num, readyOrder?.id)}
+                onDoubleClick={() => onDoubleClick(num)}
+                className={`
+          relative w-full aspect-[4/5] rounded-[1.5rem] border-2 transition-all duration-300 
+          active:scale-95 flex flex-col items-center justify-between p-3 overflow-hidden
+          ${isSelected ? 'bg-brand-dark border-brand-accent shadow-2xl scale-105 z-10' : `${c.bg} ${c.border} ${c.shadow} hover:border-brand-primary/30 hover:-translate-y-1`}
+        `}
+            >
+                {isReady && <div className="absolute inset-0 bg-amber-400/5 animate-pulse" />}
+                <div className="w-full flex justify-between items-start">
+                    <span className={`text-sm font-black italic tracking-tighter ${isSelected ? 'text-brand-accent' : c.text}`}>
+                        #{num.padStart(2, '0')}
+                    </span>
+                    <div className={`px-1.5 py-0.5 rounded-md text-[7px] font-black uppercase tracking-widest ${isSelected ? 'bg-brand-accent text-brand-dark' : `${c.accent} text-white`}`}>
+                        {statusText}
+                    </div>
+                </div>
+                <div className="relative flex items-center justify-center">
+                    <div className={`
+            w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-500
+            ${isSelected ? 'bg-brand-accent text-brand-dark shadow-[0_0_15px_rgba(248,150,30,0.4)]' : `${c.icon} ${c.bg} group-hover:scale-110`}
+          `}>
+                        <Icon size={18} className={isReady ? 'animate-bounce' : ''} />
+                    </div>
+                </div>
+                <div className="w-full h-1 rounded-full overflow-hidden bg-black/5 mt-1">
+                    <div className={`h-full transition-all duration-1000 ${isSelected ? 'bg-brand-accent w-full' : (status === 'available' ? 'w-1/4 bg-emerald-400' : 'w-full ' + c.accent)}`} />
+                </div>
+            </button>
+        </div>
+    );
+});
+
+const SalesView: React.FC<SalesViewProps> = React.memo(({
     products, addToCart, settings, readyOrders, transactions,
     currentUser, onCompleteOrder, onCancelOrder, onToggleReceiptPanel, cartCount,
     selectedTableNumber, onSelectTable
@@ -36,81 +115,60 @@ const SalesView: React.FC<SalesViewProps> = ({
     const [tablesOpen, setTablesOpen] = useState(true);
     const [manualOccupied, setManualOccupied] = useState<Set<string>>(new Set());
 
-    // Slider ref
     const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-    // Notification State for Kitchen Ready
     const [notifiedReadyIds, setNotifiedReadyIds] = useState<Set<string>>(new Set());
     const [activeReadyAlert, setActiveReadyAlert] = useState<{ id: string, tableName: string } | null>(null);
 
-    // Catch newly ready orders from kitchen
     useEffect(() => {
         const newReady = readyOrders.filter(o => !notifiedReadyIds.has(o.id));
         if (newReady.length > 0) {
             const first = newReady[0];
             const tableName = first.tableNumber === 'Takeaway' ? 'طلب سفري' : `طاولة ${first.tableNumber}`;
-
-            // Set alert
             setActiveReadyAlert({ id: first.id, tableName });
-
-            // Play Sound
             soundService.playNotification();
-
-            // Mark as notified
             setNotifiedReadyIds(prev => {
                 const next = new Set(prev);
                 newReady.forEach(o => next.add(o.id));
                 return next;
             });
-
-            // Auto close after 6 seconds
             const timer = setTimeout(() => setActiveReadyAlert(null), 6000);
             return () => clearTimeout(timer);
         }
     }, [readyOrders, notifiedReadyIds]);
 
-    // Auto-hide alert if the order is no longer in ready state (received)
     useEffect(() => {
         if (activeReadyAlert && !readyOrders.find(o => o.id === activeReadyAlert.id)) {
             setActiveReadyAlert(null);
         }
     }, [readyOrders, activeReadyAlert]);
 
-    const scroll = (direction: 'left' | 'right') => {
+    const scroll = useCallback((direction: 'left' | 'right') => {
         if (scrollContainerRef.current) {
-            const amount = 400; // Scroll distance
+            const amount = 400;
             const { scrollLeft } = scrollContainerRef.current;
-            // In RTL, scrollLeft starts at 0 and goes negative as we scroll left
             scrollContainerRef.current.scrollTo({
                 left: direction === 'right' ? scrollLeft + amount : scrollLeft - amount,
                 behavior: 'smooth'
             });
         }
-    };
+    }, []);
 
-    // UI state for success feedback
     const [completionSuccess, setCompletionSuccess] = useState<{ isOpen: boolean, tableName: string } | null>(null);
+    const categories = useMemo(() => ['all', ...Array.from(new Set(products.map(p => p.category)))], [products]);
 
-    const categories = ['all', ...Array.from(new Set(products.map(p => p.category)))];
-
-    const filteredProducts = products.filter(p => {
+    const filteredProducts = useMemo(() => products.filter(p => {
         const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             p.category.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
         return matchesSearch && matchesCategory;
-    });
+    }), [products, searchQuery, selectedCategory]);
 
     const tablesCount = settings.tablesCount || 10;
 
     const occupiedByOrder = useMemo(() => {
         const map: Record<string, Transaction[]> = {};
         transactions
-            .filter(t =>
-                t.tableNumber &&
-                t.tableNumber !== 'Takeaway' &&
-                !['completed', 'refunded', 'cancelled'].includes(t.status) &&
-                !t.isPaid
-            )
+            .filter(t => t.tableNumber && t.tableNumber !== 'Takeaway' && !['completed', 'refunded', 'cancelled'].includes(t.status) && !t.isPaid)
             .forEach(t => {
                 const key = t.tableNumber!;
                 if (!map[key]) map[key] = [];
@@ -119,136 +177,53 @@ const SalesView: React.FC<SalesViewProps> = ({
         return map;
     }, [transactions]);
 
+    const handleCompleteOrder = useCallback((id: string, tableName: string) => {
+        onCompleteOrder(id);
+        setCompletionSuccess({ isOpen: true, tableName });
+        setTimeout(() => setCompletionSuccess(null), 3000);
+    }, [onCompleteOrder]);
+
     const readyByTable = useMemo(() => {
         const map: Record<string, Transaction> = {};
         readyOrders.forEach(o => {
-            if (o.tableNumber && o.tableNumber !== 'Takeaway') {
-                map[o.tableNumber] = o;
-            }
+            if (o.tableNumber && o.tableNumber !== 'Takeaway') map[o.tableNumber] = o;
         });
         return map;
     }, [readyOrders]);
 
-    const toggleManualOccupied = (tableNum: string) => {
-        if (occupiedByOrder[tableNum]) return;
-        setManualOccupied(prev => {
-            const next = new Set(prev);
-            if (next.has(tableNum)) next.delete(tableNum);
-            else next.add(tableNum);
-            return next;
-        });
-    };
-
-    const getTableStatus = (tableNum: string): 'available' | 'occupied' | 'ready' | 'manual' => {
-        if (readyByTable[tableNum]) return 'ready';
-        if (occupiedByOrder[tableNum]) return 'occupied';
-        if (manualOccupied.has(tableNum)) return 'manual';
-        return 'available';
-    };
-
-    const handleCompleteOrder = (id: string, tableName: string) => {
-        onCompleteOrder(id);
-        setCompletionSuccess({ isOpen: true, tableName });
-        setTimeout(() => setCompletionSuccess(null), 3000);
-    };
-
-    const availableCount = Array.from({ length: tablesCount }, (_, i) => String(i + 1))
-        .filter(n => getTableStatus(n) === 'available').length;
-    const occupiedCount = tablesCount - availableCount;
-
-    // Component for rendering the Table Card
-    interface TableItemProps {
-        num: string;
-        isSelected: boolean;
-    }
-
-    const TableItem: React.FC<TableItemProps> = ({ num, isSelected }) => {
-        const status = getTableStatus(num);
-        const readyOrder = readyByTable[num];
-        const isAvailable = status === 'available';
-        const isManual = status === 'manual';
-        const isOccupied = status === 'occupied';
-        const isReady = status === 'ready';
-
-        let themeColor = "emerald";
-        let statusText = "متاح";
-        let Icon = CheckCircle2;
-
-        if (isReady) {
-            themeColor = "amber";
-            statusText = "جاهز للتسليم";
-            Icon = Bell;
-        } else if (isOccupied) {
-            themeColor = "rose";
-            statusText = "مشغول";
-            Icon = Utensils;
-        } else if (isManual) {
-            themeColor = "orange";
-            statusText = "محجوز";
-            Icon = Layers;
+    const handleTableClick = useCallback((num: string, readyOrderId?: string) => {
+        if (readyOrderId) {
+            onCompleteOrder(readyOrderId);
+            setCompletionSuccess({ isOpen: true, tableName: `طاولة ${num}` });
+            setTimeout(() => setCompletionSuccess(null), 3000);
+        } else {
+            onSelectTable(num);
+            const isAvailable = !readyByTable[num] && !occupiedByOrder[num] && !manualOccupied.has(num);
+            if (isAvailable) {
+                setManualOccupied(prev => {
+                    const next = new Set(prev);
+                    next.add(num);
+                    return next;
+                });
+            }
         }
+    }, [onCompleteOrder, onSelectTable, readyByTable, occupiedByOrder, manualOccupied]);
 
-        const colors: any = {
-            emerald: { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", icon: "text-emerald-500", shadow: "shadow-emerald-500/10", accent: "bg-emerald-500" },
-            rose: { bg: "bg-rose-50", border: "border-rose-200", text: "text-rose-700", icon: "text-rose-500", shadow: "shadow-rose-500/10", accent: "bg-rose-500" },
-            orange: { bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-700", icon: "text-orange-500", shadow: "shadow-orange-500/10", accent: "bg-orange-500" },
-            amber: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", icon: "text-amber-500", shadow: "shadow-amber-500/10", accent: "bg-amber-500" },
-        };
+    const handleTableDoubleClick = useCallback((num: string) => {
+        if (!occupiedByOrder[num] && !readyByTable[num]) {
+            setManualOccupied(prev => {
+                const next = new Set(prev);
+                if (next.has(num)) next.delete(num);
+                else next.add(num);
+                return next;
+            });
+        }
+    }, [occupiedByOrder, readyByTable]);
 
-        const c = colors[themeColor];
-
-        return (
-            <div className="flex flex-col items-center group w-28 sm:w-32 lg:w-40">
-                <button
-                    onClick={() => {
-                        if (isReady) {
-                            handleCompleteOrder(readyOrder.id, `طاولة ${num}`);
-                        } else {
-                            onSelectTable(num);
-                            if (isAvailable) toggleManualOccupied(num);
-                        }
-                    }}
-                    onDoubleClick={() => !isOccupied && !isReady && toggleManualOccupied(num)}
-                    className={`
-                        relative w-full aspect-[4/5] rounded-[1.5rem] border-2 transition-all duration-300 
-                        active:scale-95 flex flex-col items-center justify-between p-3 overflow-hidden
-                        ${isSelected ? 'bg-brand-dark border-brand-accent shadow-2xl scale-105 z-10' : `${c.bg} ${c.border} ${c.shadow} hover:border-brand-primary/30 hover:-translate-y-1`}
-                    `}
-                >
-                    {/* Pulsing effect for ready state */}
-                    {isReady && (
-                        <div className="absolute inset-0 bg-amber-400/5 animate-pulse" />
-                    )}
-
-                    {/* Table Number & Status Badge */}
-                    <div className="w-full flex justify-between items-start">
-                        <span className={`text-sm font-black italic tracking-tighter ${isSelected ? 'text-brand-accent' : c.text}`}>
-                            #{num.padStart(2, '0')}
-                        </span>
-                        <div className={`px-1.5 py-0.5 rounded-md text-[7px] font-black uppercase tracking-widest ${isSelected ? 'bg-brand-accent text-brand-dark' : `${c.accent} text-white`}`}>
-                            {statusText}
-                        </div>
-                    </div>
-
-                    {/* Central Table Icon Visual */}
-                    <div className="relative flex items-center justify-center">
-
-                        <div className={`
-                            w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-500
-                            ${isSelected ? 'bg-brand-accent text-brand-dark shadow-[0_0_15px_rgba(248,150,30,0.4)]' : `${c.icon} ${c.bg} group-hover:scale-110`}
-                        `}>
-                            <Icon size={18} className={isReady ? 'animate-bounce' : ''} />
-                        </div>
-                    </div>
-
-                    {/* Bottom Info/Indicator */}
-                    <div className="w-full h-1 rounded-full overflow-hidden bg-black/5 mt-1">
-                        <div className={`h-full transition-all duration-1000 ${isSelected ? 'bg-brand-accent w-full' : (isAvailable ? 'w-1/4 bg-emerald-400' : 'w-full ' + c.accent)}`} />
-                    </div>
-                </button>
-            </div>
-        );
-    };
+    const availableCount = useMemo(() => Array.from({ length: tablesCount }, (_, i) => String(i + 1))
+        .filter(n => !readyByTable[n] && !occupiedByOrder[n] && !manualOccupied.has(n)).length,
+        [tablesCount, readyByTable, occupiedByOrder, manualOccupied]);
+    const occupiedCount = tablesCount - availableCount;
 
     return (
         <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#F1F3F6] p-4 md:p-6 text-right relative" dir="rtl">
@@ -385,13 +360,25 @@ const SalesView: React.FC<SalesViewProps> = ({
                             className="overflow-x-auto no-scrollbar scroll-smooth px-4"
                         >
                             <div className="flex gap-8 py-6 px-2">
-                                {Array.from({ length: tablesCount }, (_, i) => (
-                                    <TableItem
-                                        key={`table-${i + 1}`}
-                                        num={String(i + 1)}
-                                        isSelected={selectedTableNumber === String(i + 1)}
-                                    />
-                                ))}
+                                {Array.from({ length: tablesCount }, (_, i) => {
+                                    const num = String(i + 1);
+                                    let status: 'available' | 'occupied' | 'ready' | 'manual' = 'available';
+                                    if (readyByTable[num]) status = 'ready';
+                                    else if (occupiedByOrder[num]) status = 'occupied';
+                                    else if (manualOccupied.has(num)) status = 'manual';
+
+                                    return (
+                                        <TableItem
+                                            key={`table-${num}`}
+                                            num={num}
+                                            isSelected={selectedTableNumber === num}
+                                            status={status}
+                                            readyOrder={readyByTable[num]}
+                                            onClick={handleTableClick}
+                                            onDoubleClick={handleTableDoubleClick}
+                                        />
+                                    );
+                                })}
                             </div>
                         </div>
 
@@ -704,7 +691,7 @@ const SalesView: React.FC<SalesViewProps> = ({
             }
         </div >
     );
-};
+});
 
 // Internal Helper for Label Colors
 function labelColor(status: string) {

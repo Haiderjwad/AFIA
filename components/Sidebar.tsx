@@ -60,7 +60,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, setActiveItem, user, sett
             {settings?.storeLogo ? (
               <img src={settings.storeLogo} alt="Store Logo" className="w-full h-full object-contain" />
             ) : (
-              <img src="/branding/afia_logo.png" alt="Afia Logo" className="w-full h-full object-contain" />
+              <img src="/branding/afia_logo.webp" alt="Afia Logo" className="w-full h-full object-contain" />
             )}
           </div>
         </div>
@@ -104,4 +104,4 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, setActiveItem, user, sett
   );
 };
 
-export default Sidebar;
+export default React.memo(Sidebar);

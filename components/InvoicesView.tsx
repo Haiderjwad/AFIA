@@ -20,6 +20,20 @@ interface InvoicesViewProps {
     settings?: AppSettings;
 }
 
+const AuditCard: React.FC<{ icon: React.ReactNode, label: string, value?: string, color: string }> = ({ icon, label, value, color }) => (
+    <div className="flex items-center gap-4 bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-md transition-all group">
+        <div className={`w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center ${color} shadow-inner group-hover:scale-110 transition-transform`}>
+            {icon}
+        </div>
+        <div className="text-right">
+            <p className="text-[10px] text-gray-400 font-black uppercase mb-0.5 tracking-tighter">{label}</p>
+            <p className={`text-sm font-black ${value ? 'text-brand-dark' : 'text-gray-300 italic'}`}>
+                {value || 'غير مدرج'}
+            </p>
+        </div>
+    </div>
+);
+
 const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePayment, canFinalize, products = [], settings, currentUser }) => {
     const [activeTab, setActiveTab] = useState<'all' | 'pending'>('pending');
     const [searchQuery, setSearchQuery] = useState('');
@@ -1299,74 +1313,110 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                 )}
             </div>
 
-            {/* Order Details Modal */}
+
+            {/* Order Details Modal - Professional & Commercial Design */}
             {viewingTransaction && (
-                <div className="fixed inset-0 z-[200] bg-brand-dark/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
-                    <div className="bg-white w-full max-w-2xl rounded-[3.5rem] shadow-3xl overflow-hidden animate-in zoom-in-95 duration-500">
-                        <div className="p-8 bg-brand-dark text-white flex justify-between items-center relative">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-sm">
-                                    <Receipt size={32} className="text-brand-accent" />
+                <div className="fixed inset-0 z-[1000] bg-brand-dark/40 backdrop-blur-xl flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
+                    <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-[3rem] shadow-4xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-500 border border-white/20">
+                        {/* Header - Premium Gradient */}
+                        <div className="p-8 bg-gradient-to-r from-brand-dark to-[#1e293b] text-white flex justify-between items-center relative shrink-0">
+                            <div className="flex items-center gap-6">
+                                <div className="bg-brand-accent/20 p-5 rounded-[2rem] backdrop-blur-md ring-1 ring-brand-accent/30 shadow-lg shadow-brand-accent/10">
+                                    <Receipt size={36} className="text-brand-accent animate-pulse" />
                                 </div>
                                 <div>
-                                    <h2 className="text-2xl font-black">
-                                        {viewingTransaction.tableNumber ? `طاولة ${viewingTransaction.tableNumber}` : 'طلب يدوي طوارئ'}
-                                    </h2>
-                                    <p className="text-brand-accent/60 text-[10px] font-black uppercase tracking-widest">
-                                        معرف العملية: #{viewingTransaction.id}
+                                    <div className="flex items-center gap-3 mb-1">
+                                        <h2 className="text-3xl font-black tracking-tight">
+                                            {viewingTransaction.tableNumber ? `تفاصيل الطاولة ${viewingTransaction.tableNumber}` : 'طلب مباشر (سفري)'}
+                                        </h2>
+                                        <span className="px-3 py-1 bg-white/10 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10">
+                                            {viewingTransaction.isManual ? 'إدخال يدوي' : 'عملية نظامية'}
+                                        </span>
+                                    </div>
+                                    <p className="text-brand-accent/60 text-xs font-black tracking-widest flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 bg-brand-accent rounded-full"></span>
+                                        الرقم المرجعي للعملية: {viewingTransaction.id}
                                     </p>
                                 </div>
                             </div>
                             <button
                                 onClick={() => setViewingTransaction(null)}
-                                className="bg-white/10 hover:bg-red-500 hover:text-white p-3 rounded-full transition-all"
+                                className="bg-white/10 hover:bg-red-500 hover:scale-110 p-4 rounded-full transition-all group shadow-inner"
+                                title="إغلاق المعاينة"
                             >
-                                <X size={24} />
+                                <X size={24} className="group-hover:rotate-90 transition-transform duration-300" />
                             </button>
                         </div>
 
-                        <div className="p-10 space-y-8 max-h-[70vh] overflow-y-auto no-scrollbar">
-                            <div className="grid grid-cols-3 gap-6">
-                                <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100 text-center">
-                                    <span className="text-gray-400 text-[10px] font-black block mb-2 uppercase">الحالة الرقمية</span>
-                                    <span className={`font-black text-sm ${viewingTransaction.status === 'completed' ? 'text-green-600' : 'text-orange-600'}`}>
-                                        {viewingTransaction.status === 'completed' ? 'مكتملة' : 'قيد الانتظار'}
-                                    </span>
+                        {/* Content Area - Scrollable */}
+                        <div className="flex-1 overflow-y-auto p-8 md:p-12 space-y-10 no-scrollbar bg-gray-50/50">
+                            {/* Key Stats Row */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                                    <span className="text-gray-400 text-[10px] font-black block mb-2 uppercase tracking-tighter">حالة السند</span>
+                                    <div className="flex items-center gap-2">
+                                        <div className={`w-2 h-2 rounded-full ${viewingTransaction.status === 'completed' ? 'bg-green-500 animate-pulse' : 'bg-orange-500'}`}></div>
+                                        <span className={`font-black text-sm ${viewingTransaction.status === 'completed' ? 'text-green-600' : 'text-orange-600'}`}>
+                                            {viewingTransaction.status === 'completed' ? 'مكتملة ومرحلة' : 'قيد المعالجة'}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100 text-center">
-                                    <span className="text-gray-400 text-[10px] font-black block mb-2 uppercase">طريقة الدفع</span>
-                                    <span className="font-black text-sm text-coffee-900">
-                                        {viewingTransaction.paymentMethod === 'cash' ? 'نقداً' : viewingTransaction.paymentMethod === 'card' ? 'بطاقة' : 'إلكتروني'}
-                                    </span>
+                                <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                                    <span className="text-gray-400 text-[10px] font-black block mb-2 uppercase tracking-tighter">قنوات الدفع</span>
+                                    <div className="flex items-center gap-2 text-coffee-900">
+                                        {viewingTransaction.paymentMethod === 'cash' ? <Banknote size={16} /> : <CreditCard size={16} />}
+                                        <span className="font-black text-sm italic">
+                                            {viewingTransaction.paymentMethod === 'cash' ? 'نقد كاش' : viewingTransaction.paymentMethod === 'card' ? 'بطاقة دفع' : 'تحويل إلكتروني'}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100 text-center">
-                                    <span className="text-gray-400 text-[10px] font-black block mb-2 uppercase">نوع الطلب</span>
-                                    <span className="font-black text-sm text-coffee-900">
-                                        {viewingTransaction.isManual ? 'يدوي' : 'نظامي'}
-                                    </span>
+                                <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                                    <span className="text-gray-400 text-[10px] font-black block mb-2 uppercase tracking-tighter">التوقيت</span>
+                                    <div className="flex items-center gap-2 text-coffee-900 font-bold text-sm">
+                                        <Clock size={16} className="text-gold-500" />
+                                        {new Date(viewingTransaction.date).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                                    </div>
+                                </div>
+                                <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                                    <span className="text-gray-400 text-[10px] font-black block mb-2 uppercase tracking-tighter">التاريخ</span>
+                                    <div className="flex items-center gap-2 text-coffee-900 font-bold text-sm">
+                                        <Calendar size={16} className="text-gold-500" />
+                                        {new Date(viewingTransaction.date).toLocaleDateString('ar-EG')}
+                                    </div>
                                 </div>
                             </div>
 
+                            {/* Items Table - Enterprise Grade */}
                             <div className="space-y-4">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <div className="w-1.5 h-6 bg-gold-400 rounded-full"></div>
-                                    <h3 className="font-black text-brand-dark text-lg">قائمة المشتريات</h3>
+                                <div className="flex items-center gap-3 mb-2 px-2">
+                                    <div className="w-2 h-8 bg-brand-primary rounded-full shadow-[0_0_10px_rgba(27,67,50,0.3)]"></div>
+                                    <h3 className="font-black text-brand-dark text-xl">كشف الأصناف التفصيلي</h3>
                                 </div>
-                                <div className="border border-gray-100 rounded-[2.5rem] overflow-hidden">
-                                    <table className="w-full text-right">
-                                        <thead className="bg-gray-50 border-b border-gray-100">
-                                            <tr>
-                                                <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase">المنتج</th>
-                                                <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase">الكمية</th>
-                                                <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase text-left">المجموع</th>
+                                <div className="bg-white border border-gray-100 rounded-[3rem] overflow-hidden shadow-sm">
+                                    <table className="w-full text-right border-collapse">
+                                        <thead>
+                                            <tr className="bg-brand-dark/5 text-brand-dark">
+                                                <th className="px-8 py-5 text-xs font-black uppercase">اسم الصنف</th>
+                                                <th className="px-8 py-5 text-xs font-black uppercase text-center">الكمية</th>
+                                                <th className="px-8 py-5 text-xs font-black uppercase text-center">سعر الوحدة</th>
+                                                <th className="px-8 py-5 text-xs font-black uppercase text-left">الإجمالي الفرعي</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-50">
                                             {viewingTransaction.items.map((item, i) => (
-                                                <tr key={i} className="hover:bg-gold-50/10 transition-colors">
-                                                    <td className="px-6 py-4 font-bold text-brand-dark">{item.name}</td>
-                                                    <td className="px-6 py-4 font-black text-brand-primary">x{item.quantity}</td>
-                                                    <td className="px-6 py-4 font-black text-brand-dark text-left">{formatCurrency(item.price * item.quantity, settings?.currency || CURRENCY)}</td>
+                                                <tr key={i} className="hover:bg-brand-primary/5 transition-colors group">
+                                                    <td className="px-8 py-5">
+                                                        <div className="font-bold text-brand-dark text-lg group-hover:text-brand-primary transition-colors">{item.name}</div>
+                                                    </td>
+                                                    <td className="px-8 py-5 text-center">
+                                                        <span className="bg-gray-100 px-4 py-1 rounded-full font-black text-brand-primary">x{item.quantity}</span>
+                                                    </td>
+                                                    <td className="px-8 py-5 text-center font-bold text-gray-500 italic">
+                                                        {formatCurrency(item.price, settings?.currency || CURRENCY)}
+                                                    </td>
+                                                    <td className="px-8 py-5 font-black text-brand-dark text-left text-lg">
+                                                        {formatCurrency(item.price * item.quantity, settings?.currency || CURRENCY)}
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -1374,80 +1424,71 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                 </div>
                             </div>
 
+                            {/* Governance & Compliance - Auditor View */}
                             <div className="space-y-4">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <div className="w-1.5 h-6 bg-brand-primary rounded-full"></div>
-                                    <h3 className="font-black text-brand-dark text-lg">حوكمة العملية (مسار الطلب)</h3>
+                                <div className="flex items-center gap-3 mb-2 px-2">
+                                    <div className="w-2 h-8 bg-gold-400 rounded-full shadow-[0_0_10px_rgba(248,150,30,0.3)]"></div>
+                                    <h3 className="font-black text-brand-dark text-xl">حوكمة العملية والتدقيق المالي</h3>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="flex items-center gap-4 bg-gray-50/80 p-4 rounded-2xl border border-gray-100">
-                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-brand-primary shadow-sm">
-                                            <ShoppingCart size={20} />
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-[10px] text-gray-400 font-black uppercase mb-0.5">بواسطة المبيعات</p>
-                                            <p className="text-sm font-black text-brand-dark">{viewingTransaction.salesPerson || '---'}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-4 bg-gray-50/80 p-4 rounded-2xl border border-gray-100">
-                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-orange-500 shadow-sm">
-                                            <UtensilsCrossed size={20} />
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-[10px] text-gray-400 font-black uppercase mb-0.5">بواسطة المطبخ</p>
-                                            <p className="text-sm font-black text-brand-dark">{viewingTransaction.kitchenPerson || '---'}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-4 bg-gray-50/80 p-4 rounded-2xl border border-gray-100">
-                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-500 shadow-sm">
-                                            <PackageCheck size={20} />
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-[10px] text-gray-400 font-black uppercase mb-0.5">استلام الطلب</p>
-                                            <p className="text-sm font-black text-brand-dark">{viewingTransaction.deliveredBy || '---'}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-4 bg-gray-50/80 p-4 rounded-2xl border border-gray-100">
-                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-green-600 shadow-sm">
-                                            <Banknote size={20} />
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-[10px] text-gray-400 font-black uppercase mb-0.5">بواسطة الكاشير</p>
-                                            <p className="text-sm font-black text-brand-dark">{viewingTransaction.cashierPerson || '---'}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="pt-6 border-t border-dashed border-gray-200">
-                                <div className="flex justify-between items-center text-2xl font-black">
-                                    <span className="text-brand-dark">إجمالي القيمة</span>
-                                    <span className="text-brand-primary">{formatCurrency(viewingTransaction.total, settings?.currency || CURRENCY)}</span>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <AuditCard
+                                        icon={<ShoppingCart size={20} />}
+                                        label="مسؤول المبيعات"
+                                        value={viewingTransaction.salesPerson}
+                                        color="text-brand-primary"
+                                    />
+                                    <AuditCard
+                                        icon={<UtensilsCrossed size={20} />}
+                                        label="مسؤول التجهيز (المطبخ)"
+                                        value={viewingTransaction.kitchenPerson}
+                                        color="text-orange-500"
+                                    />
+                                    <AuditCard
+                                        icon={<PackageCheck size={20} />}
+                                        label="خدمة التوصيل / التسليم"
+                                        value={viewingTransaction.deliveredBy}
+                                        color="text-blue-500"
+                                    />
+                                    <AuditCard
+                                        icon={<Banknote size={20} />}
+                                        label="المحاسب (الكاشير)"
+                                        value={viewingTransaction.cashierPerson}
+                                        color="text-green-600"
+                                    />
                                 </div>
                             </div>
                         </div>
 
-                        <div className="p-8 bg-gray-50 flex gap-4">
-                            <button
-                                onClick={() => handlePrint(viewingTransaction)}
-                                className="flex-1 bg-brand-dark text-white font-black py-4 rounded-[1.5rem] flex items-center justify-center gap-2 hover:bg-brand-primary transition-all shadow-xl shadow-brand-dark/10"
-                            >
-                                <Printer size={20} /> طباعة الفاتورة الفورية
-                            </button>
-                            <button
-                                onClick={() => setViewingTransaction(null)}
-                                className="flex-1 bg-white text-gray-400 font-black py-4 rounded-[1.5rem] border-2 border-gray-100 hover:text-brand-dark transition-all"
-                            >
-                                إغلاق المعاينة
-                            </button>
+                        {/* Footer - Professional Action Bar */}
+                        <div className="p-8 bg-white border-t border-gray-100 shrink-0 flex flex-col md:flex-row items-center justify-between gap-8">
+                            <div className="flex flex-col text-right">
+                                <span className="text-gray-400 text-xs font-black uppercase tracking-widest mb-1">المبلغ الإجمالي النهائي للسند</span>
+                                <span className="text-4xl font-black text-brand-dark tracking-tighter">
+                                    {formatCurrency(viewingTransaction.total, settings?.currency || CURRENCY)}
+                                </span>
+                            </div>
+                            <div className="flex gap-4 w-full md:w-auto">
+                                <button
+                                    onClick={() => handlePrint(viewingTransaction)}
+                                    className="flex-1 md:flex-none px-10 bg-brand-dark text-white font-black py-5 rounded-[2rem] flex items-center justify-center gap-3 hover:bg-brand-primary active:scale-95 transition-all shadow-2xl shadow-brand-dark/20 border-b-4 border-black/20"
+                                >
+                                    <Printer size={24} /> طباعة الفاتورة الضريبية
+                                </button>
+                                <button
+                                    onClick={() => setViewingTransaction(null)}
+                                    className="flex-1 md:flex-none px-8 bg-gray-100 text-gray-500 font-bold py-5 rounded-[2rem] hover:bg-gray-200 hover:text-brand-dark transition-all"
+                                >
+                                    إغلاق
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Invoices Log Modal */}
+            {/* Invoices Log Modal - Professional Collection View */}
             {isLogOpen && (
-                <div className="fixed inset-0 z-[250] bg-brand-dark/80 backdrop-blur-lg flex items-center justify-center p-4 animate-in fade-in duration-300">
+                <div className="fixed inset-0 z-[1100] bg-brand-dark/50 backdrop-blur-2xl flex items-center justify-center p-4 md:p-10 animate-in fade-in duration-300">
                     <div className="bg-[#fdfaf7] w-full max-w-5xl h-[90vh] rounded-[4rem] shadow-4xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-10 duration-500">
                         <div className="p-10 border-b border-brand-primary/10 bg-white flex justify-between items-center">
                             <div className="flex items-center gap-6">
@@ -1538,9 +1579,9 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                 </div>
             )}
 
-            {/* Manual Order Emergency Modal */}
+            {/* Manual Order Emergency Modal - Commercial Engine */}
             {isManualModalOpen && (
-                <div className="fixed inset-0 z-[300] bg-brand-dark/80 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-500">
+                <div className="fixed inset-0 z-[1200] bg-brand-dark/50 backdrop-blur-2xl flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-500">
                     <div className="bg-white w-full max-w-6xl h-[88vh] rounded-[4rem] shadow-4xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-700 border-4 border-white/20">
                         <div className="p-10 bg-brand-primary text-white flex justify-between items-center relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
@@ -1662,9 +1703,9 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                 </div>
             )}
 
-            {/* Payment Selection Modal for Cashier */}
+            {/* Payment Selection Modal for Cashier - Final Authority */}
             {selectedForPayment && (
-                <div className="fixed inset-0 z-[400] bg-brand-dark/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+                <div className="fixed inset-0 z-[1300] bg-brand-dark/40 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
                     <div className="bg-white w-full max-w-lg rounded-[3.5rem] shadow-4xl overflow-hidden animate-in zoom-in-95 duration-500 border-4 border-white/20">
                         <div className={`p-8 border-b border-gray-100 flex justify-between items-center ${selectedForPayment.isManual ? 'bg-red-50' : 'bg-brand-light/20'}`}>
                             <div className="flex items-center gap-4">

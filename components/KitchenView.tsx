@@ -436,4 +436,4 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, user, lowStockThres
     );
 };
 
-export default KitchenView;
+export default React.memo(KitchenView);

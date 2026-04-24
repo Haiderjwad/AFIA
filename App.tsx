@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import ReceiptPanel from './components/ReceiptPanel';
@@ -118,28 +118,6 @@ const App: React.FC = () => {
     }
   }, [currentUser, isAuthenticated]);
 
-  const [showStatusToast, setShowStatusToast] = useState<'none' | 'online' | 'offline'>('none');
-
-  useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      setShowStatusToast('online');
-      setTimeout(() => setShowStatusToast('none'), 4000);
-    };
-    const handleOffline = () => {
-      setIsOnline(false);
-      setShowStatusToast('offline');
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
   const [activeTab, setActiveTab] = useState('dashboard');
   const [settingsTab, setSettingsTab] = useState<'general' | 'payments' | 'employees' | 'printing'>('general');
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -162,6 +140,156 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isReceiptPanelOpen, setIsReceiptPanelOpen] = useState(false);
   const [selectedTableNumber, setSelectedTableNumber] = useState<string>('');
+  const [inventorySearchQuery, setInventorySearchQuery] = useState('');
+
+  // 4. Memoized Handlers for Performance
+  const handleUpdateSettings = useCallback(async (newSettings: AppSettings) => {
+    await firestoreService.updateSettings(newSettings);
+    soundService.playSuccess();
+  }, []);
+
+  const handleLogin = useCallback(async (email: string, pass: string): Promise<boolean> => {
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+      soundService.playSuccess();
+      return true;
+    } catch (error) {
+      console.error("Login Error:", error);
+      soundService.playError();
+      return false;
+    }
+  }, []);
+
+  const handleLogout = useCallback(async () => {
+    await signOut(auth);
+    setCart([]);
+    setActiveTab('dashboard');
+  }, []);
+
+  const handleSidebarNavigation = useCallback((tab: string) => {
+    setActiveTab(tab);
+    setIsProductMenuOpen(false);
+    if (tab !== 'inventory') {
+      setInventorySearchQuery('');
+    }
+  }, []);
+
+  const handleDashboardNavigate = useCallback((view: string, subTab?: string, data?: any) => {
+    setActiveTab(view);
+    setIsProductMenuOpen(false);
+    if (view === 'settings' && subTab) {
+      setSettingsTab(subTab as 'general' | 'payments' | 'employees' | 'printing');
+    } else {
+      setSettingsTab('general');
+    }
+    if (view === 'inventory' && data?.productSearch) {
+      setInventorySearchQuery(data.productSearch);
+    } else if (view !== 'inventory') {
+      setInventorySearchQuery('');
+    }
+  }, []);
+
+  // Memoized Cart Handlers
+  const addToCart = useCallback((product: MenuItem) => {
+    setProducts(currentProducts => {
+      const prod = currentProducts.find(p => p.id === product.id);
+      if (!prod || prod.stock <= 0) {
+        soundService.playError();
+        return currentProducts;
+      }
+
+      setCart(prev => {
+        const existing = prev.find(item => item.id === product.id);
+        if (existing) {
+          if (existing.quantity >= prod.stock) {
+            soundService.playError();
+            return prev;
+          }
+          return prev.map(item =>
+            item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          );
+        }
+        if (prev.length === 0 && window.innerWidth < 1280) {
+          setIsReceiptPanelOpen(true);
+        }
+        return [...prev, { ...product, quantity: 1 }];
+      });
+      return currentProducts;
+    });
+  }, []);
+
+  const removeFromCart = useCallback((id: string) => {
+    setCart(prev => prev.filter(item => item.id !== id));
+  }, []);
+
+  const decreaseQuantity = useCallback((id: string) => {
+    setCart(prev => {
+      const existing = prev.find(item => item.id === id);
+      if (existing && existing.quantity > 1) {
+        return prev.map(item =>
+          item.id === id ? { ...item, quantity: item.quantity - 1 } : item
+        );
+      }
+      return prev.filter(item => item.id !== id);
+    });
+  }, []);
+
+  const clearCart = useCallback(() => setCart([]), []);
+
+  // Memoized Transaction Handlers
+  const handleSendToCashier = useCallback(async (transactionId: string) => {
+    await firestoreService.updateTransaction(transactionId, {
+      status: 'waiting_payment',
+      deliveredBy: currentUser?.name || 'Unknown'
+    });
+  }, [currentUser?.name]);
+
+  const handleCancelOrder = useCallback(async (orderId: string) => {
+    // Note: this should be careful with transactions dependency
+    // but transactions is needed to find the one to cancel.
+    // To optimize, we could pass the transaction object directly.
+    setTransactions(currentTransactions => {
+      const transaction = currentTransactions.find(t => t.id === orderId);
+      if (transaction) {
+        for (const item of transaction.items) {
+          firestoreService.decrementStock(item.id, -item.quantity);
+        }
+        firestoreService.updateTransaction(orderId, {
+          status: 'cancelled',
+          notes: transaction.notes ? `${transaction.notes} | [ملغي]` : '[طلب ملغي]'
+        });
+        soundService.playSuccess();
+      }
+      return currentTransactions;
+    });
+  }, []);
+
+  const handleFinalizePayment = useCallback(async (transactionIds: string | string[], paymentMethod: 'cash' | 'card' | 'online') => {
+    const ids = Array.isArray(transactionIds) ? transactionIds : [transactionIds];
+    setTransactions(currentTransactions => {
+      for (const transactionId of ids) {
+        const currentTrans = currentTransactions.find(t => t.id === transactionId);
+        if (currentTrans) {
+          let finalStatus = currentTrans.status;
+          if (currentTrans.status === 'ready' || currentTrans.status === 'waiting_payment') {
+            finalStatus = 'completed';
+          }
+          firestoreService.updateTransaction(transactionId, {
+            status: finalStatus,
+            paymentMethod: paymentMethod,
+            isPaid: true,
+            cashierPerson: currentUser?.name || 'Unknown'
+          });
+        }
+      }
+      return currentTransactions;
+    });
+  }, [currentUser?.name]);
+
+  // Derived Data Memoization
+  const readyOrders = useMemo(() => transactions.filter(t => t.status === 'ready'), [transactions]);
+  const lowStockItems = useMemo(() => products.filter(p => p.stock <= settings.lowStockThreshold), [products, settings.lowStockThreshold]);
+  const cartCount = useMemo(() => cart.reduce((acc, item) => acc + item.quantity, 0), [cart]);
 
   useEffect(() => {
     let unsubProducts: any, unsubTransactions: any, unsubSettings: any, unsubNotifications: any, unsubEmployees: any, unsubSuppliers: any;
@@ -193,14 +321,6 @@ const App: React.FC = () => {
         (snapshot) => {
           const n = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as SystemNotification));
           setNotifications(n);
-
-          // Check for low stock alerts (only)
-          if (currentUser) {
-            const role = currentUser.role.toLowerCase();
-            if (['admin', 'manager', 'cashier', 'sales'].includes(role)) {
-              // Kitchen warnings removed as per request
-            }
-          }
         },
         (error) => console.error("Notifications Snapshot Error:", error)
       );
@@ -215,31 +335,26 @@ const App: React.FC = () => {
         setSuppliers(s);
       }, (error) => console.error("Suppliers Snapshot Error:", error));
 
-      // 4. Initial Seeding and Settings Check (Only when authenticated)
       const initSettings = async () => {
         try {
-          // Attempt seeding/defaults if auth is present
-          firestoreService.seedDatabase().catch(() => { /* silent in dev */ });
+          firestoreService.seedDatabase().catch(() => { });
           const sessSettings = await firestoreService.getSettings();
           if (sessSettings) setSettings(sessSettings);
-        } catch (e) {
-          // Silent fallback
-        }
+        } catch (e) { }
       };
       initSettings();
     }
 
     return () => {
-      if (unsubProducts) unsubProducts();
-      if (unsubTransactions) unsubTransactions();
-      if (unsubSettings) unsubSettings();
-      if (unsubNotifications) unsubNotifications();
-      if (unsubEmployees) unsubEmployees();
-      if (unsubSuppliers) unsubSuppliers();
+      unsubProducts?.();
+      unsubTransactions?.();
+      unsubSettings?.();
+      unsubNotifications?.();
+      unsubEmployees?.();
+      unsubSuppliers?.();
     };
   }, [isAuthenticated]);
 
-  // Global Sound Control
   useEffect(() => {
     soundService.setSettings(settings);
   }, [settings]);
@@ -247,140 +362,45 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleGlobalClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-
-      // Professional Interaction Detection
-      const isClickable =
-        target.closest('button') ||
-        target.closest('a') ||
-        target.closest('[role="button"]') ||
-        target.closest('input[type="checkbox"]') ||
-        target.closest('input[type="radio"]') ||
-        target.closest('.cursor-pointer') ||
-        target.closest('[data-clickable="true"]') ||
-        (target.onclick !== null) ||
-        (window.getComputedStyle(target).cursor === 'pointer');
-
-      if (isClickable) {
-        soundService.playClick();
-      }
+      const isClickable = target.closest('button') || target.closest('a') || target.closest('[role="button"]') ||
+        target.closest('input[type="checkbox"]') || target.closest('input[type="radio"]') ||
+        target.closest('.cursor-pointer') || target.closest('[data-clickable="true"]') ||
+        (target.onclick !== null) || (window.getComputedStyle(target).cursor === 'pointer');
+      if (isClickable) soundService.playClick();
     };
-
     window.addEventListener('click', handleGlobalClick);
     return () => window.removeEventListener('click', handleGlobalClick);
   }, []);
 
-  // Update Settings Handler
-  const handleUpdateSettings = async (newSettings: AppSettings) => {
-    await firestoreService.updateSettings(newSettings);
-    soundService.playSuccess();
-  };
-
-  const handleLogin = async (email: string, pass: string): Promise<boolean> => {
-    try {
-      await signInWithEmailAndPassword(auth, email, pass);
-      soundService.playSuccess();
-      return true;
-    } catch (error) {
-      console.error("Login Error:", error);
-      soundService.playError();
-      return false;
-    }
-  };
-
-  const handleLogout = async () => {
-    await signOut(auth);
-    setCart([]);
-    setActiveTab('dashboard');
-  }
-
-  const handleSendToKitchen = async (method: 'cash' | 'card' | 'online', tableNumber?: string, notes?: string) => {
+  const handleSendToKitchen = useCallback(async (method: 'cash' | 'card' | 'online', tableNumber?: string, notes?: string) => {
     if (cart.length === 0) return;
-
-    // ════════════════════════════════════════════════════════════════
-    // SMART TABLE ORDER MANAGEMENT — Stage-Aware Merging
-    //
-    // Rules:
-    //   1. Find active (non-completed, non-paid) orders for this table.
-    //   2. Among those, find orders that are STILL IN EARLY STAGES
-    //      (pending / preparing) — these can absorb new items without
-    //      disrupting the kitchen flow.
-    //   3. If a "mergeable" early-stage order exists → append cart items
-    //      to it and update. The kitchen sees updated items instantly.
-    //   4. If all existing orders are in ADVANCED stages (ready, waiting_payment)
-    //      → create a brand-new independent transaction. Those advanced
-    //      orders are NOT touched, so they keep their current status.
-    //   5. Takeaway orders always create a fresh transaction (no merging).
-    // ════════════════════════════════════════════════════════════════
-
     const EARLY_STAGES = ['pending', 'preparing'];
-    const ADVANCED_STAGES = ['ready', 'waiting_payment'];
-
     const activeTableOrders = (tableNumber && tableNumber !== 'Takeaway')
-      ? transactions.filter(t =>
-        t.tableNumber === tableNumber &&
-        !['completed', 'refunded'].includes(t.status) &&
-        !t.isPaid
-      )
+      ? transactions.filter(t => t.tableNumber === tableNumber && !['completed', 'refunded'].includes(t.status) && !t.isPaid)
       : [];
-
-    // Find an early-stage order we can safely merge into
     const mergeCandidates = activeTableOrders.filter(t => EARLY_STAGES.includes(t.status));
 
     if (mergeCandidates.length > 0) {
-      // ── PATH A: Merge into the earliest in-kitchen order ──────────
-      // Pick the one closest to completion within early stages (prefer 'preparing')
       const masterOrder = mergeCandidates.find(t => t.status === 'preparing') || mergeCandidates[0];
-
-      // Merge cart into master
       const consolidatedItems = [...masterOrder.items];
       cart.forEach(cartItem => {
         const existing = consolidatedItems.find(ci => ci.id === cartItem.id);
-        if (existing) {
-          existing.quantity += cartItem.quantity;
-        } else {
-          consolidatedItems.push({ ...cartItem });
-        }
+        if (existing) existing.quantity += cartItem.quantity;
+        else consolidatedItems.push({ ...cartItem });
       });
-
       const subtotal = consolidatedItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
       const taxAmount = subtotal * (settings.taxRate / 100);
-
-      // Preserve existing status: a 'preparing' order stays 'preparing'
-      // A 'pending' order stays 'pending' — kitchen picks it naturally
       await firestoreService.updateTransaction(masterOrder.id, {
         items: consolidatedItems,
         total: subtotal + taxAmount,
-        isUpdated: true, // Mark as updated for kitchen notification
-        notes: notes
-          ? (masterOrder.notes ? `${masterOrder.notes} | ${notes}` : notes)
-          : masterOrder.notes,
+        isUpdated: true,
+        notes: notes ? (masterOrder.notes ? `${masterOrder.notes} | ${notes}` : notes) : masterOrder.notes,
         salesPerson: currentUser?.name || 'Unknown'
       });
-
-      // Update Stock for new items!
-      for (const cartItem of cart) {
-        await firestoreService.decrementStock(cartItem.id, cartItem.quantity);
-      }
-
-      // Clean up any OTHER early-stage duplicates for the same table
-      // (edge case: multiple pending orders for same table)
-      const otherEarlyOrders = mergeCandidates.filter(t => t.id !== masterOrder.id);
-      for (const dup of otherEarlyOrders) {
-        const dupItems = dup.items;
-        dupItems.forEach(dupItem => {
-          const existing = consolidatedItems.find(ci => ci.id === dupItem.id);
-          if (!existing) consolidatedItems.push({ ...dupItem }); // already merged above
-        });
-        await firestoreService.deleteTransaction(dup.id);
-      }
-
+      for (const cartItem of cart) await firestoreService.decrementStock(cartItem.id, cartItem.quantity);
     } else {
-      // ── PATH B: All existing orders are advanced (ready/waiting_payment)
-      //    OR there are no existing orders at all.
-      //    → Create an independent new transaction. Advanced orders are untouched.
       const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
       const taxAmount = subtotal * (settings.taxRate / 100);
-
       const newTransaction: Transaction = {
         id: `TR-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
         date: new Date().toISOString(),
@@ -392,218 +412,33 @@ const App: React.FC = () => {
         notes,
         salesPerson: currentUser?.name || 'Unknown'
       };
-
       await firestoreService.addTransaction(newTransaction);
-
-      // Update Stock for new transaction!
-      for (const cartItem of cart) {
-        await firestoreService.decrementStock(cartItem.id, cartItem.quantity);
-      }
+      for (const cartItem of cart) await firestoreService.decrementStock(cartItem.id, cartItem.quantity);
     }
-
     setCart([]);
     setShowSuccessModal(true);
     soundService.playSuccess();
     setTimeout(() => setShowSuccessModal(false), 2000);
-  };
+  }, [cart, transactions, settings.taxRate, currentUser?.name]);
 
-
-  const handleSendToCashier = async (transactionId: string) => {
-    await firestoreService.updateTransaction(transactionId, {
-      status: 'waiting_payment',
-      deliveredBy: currentUser?.name || 'Unknown'
-    });
-  };
-
-  const handleCancelOrder = async (orderId: string) => {
-    // 1. Get the transaction to replenish stock
-    const transaction = transactions.find(t => t.id === orderId);
-    if (transaction) {
-      // 2. Replenish stock
-      for (const item of transaction.items) {
-        // Use decrement with negative quantity to increment
-        await firestoreService.decrementStock(item.id, -item.quantity);
-      }
-
-      // 3. Update status to cancelled
-      await firestoreService.updateTransaction(orderId, {
-        status: 'cancelled',
-        notes: transaction.notes ? `${transaction.notes} | [ملغي]` : '[طلب ملغي]'
-      });
-
-      soundService.playSuccess();
-    }
-  };
-
-  const handleFinalizePayment = async (transactionIds: string | string[], paymentMethod: 'cash' | 'card' | 'online') => {
-    const ids = Array.isArray(transactionIds) ? transactionIds : [transactionIds];
-
-    for (const transactionId of ids) {
-      // Finalize Transaction (Smart Logic)
-      const currentTrans = transactions.find(t => t.id === transactionId);
-      if (currentTrans) {
-        // If order is ready or waiting, it's fully done. 
-        // If it's still pending/preparing, it's paid but stays in kitchen.
-        let finalStatus = currentTrans.status;
-        if (currentTrans.status === 'ready' || currentTrans.status === 'waiting_payment') {
-          finalStatus = 'completed';
-        }
-
-        await firestoreService.updateTransaction(transactionId, {
-          status: finalStatus,
-          paymentMethod: paymentMethod,
-          isPaid: true,
-          cashierPerson: currentUser?.name || 'Unknown'
-        });
-      }
-    }
-  };
-
-  const handleSidebarNavigation = (tab: string) => {
-    setActiveTab(tab);
-    setIsProductMenuOpen(false);
-
-    // Professional cleanup: Clear inventory search when navigating away
-    if (tab !== 'inventory') {
-      setInventorySearchQuery('');
-    }
-  };
-
-  // Calculate Low Stock Items
-  const lowStockItems = useMemo(() => {
-    return products.filter(p => p.stock <= settings.lowStockThreshold);
-  }, [products, settings.lowStockThreshold]);
-
-  // Monitor for new local stock alerts
-  useEffect(() => {
-    const newLowStockItem = products.find(p =>
-      p.stock <= settings.lowStockThreshold && !alertedIds.has(p.id)
-    );
-
-    if (newLowStockItem) {
-      setActiveLowStockAlert(newLowStockItem);
-      setAlertedIds(prev => new Set(prev).add(newLowStockItem.id));
-    }
-
-    // Clear alerted flag if stock is replenished
-    const replenishedIds = Array.from(alertedIds).filter(id => {
-      const p = products.find(prod => prod.id === id);
-      return p && p.stock > settings.lowStockThreshold;
-    });
-
-    if (replenishedIds.length > 0) {
-      setAlertedIds(prev => {
-        const next = new Set(prev);
-        replenishedIds.forEach(id => next.delete(id));
-        return next;
-      });
-    }
-  }, [products, settings.lowStockThreshold]);
-
-  // Cart Logic
-  const addToCart = (product: MenuItem) => {
-    // 1. Get the latest product state to ensure we have the most recent stock count
-    const currentProduct = products.find(p => p.id === product.id);
-
-    if (!currentProduct || currentProduct.stock <= 0) {
-      soundService.playError();
-      return;
-    }
-
-    setCart((prev) => {
-      const existing = prev.find((item) => item.id === product.id);
-
-      // 2. Prevent adding more than what's available in stock
-      if (existing) {
-        if (existing.quantity >= currentProduct.stock) {
-          soundService.playError();
-          return prev;
-        }
-        return prev.map((item) =>
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-        );
-      }
-
-      return [...prev, { ...product, quantity: 1 }];
-    });
-
-    // Optional: Open panel on mobile when adding first item
-    if (cart.length === 0 && window.innerWidth < 1280) {
-      setIsReceiptPanelOpen(true);
-    }
-  };
-
-  const removeFromCart = (id: string) => {
-    setCart((prev) => prev.filter((item) => item.id !== id));
-  };
-
-  const decreaseQuantity = (id: string) => {
-    setCart((prev) => {
-      const existing = prev.find((item) => item.id === id);
-      if (existing && existing.quantity > 1) {
-        return prev.map((item) =>
-          item.id === id ? { ...item, quantity: item.quantity - 1 } : item
-        );
-      }
-      return prev.filter(item => item.id !== id);
-    });
-  };
-
-  const clearCart = () => setCart([]);
-
-  const handleAddProduct = async (newProduct: MenuItem) => {
-    await firestoreService.addProduct(newProduct);
-  };
-
-  const handleUpdateProduct = async (updatedProduct: MenuItem) => {
-    const { id, ...data } = updatedProduct;
+  const handleAddProduct = useCallback(async (p: MenuItem) => await firestoreService.addProduct(p), []);
+  const handleUpdateProduct = useCallback(async (p: MenuItem) => {
+    const { id, ...data } = p;
     await firestoreService.updateProduct(id, data);
-  };
+  }, []);
+  const handleDeleteProduct = useCallback(async (id: string) => await firestoreService.deleteProduct(id), []);
 
-  const handleDeleteProduct = async (id: string) => {
-    await firestoreService.deleteProduct(id);
-  };
-
-  const [inventorySearchQuery, setInventorySearchQuery] = useState('');
-
-  const handleDashboardNavigate = (view: string, subTab?: string, data?: any) => {
-    setActiveTab(view);
-    setIsProductMenuOpen(false);
-
-    if (view === 'settings' && subTab) {
-      setSettingsTab(subTab as 'general' | 'payments' | 'employees' | 'printing');
-    } else {
-      setSettingsTab('general');
-    }
-
-    // Handle professional navigation data
-    if (view === 'inventory' && data?.productSearch) {
-      setInventorySearchQuery(data.productSearch);
-    } else if (view !== 'inventory') {
-      // Clear search when leaving inventory or navigating normally
-      setInventorySearchQuery('');
-    }
-  };
-
-  const getActiveTabTitle = () => {
+  const getActiveTabTitle = useCallback(() => {
     const titles: any = {
-      dashboard: 'الرئيسة',
-      sales: 'المبيعات',
-      kitchen: 'المطبخ',
-      invoices: 'الفواتير',
-      inventory: 'المخزون',
-      digital_menu: 'المنيو الإلكتروني',
-      suppliers: 'الموردين',
-      reports: 'التقارير المفصلة',
-      settings: 'الإعدادات'
+      dashboard: 'الرئيسة', sales: 'المبيعات', kitchen: 'المطبخ', invoices: 'الفواتير',
+      inventory: 'المخزون', digital_menu: 'المنيو الإلكتروني', suppliers: 'الموردين',
+      reports: 'التقارير المفصلة', settings: 'الإعدادات'
     };
     return titles[activeTab] || 'نظام نقطة البيع';
-  };
+  }, [activeTab]);
 
-  // View Routing based on Permissions
   const renderContent = () => {
     if (!currentUser) return null;
-
     const role = currentUser.role.toLowerCase();
     const perms = Array.isArray(currentUser.permissions) ? currentUser.permissions : [];
     const hasAll = perms.includes('all');
@@ -615,7 +450,7 @@ const App: React.FC = () => {
             onProductClick={() => setActiveTab('sales')}
             onNavigate={handleDashboardNavigate}
             lowStockItems={lowStockItems}
-            readyOrders={transactions.filter(t => t.status === 'ready')}
+            readyOrders={readyOrders}
             onCompleteOrder={handleSendToCashier}
             isOnline={isOnline}
             notifications={notifications}
@@ -628,17 +463,16 @@ const App: React.FC = () => {
             products={products}
             addToCart={addToCart}
             settings={settings}
-            readyOrders={transactions.filter(t => t.status === 'ready')}
+            readyOrders={readyOrders}
             transactions={transactions}
             currentUser={currentUser}
             onCompleteOrder={handleSendToCashier}
             onCancelOrder={handleCancelOrder}
             onToggleReceiptPanel={() => setIsReceiptPanelOpen(!isReceiptPanelOpen)}
-            cartCount={cart.reduce((acc, item) => acc + item.quantity, 0)}
+            cartCount={cartCount}
             selectedTableNumber={selectedTableNumber}
             onSelectTable={setSelectedTableNumber}
           />;
-
         }
         break;
       case 'kitchen':
@@ -664,11 +498,7 @@ const App: React.FC = () => {
         break;
       case 'digital_menu':
         if (['admin', 'manager'].includes(role) || hasAll) {
-          return <DigitalMenuView
-            products={products}
-            storeName={settings.storeName}
-            settings={settings}
-          />;
+          return <DigitalMenuView products={products} storeName={settings.storeName} settings={settings} />;
         }
         break;
       case 'invoices':
@@ -690,12 +520,7 @@ const App: React.FC = () => {
         break;
       case 'reports':
         if (['admin', 'manager', 'cashier'].includes(role) || perms.includes('reports') || hasAll) {
-          return <ReportsView
-            transactions={transactions}
-            employees={employees}
-            suppliers={suppliers}
-            settings={settings}
-          />;
+          return <ReportsView transactions={transactions} employees={employees} suppliers={suppliers} settings={settings} />;
         }
         break;
       case 'performance':
@@ -705,50 +530,36 @@ const App: React.FC = () => {
         break;
       case 'settings':
         if (['admin', 'manager'].includes(role)) {
-          return <SettingsView
-            settings={settings}
-            onUpdateSettings={handleUpdateSettings}
-            initialTab={settingsTab}
-          />;
+          return <SettingsView settings={settings} onUpdateSettings={handleUpdateSettings} initialTab={settingsTab} />;
         }
         break;
-      default:
-        break;
+      default: break;
     }
-
-    // Default Fallback based on role
-    if (['kitchen', 'cook', 'chef'].includes(role)) return <KitchenView isOnline={isOnline} user={currentUser} />;
-    if (role === 'sales') return <SalesView
-      products={products}
-      addToCart={addToCart}
-      settings={settings}
-      readyOrders={transactions.filter(t => t.status === 'ready')}
-      transactions={transactions}
-      currentUser={currentUser}
-      onCompleteOrder={handleSendToCashier}
-      onToggleReceiptPanel={() => setIsReceiptPanelOpen(!isReceiptPanelOpen)}
-      cartCount={cart.reduce((acc, item) => acc + item.quantity, 0)}
-      selectedTableNumber={selectedTableNumber}
-      onSelectTable={setSelectedTableNumber}
-    />;
-    if (role === 'cashier') return <InvoicesView
-      transactions={transactions}
-      onFinalizePayment={handleFinalizePayment}
-      canFinalize={true}
-      products={products}
-      settings={settings}
-    />;
-
-    return <Dashboard
-      onProductClick={() => setActiveTab('sales')}
-      onNavigate={handleDashboardNavigate}
-      lowStockItems={lowStockItems}
-      readyOrders={transactions.filter(t => t.status === 'ready')}
-      onCompleteOrder={handleSendToCashier}
-      isOnline={isOnline}
-      notifications={notifications}
-    />;
+    return null;
   };
+
+
+  // Connectivity Monitoring
+  const [showStatusToast, setShowStatusToast] = useState<'none' | 'offline' | 'online'>('none');
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      setShowStatusToast('online');
+      setTimeout(() => setShowStatusToast('none'), 3000);
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      setShowStatusToast('offline');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Show splash while: auth hasn't resolved OR splash bar isn't done yet
   if (isInitializing || isAuthLoading || !isSplashDone) {
