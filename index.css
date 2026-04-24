@@ -110,7 +110,7 @@
     @apply flex-1 p-4 md:p-8 overflow-y-auto bg-brand-cream pb-20 relative;
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
-    animation: fadeIn 0.5s ease-out forwards;
+    animation: fadeInOnly 0.5s ease-out forwards;
 }
 
 @keyframes fadeIn {
@@ -244,4 +244,21 @@
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+@keyframes rowFadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-row-entry {
+    animation: rowFadeInUp 0.5s ease-out forwards;
+    opacity: 0;
 }

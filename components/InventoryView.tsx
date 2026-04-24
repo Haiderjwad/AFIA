@@ -1,10 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { MenuItem, AppSettings } from '../types';
 import { Package, Search, Filter, Plus, X, Tag, DollarSign, Coffee, Trash2, AlertTriangle, Edit, Layers, FileText, QrCode, ArrowLeft, Check, Coins } from 'lucide-react';
 import { formatCurrency } from '../utils/currencyUtils';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
-
 import StatusModal from './StatusModal';
 
 interface InventoryViewProps {
@@ -19,7 +18,6 @@ interface InventoryViewProps {
   initialSearchQuery?: string;
   onSearchChange?: (query: string) => void;
 }
-
 
 const InventoryView: React.FC<InventoryViewProps> = ({
   products,
@@ -41,7 +39,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({
   // Status Modal State
   const [statusConfig, setStatusConfig] = useState<{
     isOpen: boolean;
-    type: 'success' | 'error' | 'warning';
+    type: 'success' | 'error' | 'warning' | 'loading';
     title: string;
     message: string;
   }>({
@@ -56,12 +54,17 @@ const InventoryView: React.FC<InventoryViewProps> = ({
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [stockStatus, setStockStatus] = useState('All');
 
-  // Sync with prop if it changes externally
-  React.useEffect(() => {
-    if (initialSearchQuery !== searchQuery) {
-      setSearchQuery(initialSearchQuery);
-    }
+  // Professional Sync: Only sync when initialSearchQuery actually changes from the outside
+  useEffect(() => {
+    setSearchQuery(initialSearchQuery);
   }, [initialSearchQuery]);
+
+  // Professional cleanup: Reset search when leaving the section
+  useEffect(() => {
+    return () => {
+      if (onSearchChange) onSearchChange('');
+    };
+  }, [onSearchChange]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -73,34 +76,38 @@ const InventoryView: React.FC<InventoryViewProps> = ({
 
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
-  // Get unique categories for filter dropdown
-  const categories = Array.from(new Set(products.map(p => p.category)));
+  // Memoized categories for filter dropdown - Prevents recalculation on every render
+  const categories = useMemo(() => {
+    return Array.from(new Set(products.map(p => p.category)));
+  }, [products]);
 
-  // Filter products based on search query, category, and stock status
-  const filteredProducts = products.filter(product => {
-    // 1. Search Query
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchQuery.toLowerCase());
+  // Memoized Filtered Products - Optimizes search and filter performance
+  const filteredProducts = useMemo(() => {
+    return products.filter(product => {
+      // 1. Search Query
+      const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.category.toLowerCase().includes(searchQuery.toLowerCase());
 
-    // 2. Category Filter
-    const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
+      // 2. Category Filter
+      const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
 
-    // 3. Stock Status Filter
-    const isLow = product.stock <= lowStockThreshold;
-    const matchesStock = stockStatus === 'All' ||
-      (stockStatus === 'Low' && isLow) ||
-      (stockStatus === 'In Stock' && !isLow);
+      // 3. Stock Status Filter
+      const isLow = product.stock <= lowStockThreshold;
+      const matchesStock = stockStatus === 'All' ||
+        (stockStatus === 'Low' && isLow) ||
+        (stockStatus === 'In Stock' && !isLow);
 
-    return matchesSearch && matchesCategory && matchesStock;
-  });
+      return matchesSearch && matchesCategory && matchesStock;
+    });
+  }, [products, searchQuery, selectedCategory, stockStatus, lowStockThreshold]);
 
-  const openAddModal = () => {
+  const openAddModal = useCallback(() => {
     setEditingId(null);
     setFormData({ name: '', price: '', category: '', stock: '', notes: '' });
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const openEditModal = (product: MenuItem) => {
+  const openEditModal = useCallback((product: MenuItem) => {
     setEditingId(product.id);
     setFormData({
       name: product.name,
@@ -110,7 +117,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({
       notes: product.notes || ''
     });
     setIsModalOpen(true);
-  };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,7 +128,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({
       isOpen: true,
       type: 'loading',
       title: editingId ? 'جاري تحديث البيانات' : 'جاري إضافة المنتج',
-      message: 'يتم الآن مزامنة البيانات مع الخادم السحابي وتحديث قواعد البيانات، يرجى الانتظار...'
+      message: 'يتم الآن مزامنة البيانات سحابياً... في حال ضعف الإنترنت سيتم إتمام العملية تلقائياً عند استقرار الاتصال.'
     });
 
     const priceVal = parseFloat(formData.price);
@@ -147,7 +154,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({
       } else {
         // Add new
         await onAddProduct({
-          id: '', // Firestore will assign this
+          id: '',
           name: formData.name,
           price: priceVal,
           category: formData.category,
@@ -264,12 +271,22 @@ const InventoryView: React.FC<InventoryViewProps> = ({
                 setSearchQuery(val);
                 if (onSearchChange) onSearchChange(val);
               }}
-              className="w-full pr-16 pl-8 py-5 bg-white rounded-[2rem] border-2 border-transparent focus:border-brand-primary/20 focus:ring-8 focus:ring-brand-primary/5 outline-none transition-all text-brand-dark font-black placeholder-gray-200 shadow-inner"
+              className="w-full pr-16 pl-16 py-5 bg-white rounded-[2rem] border-2 border-transparent focus:border-brand-primary/20 focus:ring-8 focus:ring-brand-primary/5 outline-none transition-all text-brand-dark font-black placeholder-gray-200 shadow-inner"
             />
+            {searchQuery && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  if (onSearchChange) onSearchChange('');
+                }}
+                className="absolute inset-y-0 left-0 pl-6 flex items-center text-gray-300 hover:text-red-500 transition-all hover:scale-110 active:scale-90 animate-in fade-in zoom-in duration-300"
+              >
+                <X size={20} />
+              </button>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-4">
-            {/* Category Filter */}
             <div className="relative group">
               <Filter className="absolute right-5 top-1/2 -translate-y-1/2 text-brand-primary/30 group-hover:text-brand-primary transition-colors pointer-events-none" size={20} />
               <select
@@ -284,7 +301,6 @@ const InventoryView: React.FC<InventoryViewProps> = ({
               </select>
             </div>
 
-            {/* Stock Status Filter */}
             <div className="relative group">
               <AlertTriangle className="absolute right-5 top-1/2 -translate-y-1/2 text-brand-primary/30 group-hover:text-brand-primary transition-colors pointer-events-none" size={20} />
               <select
@@ -316,71 +332,19 @@ const InventoryView: React.FC<InventoryViewProps> = ({
             </thead>
             <tbody className="divide-y divide-gray-50">
               {filteredProducts.length > 0 ? (
-                filteredProducts.map((product) => {
-                  const stock = product.stock;
-                  const isLowStock = stock <= lowStockThreshold;
-                  const statusLabel = isLowStock ? 'مخزون حرج' : 'متوفر بالمخزن';
-                  const isHighlighted = initialSearchQuery && product.name.toLowerCase().includes(initialSearchQuery.toLowerCase());
-
-                  return (
-                    <tr
-                      key={product.id}
-                      className={`group transition-all duration-300 hover:bg-brand-primary/5 ${isHighlighted ? 'bg-brand-primary/5' : ''}`}
-                    >
-                      <td className="px-8 py-6">
-                        <span className="font-mono text-xs text-gray-400 opacity-50">#{product.id.slice(-6)}</span>
-                      </td>
-                      <td className="px-8 py-6">
-                        <div className="flex items-center gap-4">
-                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-inner transition-transform group-hover:scale-110 group-hover:rotate-6 bg-brand-light/30 text-brand-primary ${isHighlighted ? 'ring-4 ring-brand-primary/20' : ''}`}>
-                            {product.category === 'Coffee' ? '☕' : product.category === 'Tea' ? '🍵' : product.category === 'Dessert' ? '🍰' : '🍔'}
-                          </div>
-                          <div>
-                            <div className="font-black text-brand-dark group-hover:text-brand-primary transition-colors">{product.name}</div>
-                            <div className="text-[10px] text-gray-400 font-bold opacity-60">أصول مخزنية معتمدة</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-8 py-6">
-                        <span className="bg-gray-100 text-gray-500 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider">{product.category}</span>
-                      </td>
-                      <td className="px-8 py-6 text-center">
-                        <span className="font-black text-brand-dark text-lg">{formatCurrency(product.price, settings.currency)}</span>
-                      </td>
-                      <td className="px-8 py-6 text-center">
-                        <span className={`font-black text-md ${isLowStock ? 'text-red-500' : 'text-brand-primary'}`}>{stock} قطعة</span>
-                      </td>
-                      <td className="px-8 py-6">
-                        <div className="flex justify-center">
-                          <span className={`px-4 py-1.5 rounded-full text-[10px] font-black flex items-center gap-2 border shadow-sm ${isLowStock ? 'bg-red-50 text-red-600 border-red-100 animate-pulse' : 'bg-green-50 text-green-700 border-green-100'}`}>
-                            <div className={`w-1.5 h-1.5 rounded-full ${isLowStock ? 'bg-red-600' : 'bg-green-600'}`}></div>
-                            {statusLabel}
-                          </span>
-                        </div>
-                      </td>
-                      {canManage && (
-                        <td className="px-8 py-6">
-                          <div className="flex justify-start gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => openEditModal(product)}
-                              className="w-10 h-10 flex items-center justify-center bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                              title="تعديل"
-                            >
-                              <Edit size={18} />
-                            </button>
-                            <button
-                              onClick={() => setItemToDelete(product.id)}
-                              className="w-10 h-10 flex items-center justify-center bg-red-50 text-red-500 rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-sm"
-                              title="حذف"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })
+                filteredProducts.map((product, index) => (
+                  <ProductRow
+                    key={product.id}
+                    product={product}
+                    index={index}
+                    lowStockThreshold={lowStockThreshold}
+                    settings={settings}
+                    canManage={canManage}
+                    isHighlighted={!!(initialSearchQuery && product.name.toLowerCase().includes(initialSearchQuery.toLowerCase()))}
+                    onEdit={openEditModal}
+                    onDelete={setItemToDelete}
+                  />
+                ))
               ) : (
                 <tr>
                   <td colSpan={7} className="px-8 py-32 text-center text-gray-300">
@@ -403,8 +367,8 @@ const InventoryView: React.FC<InventoryViewProps> = ({
 
       {/* Add/Edit Product Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-brand-dark/60 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-4xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-brand-dark/80 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-4xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col max-h-[90vh] relative border border-white/20">
             <div className="px-10 py-8 border-b border-brand-primary/5 flex justify-between items-center bg-brand-light/20 shrink-0 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
               <div className="relative">
@@ -549,5 +513,82 @@ const InventoryView: React.FC<InventoryViewProps> = ({
     </div>
   );
 };
+
+// Memoized row component for performance
+interface ProductRowProps {
+  product: MenuItem;
+  index: number;
+  lowStockThreshold: number;
+  settings: AppSettings;
+  canManage: boolean;
+  isHighlighted: boolean;
+  onEdit: (product: MenuItem) => void;
+  onDelete: (id: string) => void;
+}
+
+const ProductRow = React.memo(({ product, index, lowStockThreshold, settings, canManage, isHighlighted, onEdit, onDelete }: ProductRowProps) => {
+  const stock = product.stock;
+  const isLowStock = stock <= lowStockThreshold;
+  const statusLabel = isLowStock ? 'مخزون حرج' : 'متوفر بالمخزن';
+
+  return (
+    <tr
+      style={{ animationDelay: `${Math.min(index, 20) * 0.05}s` }}
+      className={`animate-row-entry group transition-all duration-300 hover:bg-brand-primary/5 ${isHighlighted ? 'bg-brand-primary/5 shadow-[inset_4px_0_0_0_#52B788]' : ''}`}
+    >
+      <td className="px-8 py-6">
+        <span className="font-mono text-xs text-gray-400 opacity-50">#{product.id.slice(-6)}</span>
+      </td>
+      <td className="px-8 py-6">
+        <div className="flex items-center gap-4">
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-inner transition-transform group-hover:scale-110 group-hover:rotate-6 bg-brand-light/30 text-brand-primary ${isHighlighted ? 'ring-4 ring-brand-primary/20' : ''}`}>
+            {product.category === 'Coffee' ? '☕' : product.category === 'Tea' ? '🍵' : product.category === 'Dessert' ? '🍰' : product.category === 'Bakery' ? '🥐' : '🍔'}
+          </div>
+          <div>
+            <div className="font-black text-brand-dark group-hover:text-brand-primary transition-colors">{product.name}</div>
+            <div className="text-[10px] text-gray-400 font-bold opacity-60">أصول مخزنية معتمدة</div>
+          </div>
+        </div>
+      </td>
+      <td className="px-8 py-6">
+        <span className="bg-gray-100 text-gray-500 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider">{product.category}</span>
+      </td>
+      <td className="px-8 py-6 text-center">
+        <span className="font-black text-brand-dark text-lg">{formatCurrency(product.price, settings.currency)}</span>
+      </td>
+      <td className="px-8 py-6 text-center">
+        <span className={`font-black text-md ${isLowStock ? 'text-red-500' : 'text-brand-primary'}`}>{stock} قطعة</span>
+      </td>
+      <td className="px-8 py-6">
+        <div className="flex justify-center">
+          <span className={`px-4 py-1.5 rounded-full text-[10px] font-black flex items-center gap-2 border shadow-sm ${isLowStock ? 'bg-red-50 text-red-600 border-red-100 animate-pulse' : 'bg-green-50 text-green-700 border-green-100'}`}>
+            <div className={`w-1.5 h-1.5 rounded-full ${isLowStock ? 'bg-red-600' : 'bg-green-600'}`}></div>
+            {statusLabel}
+          </span>
+        </div>
+      </td>
+      {canManage && (
+        <td className="px-8 py-6">
+          <div className="flex justify-start gap-2 transition-opacity">
+            <button
+              onClick={() => onEdit(product)}
+              className="w-10 h-10 flex items-center justify-center bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-95"
+              title="تعديل"
+            >
+              <Edit size={18} />
+            </button>
+            <button
+              onClick={() => onDelete(product.id)}
+              className="w-10 h-10 flex items-center justify-center bg-red-50 text-red-500 rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-sm active:scale-95"
+              title="حذف"
+            >
+              <Trash2 size={18} />
+            </button>
+          </div>
+        </td>
+      )}
+    </tr>
+  );
+});
 
 export default InventoryView;

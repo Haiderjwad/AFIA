@@ -39,6 +39,23 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
         message: ''
     });
 
+    const tableStatuses = useMemo(() => {
+        const statuses: Record<string, 'occupied' | 'available'> = {};
+        const tablesCount = settings?.tablesCount || 10;
+
+        for (let i = 1; i <= tablesCount; i++) {
+            statuses[String(i)] = 'available';
+        }
+
+        transactions.forEach(t => {
+            if (t.tableNumber && t.tableNumber !== 'Takeaway' && !['completed', 'refunded', 'cancelled'].includes(t.status) && !t.isPaid) {
+                statuses[t.tableNumber] = 'occupied';
+            }
+        });
+
+        return statuses;
+    }, [transactions, settings?.tablesCount]);
+
     const filteredTransactions = transactions.filter(t => {
         // Tab filter
         // Tab filter: Pending shows all active orders that are NOT yet paid
@@ -1034,6 +1051,40 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                 <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
             </div>
 
+            {/* Global Live Table Monitor (Top-most & Permanent) */}
+            <div className="mb-10 relative z-20">
+                <div className="bg-white/40 backdrop-blur-2xl px-6 py-4 rounded-[2.5rem] border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.03)] overflow-x-auto no-scrollbar animate-in slide-in-from-top-4 duration-700">
+                    <div className="flex gap-4 min-w-max items-center justify-center lg:justify-start">
+                        {Object.entries(tableStatuses).sort(([a], [b]) => Number(a) - Number(b)).map(([num, status]) => (
+                            <div key={num} className="relative group/table">
+                                <div className={`
+                                    w-11 h-11 rounded-full flex items-center justify-center transition-all duration-500 shadow-lg border-2
+                                    ${status === 'occupied'
+                                        ? 'bg-gradient-to-tr from-red-600 to-red-400 border-red-100 shadow-red-500/30'
+                                        : 'bg-gradient-to-tr from-green-600 to-green-400 border-green-100 shadow-green-500/30'
+                                    }
+                                    group-hover/table:scale-110 active:scale-95
+                                `}>
+                                    <span className="text-sm font-black text-white italic tracking-tighter drop-shadow-sm">
+                                        {num}
+                                    </span>
+
+                                    {/* Subtle Glow Overlay for Occupied */}
+                                    {status === 'occupied' && (
+                                        <div className="absolute inset-0 bg-white/10 rounded-full animate-pulse pointer-events-none" />
+                                    )}
+                                </div>
+
+                                {status === 'occupied' && (
+                                    <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-100 rounded-full flex items-center justify-center border-2 border-white">
+                                        <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping" />
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
 
             {/* Header Section */}
             <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-10 gap-6 transition-all relative z-10">

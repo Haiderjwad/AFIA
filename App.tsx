@@ -462,6 +462,11 @@ const App: React.FC = () => {
   const handleSidebarNavigation = (tab: string) => {
     setActiveTab(tab);
     setIsProductMenuOpen(false);
+
+    // Professional cleanup: Clear inventory search when navigating away
+    if (tab !== 'inventory') {
+      setInventorySearchQuery('');
+    }
   };
 
   // Calculate Low Stock Items

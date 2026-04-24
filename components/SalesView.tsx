@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { MenuItem, AppSettings, Transaction, Employee } from '../types';
 import { formatCurrency } from '../utils/currencyUtils';
+import { soundService } from '../services/soundService';
 
 interface SalesViewProps {
     products: MenuItem[];
@@ -37,6 +38,43 @@ const SalesView: React.FC<SalesViewProps> = ({
 
     // Slider ref
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    // Notification State for Kitchen Ready
+    const [notifiedReadyIds, setNotifiedReadyIds] = useState<Set<string>>(new Set());
+    const [activeReadyAlert, setActiveReadyAlert] = useState<{ id: string, tableName: string } | null>(null);
+
+    // Catch newly ready orders from kitchen
+    useEffect(() => {
+        const newReady = readyOrders.filter(o => !notifiedReadyIds.has(o.id));
+        if (newReady.length > 0) {
+            const first = newReady[0];
+            const tableName = first.tableNumber === 'Takeaway' ? 'طلب سفري' : `طاولة ${first.tableNumber}`;
+
+            // Set alert
+            setActiveReadyAlert({ id: first.id, tableName });
+
+            // Play Sound
+            soundService.playNotification();
+
+            // Mark as notified
+            setNotifiedReadyIds(prev => {
+                const next = new Set(prev);
+                newReady.forEach(o => next.add(o.id));
+                return next;
+            });
+
+            // Auto close after 6 seconds
+            const timer = setTimeout(() => setActiveReadyAlert(null), 6000);
+            return () => clearTimeout(timer);
+        }
+    }, [readyOrders, notifiedReadyIds]);
+
+    // Auto-hide alert if the order is no longer in ready state (received)
+    useEffect(() => {
+        if (activeReadyAlert && !readyOrders.find(o => o.id === activeReadyAlert.id)) {
+            setActiveReadyAlert(null);
+        }
+    }, [readyOrders, activeReadyAlert]);
 
     const scroll = (direction: 'left' | 'right') => {
         if (scrollContainerRef.current) {
@@ -214,6 +252,35 @@ const SalesView: React.FC<SalesViewProps> = ({
 
     return (
         <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#F1F3F6] p-4 md:p-6 text-right relative" dir="rtl">
+
+            {/* Professional Order Ready Alert (Premium Notification) */}
+            {activeReadyAlert && (
+                <div className="fixed top-12 right-10 z-[2000] animate-in slide-in-from-right-40 fade-in duration-700">
+                    <div className="bg-brand-dark/95 backdrop-blur-2xl text-white rounded-[2.8rem] p-2.5 pr-8 flex items-center gap-7 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.4)] border border-white/10 relative overflow-hidden group">
+                        {/* Interactive Shine Effect */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+
+                        <div className="flex flex-col text-right relative z-10">
+                            <div className="flex items-center gap-2 mb-1.5">
+                                <span className="w-2 h-2 bg-brand-accent rounded-full animate-ping" />
+                                <span className="text-[10px] font-black text-brand-accent uppercase tracking-widest leading-none">تحديث المطبخ المباشر</span>
+                            </div>
+                            <p className="text-base font-black tracking-tight">الطلب الخاص بـ <span className="text-brand-accent text-xl">{activeReadyAlert.tableName}</span> جاهز للتسليم الآن!</p>
+                        </div>
+
+                        <div className="w-16 h-16 bg-brand-accent text-brand-dark rounded-[1.8rem] flex items-center justify-center shadow-[0_15px_30px_-5px_rgba(248,150,30,0.3)] relative z-10 animate-bounce">
+                            <Bell size={28} className="fill-current opacity-80" />
+                        </div>
+
+                        <button
+                            onClick={() => setActiveReadyAlert(null)}
+                            className="bg-white/5 hover:bg-rose-500 hover:text-white p-3 rounded-full transition-all ml-1 relative z-10 border border-white/5"
+                        >
+                            <X size={20} />
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Glossy Success Toast Container */}
             {completionSuccess?.isOpen && (
@@ -464,176 +531,178 @@ const SalesView: React.FC<SalesViewProps> = ({
             </div>
 
             {/* Modern Sidebar Activity Menu */}
-            {showActivityLog && (
-                <div className="fixed inset-0 z-[600] flex justify-end animate-in fade-in duration-300">
-                    <div className="absolute inset-0 bg-brand-dark/40 backdrop-blur-md" onClick={() => setShowActivityLog(false)} />
-                    <div className="relative w-full max-w-lg bg-white h-full shadow-[0_0_100px_rgba(0,0,0,0.2)] flex flex-col animate-in slide-in-from-left duration-500">
-                        <div className="p-10 bg-brand-dark text-white relative">
-                            <div className="flex items-center gap-5">
-                                <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center text-brand-accent">
-                                    <History size={32} />
+            {
+                showActivityLog && (
+                    <div className="fixed inset-0 z-[600] flex justify-end animate-in fade-in duration-300">
+                        <div className="absolute inset-0 bg-brand-dark/40 backdrop-blur-md" onClick={() => setShowActivityLog(false)} />
+                        <div className="relative w-full max-w-lg bg-white h-full shadow-[0_0_100px_rgba(0,0,0,0.2)] flex flex-col animate-in slide-in-from-left duration-500">
+                            <div className="p-10 bg-brand-dark text-white relative">
+                                <div className="flex items-center gap-5">
+                                    <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center text-brand-accent">
+                                        <History size={32} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl font-black tracking-tight uppercase">مركز النشاط</h2>
+                                        <p className="text-white/40 text-xs font-bold uppercase tracking-widest mt-1">Real-time Order Tracking</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h2 className="text-2xl font-black tracking-tight uppercase">مركز النشاط</h2>
-                                    <p className="text-white/40 text-xs font-bold uppercase tracking-widest mt-1">Real-time Order Tracking</p>
-                                </div>
-                            </div>
-                            <button onClick={() => setShowActivityLog(false)} className="absolute top-10 left-10 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all">
-                                <X size={24} />
-                            </button>
-                        </div>
-
-                        <div className="p-8 flex-1 overflow-y-auto no-scrollbar">
-                            <div className="flex bg-gray-50 p-2 rounded-[2rem] mb-10 border border-gray-100">
-                                <button
-                                    onClick={() => setActivityTab('active')}
-                                    className={`flex-1 py-4 rounded-[1.5rem] font-black text-xs uppercase transition-all ${activityTab === 'active' ? 'bg-white text-brand-primary shadow-xl shadow-gray-200/50' : 'text-gray-400'}`}
-                                >
-                                    النشطة
-                                </button>
-                                <button
-                                    onClick={() => setActivityTab('completed')}
-                                    className={`flex-1 py-4 rounded-[1.5rem] font-black text-xs uppercase transition-all ${activityTab === 'completed' ? 'bg-white text-emerald-600 shadow-xl shadow-gray-200/50' : 'text-gray-400'}`}
-                                >
-                                    المنجزة ({transactions.filter(t => t.salesPerson === currentUser?.name && t.status === 'completed' && new Date(t.date).toDateString() === new Date().toDateString()).length})
-                                </button>
-                                <button
-                                    onClick={() => setActivityTab('cancelled')}
-                                    className={`flex-1 py-4 rounded-[1.5rem] font-black text-xs uppercase transition-all ${activityTab === 'cancelled' ? 'bg-white text-rose-500 shadow-xl shadow-gray-200/50' : 'text-gray-400'}`}
-                                >
-                                    الملغاة
+                                <button onClick={() => setShowActivityLog(false)} className="absolute top-10 left-10 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all">
+                                    <X size={24} />
                                 </button>
                             </div>
 
-                            <div className="space-y-6">
-                                {activityTab === 'active' ? (
-                                    <>
-                                        {readyOrders.length > 0 && (
-                                            <div className="space-y-4">
-                                                <div className="flex items-center justify-between px-2">
-                                                    <p className="text-[10px] font-black text-brand-accent uppercase tracking-widest">جاهز للتسليم الفوري 🔔</p>
-                                                    <span className="w-2 h-2 bg-brand-accent rounded-full animate-ping" />
-                                                </div>
-                                                {readyOrders.map(order => (
-                                                    <div key={order.id} className="bg-brand-accent/5 border-2 border-brand-accent/20 p-6 rounded-[2rem] flex justify-between items-center group hover:bg-brand-accent/10 transition-all">
-                                                        <div className="flex items-center gap-5">
-                                                            <div className="w-14 h-14 bg-brand-dark text-brand-accent rounded-2xl flex items-center justify-center font-black text-xl shadow-xl shadow-brand-accent/30">
-                                                                {order.tableNumber === 'Takeaway' ? 'SB' : order.tableNumber}
-                                                            </div>
-                                                            <div>
-                                                                <p className="font-black text-brand-dark text-lg">{order.tableNumber === 'Takeaway' ? 'طلب سفري' : `طاولة ${order.tableNumber}`}</p>
-                                                                <p className="text-xs text-brand-accent font-black">تحضير المطبخ مكتمل!</p>
-                                                            </div>
-                                                        </div>
-                                                        <button
-                                                            onClick={() => handleCompleteOrder(order.id, order.tableNumber === 'Takeaway' ? 'طلب سفري' : `طاولة ${order.tableNumber}`)}
-                                                            className="bg-brand-accent text-white px-8 py-3 rounded-2xl font-black text-sm shadow-xl hover:bg-orange-500 active:scale-95 transition-all"
-                                                        >
-                                                            استلام
-                                                        </button>
+                            <div className="p-8 flex-1 overflow-y-auto no-scrollbar">
+                                <div className="flex bg-gray-50 p-2 rounded-[2rem] mb-10 border border-gray-100">
+                                    <button
+                                        onClick={() => setActivityTab('active')}
+                                        className={`flex-1 py-4 rounded-[1.5rem] font-black text-xs uppercase transition-all ${activityTab === 'active' ? 'bg-white text-brand-primary shadow-xl shadow-gray-200/50' : 'text-gray-400'}`}
+                                    >
+                                        النشطة
+                                    </button>
+                                    <button
+                                        onClick={() => setActivityTab('completed')}
+                                        className={`flex-1 py-4 rounded-[1.5rem] font-black text-xs uppercase transition-all ${activityTab === 'completed' ? 'bg-white text-emerald-600 shadow-xl shadow-gray-200/50' : 'text-gray-400'}`}
+                                    >
+                                        المنجزة ({transactions.filter(t => t.salesPerson === currentUser?.name && t.status === 'completed' && new Date(t.date).toDateString() === new Date().toDateString()).length})
+                                    </button>
+                                    <button
+                                        onClick={() => setActivityTab('cancelled')}
+                                        className={`flex-1 py-4 rounded-[1.5rem] font-black text-xs uppercase transition-all ${activityTab === 'cancelled' ? 'bg-white text-rose-500 shadow-xl shadow-gray-200/50' : 'text-gray-400'}`}
+                                    >
+                                        الملغاة
+                                    </button>
+                                </div>
+
+                                <div className="space-y-6">
+                                    {activityTab === 'active' ? (
+                                        <>
+                                            {readyOrders.length > 0 && (
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center justify-between px-2">
+                                                        <p className="text-[10px] font-black text-brand-accent uppercase tracking-widest">جاهز للتسليم الفوري 🔔</p>
+                                                        <span className="w-2 h-2 bg-brand-accent rounded-full animate-ping" />
                                                     </div>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        <div className="pt-6 border-t border-gray-100">
-                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 mb-4">قيد التحضير</p>
-                                            <div className="space-y-4">
-                                                {transactions
-                                                    .filter(t => t.salesPerson === currentUser?.name && ['pending', 'preparing'].includes(t.status))
-                                                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                                                    .map(order => (
-                                                        <div key={order.id} className="bg-white border-2 border-gray-50 p-5 rounded-[2rem] flex justify-between items-center group hover:border-brand-primary/20 transition-all">
+                                                    {readyOrders.map(order => (
+                                                        <div key={order.id} className="bg-brand-accent/5 border-2 border-brand-accent/20 p-6 rounded-[2rem] flex justify-between items-center group hover:bg-brand-accent/10 transition-all">
                                                             <div className="flex items-center gap-5">
-                                                                <div className="w-12 h-12 bg-gray-50 text-gray-400 rounded-2xl flex items-center justify-center font-black">
+                                                                <div className="w-14 h-14 bg-brand-dark text-brand-accent rounded-2xl flex items-center justify-center font-black text-xl shadow-xl shadow-brand-accent/30">
                                                                     {order.tableNumber === 'Takeaway' ? 'SB' : order.tableNumber}
                                                                 </div>
                                                                 <div>
-                                                                    <p className="font-black text-brand-dark text-sm">{order.tableNumber === 'Takeaway' ? 'طلب سفري' : `طاولة ${order.tableNumber}`}</p>
-                                                                    <p className="text-[10px] text-gray-400 font-bold">{new Date(order.date).toLocaleTimeString('ar-EG')}</p>
+                                                                    <p className="font-black text-brand-dark text-lg">{order.tableNumber === 'Takeaway' ? 'طلب سفري' : `طاولة ${order.tableNumber}`}</p>
+                                                                    <p className="text-xs text-brand-accent font-black">تحضير المطبخ مكتمل!</p>
                                                                 </div>
                                                             </div>
-                                                            <div className="flex items-center gap-4">
-                                                                <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase ${order.status === 'pending' ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                                                                    {order.status === 'pending' ? 'في الانتظار' : 'جاري العمل'}
-                                                                </span>
-                                                                {order.status === 'pending' && (
-                                                                    <button onClick={() => onCancelOrder?.(order.id)} className="w-10 h-10 flex items-center justify-center text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
-                                                                        <X size={18} />
-                                                                    </button>
-                                                                )}
-                                                            </div>
+                                                            <button
+                                                                onClick={() => handleCompleteOrder(order.id, order.tableNumber === 'Takeaway' ? 'طلب سفري' : `طاولة ${order.tableNumber}`)}
+                                                                className="bg-brand-accent text-white px-8 py-3 rounded-2xl font-black text-sm shadow-xl hover:bg-orange-500 active:scale-95 transition-all"
+                                                            >
+                                                                استلام
+                                                            </button>
                                                         </div>
                                                     ))}
-                                            </div>
-                                        </div>
+                                                </div>
+                                            )}
 
-                                        {transactions.filter(t => t.salesPerson === currentUser?.name && ['pending', 'preparing'].includes(t.status)).length === 0 && readyOrders.length === 0 && (
-                                            <div className="text-center py-24 opacity-20">
-                                                <Monitor size={48} className="mx-auto mb-4" />
-                                                <p className="text-sm font-black uppercase tracking-widest">لا توجد عمليات حالية</p>
+                                            <div className="pt-6 border-t border-gray-100">
+                                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2 mb-4">قيد التحضير</p>
+                                                <div className="space-y-4">
+                                                    {transactions
+                                                        .filter(t => t.salesPerson === currentUser?.name && ['pending', 'preparing'].includes(t.status))
+                                                        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                                        .map(order => (
+                                                            <div key={order.id} className="bg-white border-2 border-gray-50 p-5 rounded-[2rem] flex justify-between items-center group hover:border-brand-primary/20 transition-all">
+                                                                <div className="flex items-center gap-5">
+                                                                    <div className="w-12 h-12 bg-gray-50 text-gray-400 rounded-2xl flex items-center justify-center font-black">
+                                                                        {order.tableNumber === 'Takeaway' ? 'SB' : order.tableNumber}
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="font-black text-brand-dark text-sm">{order.tableNumber === 'Takeaway' ? 'طلب سفري' : `طاولة ${order.tableNumber}`}</p>
+                                                                        <p className="text-[10px] text-gray-400 font-bold">{new Date(order.date).toLocaleTimeString('ar-EG')}</p>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex items-center gap-4">
+                                                                    <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase ${order.status === 'pending' ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                                                                        {order.status === 'pending' ? 'في الانتظار' : 'جاري العمل'}
+                                                                    </span>
+                                                                    {order.status === 'pending' && (
+                                                                        <button onClick={() => onCancelOrder?.(order.id)} className="w-10 h-10 flex items-center justify-center text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
+                                                                            <X size={18} />
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                </div>
                                             </div>
-                                        )}
-                                    </>
-                                ) : activityTab === 'completed' ? (
-                                    <div className="space-y-4">
-                                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest px-2">طلبات منجزة اليوم ✨</p>
-                                        {transactions
-                                            .filter(t => t.salesPerson === currentUser?.name && t.status === 'completed' && new Date(t.date).toDateString() === new Date().toDateString())
-                                            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                                            .map(order => (
-                                                <div key={order.id} className="bg-emerald-50/30 p-6 rounded-[2.5rem] border border-emerald-100/50 flex justify-between items-center group hover:bg-emerald-50 transition-all cursor-pointer">
-                                                    <div className="flex items-center gap-5">
-                                                        <div className="w-14 h-14 bg-emerald-500 text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-lg shadow-emerald-500/20">
-                                                            {order.tableNumber === 'Takeaway' ? 'SB' : order.tableNumber}
-                                                        </div>
-                                                        <div>
-                                                            <p className="font-black text-brand-dark text-lg">{order.tableNumber === 'Takeaway' ? 'طلب سفري منجز' : `طاولة ${order.tableNumber}`}</p>
-                                                            <div className="flex items-center gap-2 text-[10px] text-emerald-600 font-black uppercase">
-                                                                <CheckCircle size={12} />
-                                                                <span>تم التسليم بنجاح</span>
-                                                                <span className="text-gray-300 mx-1">|</span>
-                                                                <span className="text-gray-400">{new Date(order.date).toLocaleTimeString('ar-EG')}</span>
+
+                                            {transactions.filter(t => t.salesPerson === currentUser?.name && ['pending', 'preparing'].includes(t.status)).length === 0 && readyOrders.length === 0 && (
+                                                <div className="text-center py-24 opacity-20">
+                                                    <Monitor size={48} className="mx-auto mb-4" />
+                                                    <p className="text-sm font-black uppercase tracking-widest">لا توجد عمليات حالية</p>
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : activityTab === 'completed' ? (
+                                        <div className="space-y-4">
+                                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest px-2">طلبات منجزة اليوم ✨</p>
+                                            {transactions
+                                                .filter(t => t.salesPerson === currentUser?.name && t.status === 'completed' && new Date(t.date).toDateString() === new Date().toDateString())
+                                                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                                .map(order => (
+                                                    <div key={order.id} className="bg-emerald-50/30 p-6 rounded-[2.5rem] border border-emerald-100/50 flex justify-between items-center group hover:bg-emerald-50 transition-all cursor-pointer">
+                                                        <div className="flex items-center gap-5">
+                                                            <div className="w-14 h-14 bg-emerald-500 text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-lg shadow-emerald-500/20">
+                                                                {order.tableNumber === 'Takeaway' ? 'SB' : order.tableNumber}
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-black text-brand-dark text-lg">{order.tableNumber === 'Takeaway' ? 'طلب سفري منجز' : `طاولة ${order.tableNumber}`}</p>
+                                                                <div className="flex items-center gap-2 text-[10px] text-emerald-600 font-black uppercase">
+                                                                    <CheckCircle size={12} />
+                                                                    <span>تم التسليم بنجاح</span>
+                                                                    <span className="text-gray-300 mx-1">|</span>
+                                                                    <span className="text-gray-400">{new Date(order.date).toLocaleTimeString('ar-EG')}</span>
+                                                                </div>
                                                             </div>
                                                         </div>
+                                                        <div className="text-right">
+                                                            <p className="text-[10px] font-black text-gray-400 uppercase mb-1">القيمة</p>
+                                                            <p className="font-black text-emerald-600">{formatCurrency(order.total, settings.currency)}</p>
+                                                        </div>
                                                     </div>
-                                                    <div className="text-right">
-                                                        <p className="text-[10px] font-black text-gray-400 uppercase mb-1">القيمة</p>
-                                                        <p className="font-black text-emerald-600">{formatCurrency(order.total, settings.currency)}</p>
+                                                ))}
+                                            {transactions.filter(t => t.salesPerson === currentUser?.name && t.status === 'completed' && new Date(t.date).toDateString() === new Date().toDateString()).length === 0 && (
+                                                <div className="text-center py-20 bg-gray-50 rounded-[3rem] border-2 border-dashed border-gray-100">
+                                                    <PackageCheck size={48} className="mx-auto mb-4 text-gray-200" />
+                                                    <p className="text-xs font-black text-gray-400 uppercase tracking-widest">لم يتم إنجاز طلبات بعد</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            {transactions.filter(t => t.salesPerson === currentUser?.name && t.status === 'cancelled').map(order => (
+                                                <div key={order.id} className="bg-rose-50/50 p-5 rounded-[2rem] border border-rose-100 flex justify-between items-center">
+                                                    <div className="flex items-center gap-5">
+                                                        <div className="w-12 h-12 bg-rose-100 text-rose-500 rounded-2xl flex items-center justify-center">
+                                                            <Ban size={20} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-black text-brand-dark text-sm">{order.tableNumber === 'Takeaway' ? 'طلب سفري ملغي' : `طاولة ${order.tableNumber} (ملغي)`}</p>
+                                                            <p className="text-[9px] text-rose-500 font-bold">تم إلغاء العملية بنجاح</p>
+                                                        </div>
                                                     </div>
+                                                    <span className="text-[10px] font-black text-gray-400 px-4 py-1 bg-white rounded-lg border border-gray-100">#{order.id.slice(-4)}</span>
                                                 </div>
                                             ))}
-                                        {transactions.filter(t => t.salesPerson === currentUser?.name && t.status === 'completed' && new Date(t.date).toDateString() === new Date().toDateString()).length === 0 && (
-                                            <div className="text-center py-20 bg-gray-50 rounded-[3rem] border-2 border-dashed border-gray-100">
-                                                <PackageCheck size={48} className="mx-auto mb-4 text-gray-200" />
-                                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">لم يتم إنجاز طلبات بعد</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {transactions.filter(t => t.salesPerson === currentUser?.name && t.status === 'cancelled').map(order => (
-                                            <div key={order.id} className="bg-rose-50/50 p-5 rounded-[2rem] border border-rose-100 flex justify-between items-center">
-                                                <div className="flex items-center gap-5">
-                                                    <div className="w-12 h-12 bg-rose-100 text-rose-500 rounded-2xl flex items-center justify-center">
-                                                        <Ban size={20} />
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-black text-brand-dark text-sm">{order.tableNumber === 'Takeaway' ? 'طلب سفري ملغي' : `طاولة ${order.tableNumber} (ملغي)`}</p>
-                                                        <p className="text-[9px] text-rose-500 font-bold">تم إلغاء العملية بنجاح</p>
-                                                    </div>
-                                                </div>
-                                                <span className="text-[10px] font-black text-gray-400 px-4 py-1 bg-white rounded-lg border border-gray-100">#{order.id.slice(-4)}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 
