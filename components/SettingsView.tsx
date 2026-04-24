@@ -6,7 +6,7 @@ import ConfirmDeleteModal from './ConfirmDeleteModal';
 import StatusModal from './StatusModal';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import { db } from '../firebase';
+import { db, firebaseConfig } from '../firebase';
 
 interface SettingsViewProps {
   settings: AppSettings;
@@ -108,15 +108,6 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
     try {
       setLoadingEmployees(true);
 
-      const firebaseConfig = {
-        apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-        appId: import.meta.env.VITE_FIREBASE_APP_ID
-      };
-
       secondaryApp = initializeApp(firebaseConfig, `SecondaryApp-${Date.now()}`);
       const secondaryAuth = getAuth(secondaryApp);
       const userCredential = await createUserWithEmailAndPassword(secondaryAuth, empForm.email, empForm.password);
@@ -154,7 +145,12 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
       });
     } finally {
       if (secondaryApp) {
-        await deleteApp(secondaryApp);
+        try {
+          await deleteApp(secondaryApp);
+        } catch (e) {
+          // This prevents noisy logs if the app was already cleaned up
+          console.debug("Secondary app cleanup:", e);
+        }
       }
       setLoadingEmployees(false);
     }
