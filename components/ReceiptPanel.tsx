@@ -20,6 +20,8 @@ interface ReceiptPanelProps {
     tableNumber: string;
     onTableChange: (num: string) => void;
     products: MenuItem[];
+    guestCount?: number;
+    onGuestCountChange?: (count: number) => void;
 }
 
 const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
@@ -35,7 +37,9 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
     isOpen,
     tableNumber,
     onTableChange,
-    products
+    products,
+    guestCount = 0,
+    onGuestCountChange
 }) => {
     const [upsellSuggestion, setUpsellSuggestion] = useState<string>("");
     const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -130,19 +134,56 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                 {/* Table Context Bar */}
                 <div className="px-4 py-4 shrink-0">
                     <div className={`p-4 rounded-3xl border-2 transition-all flex items-center justify-between shadow-inner ${tableNumber ? (isTakeaway ? 'bg-orange-50 border-orange-200' : 'bg-brand-primary/5 border-brand-primary/20') : 'bg-red-50 border-red-200 animate-pulse'}`}>
-                        <div className="flex items-center gap-3">
+                        {/* Left: Table Number */}
+                        <div className="flex items-center gap-3 flex-1">
                             <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm ${tableNumber ? (isTakeaway ? 'bg-orange-500 text-white' : 'bg-brand-primary text-white') : 'bg-red-500 text-white'}`}>
                                 {isTakeaway ? <ShoppingBag size={18} /> : <Hash size={18} />}
                             </div>
                             <div>
-                                <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">موقع الطلب</p>
+                                <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">رقم الطاولة</p>
                                 <p className={`font-black text-sm ${!tableNumber ? 'text-red-500' : 'text-brand-dark'}`}>
-                                    {tableNumber ? (isTakeaway ? 'طلب سفري (Takeaway)' : `طاولة رقم ${tableNumber}`) : 'برجاء اختيار طاولة'}
+                                    {tableNumber ? (isTakeaway ? 'طلب سفري' : `الطاولة ${tableNumber}`) : 'برجاء الاختيار'}
                                 </p>
                             </div>
                         </div>
+
+                        {/* Divider */}
+                        {tableNumber && !isTakeaway && <div className="w-px h-10 bg-brand-primary/10 mx-3" />}
+
+                        {/* Right: Guest Count */}
+                        {tableNumber && !isTakeaway && (
+                            <div className="flex items-center gap-2 flex-1 justify-end">
+                                <div className="flex items-center gap-2 bg-white/50 rounded-2xl px-3 py-2 border border-brand-primary/10">
+                                    <button
+                                        onClick={() => onGuestCountChange && guestCount > 0 && onGuestCountChange(guestCount - 1)}
+                                        className="p-1 hover:bg-brand-primary/10 rounded-lg transition-all"
+                                    >
+                                        <Minus size={14} className="text-brand-primary" />
+                                    </button>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="20"
+                                        value={guestCount}
+                                        onChange={(e) => onGuestCountChange && onGuestCountChange(Math.max(0, parseInt(e.target.value) || 0))}
+                                        className="w-8 text-center font-black text-brand-dark outline-none bg-transparent"
+                                    />
+                                    <button
+                                        onClick={() => onGuestCountChange && guestCount < 20 && onGuestCountChange(guestCount + 1)}
+                                        className="p-1 hover:bg-brand-primary/10 rounded-lg transition-all"
+                                    >
+                                        <Plus size={14} className="text-brand-primary" />
+                                    </button>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black opacity-40 uppercase tracking-widest text-right">الأشخاص</p>
+                                    <p className="font-black text-sm text-brand-dark">{guestCount > 0 ? guestCount : '-'}</p>
+                                </div>
+                            </div>
+                        )}
+
                         {tableNumber && (
-                            <CheckCircle2 size={18} className={isTakeaway ? 'text-orange-500' : 'text-brand-primary'} />
+                            <CheckCircle2 size={18} className={`${isTakeaway ? 'text-orange-500' : 'text-brand-primary'} ml-3`} />
                         )}
                     </div>
                 </div>

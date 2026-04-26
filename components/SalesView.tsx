@@ -28,15 +28,15 @@ interface SalesViewProps {
 interface TableItemProps {
     num: string;
     isSelected: boolean;
-    status: 'available' | 'occupied' | 'ready' | 'manual';
+    status: 'available' | 'occupied' | 'ready';
+    guestCount?: number;
     readyOrder?: Transaction;
     onClick: (num: string, readyOrderId?: string) => void;
-    onDoubleClick: (num: string) => void;
+    onLongPress: (num: string) => void;
 }
 
-const TableItem = React.memo<TableItemProps>(({ num, isSelected, status, readyOrder, onClick, onDoubleClick }) => {
+const TableItem = React.memo<TableItemProps>(({ num, isSelected, status, guestCount, readyOrder, onClick, onLongPress }) => {
     const isAvailable = status === 'available';
-    const isManual = status === 'manual';
     const isOccupied = status === 'occupied';
     const isReady = status === 'ready';
 
@@ -52,26 +52,36 @@ const TableItem = React.memo<TableItemProps>(({ num, isSelected, status, readyOr
         themeColor = "rose";
         statusText = "مشغول";
         Icon = Utensils;
-    } else if (isManual) {
-        themeColor = "orange";
-        statusText = "محجوز";
-        Icon = Layers;
     }
 
     const colors: any = {
         emerald: { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", icon: "text-emerald-500", shadow: "shadow-emerald-500/10", accent: "bg-emerald-500" },
         rose: { bg: "bg-rose-50", border: "border-rose-200", text: "text-rose-700", icon: "text-rose-500", shadow: "shadow-rose-500/10", accent: "bg-rose-500" },
-        orange: { bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-700", icon: "text-orange-500", shadow: "shadow-orange-500/10", accent: "bg-orange-500" },
         amber: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", icon: "text-amber-500", shadow: "shadow-amber-500/10", accent: "bg-amber-500" },
     };
 
     const c = colors[themeColor];
+    let longPressTimer: NodeJS.Timeout | null = null;
+
+    const handleMouseDown = () => {
+        longPressTimer = setTimeout(() => {
+            onLongPress(num);
+        }, 600);
+    };
+
+    const handleMouseUp = () => {
+        if (longPressTimer) clearTimeout(longPressTimer);
+    };
 
     return (
         <div className="flex flex-col items-center group w-28 sm:w-32 lg:w-40">
             <button
                 onClick={() => onClick(num, readyOrder?.id)}
-                onDoubleClick={() => onDoubleClick(num)}
+                onMouseDown={handleMouseDown}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                onTouchStart={handleMouseDown}
+                onTouchEnd={handleMouseUp}
                 className={`
           relative w-full aspect-[4/5] rounded-[1.5rem] border-2 transition-all duration-300 
           active:scale-95 flex flex-col items-center justify-between p-3 overflow-hidden
@@ -83,9 +93,16 @@ const TableItem = React.memo<TableItemProps>(({ num, isSelected, status, readyOr
                     <span className={`text-sm font-black italic tracking-tighter ${isSelected ? 'text-brand-accent' : c.text}`}>
                         #{num.padStart(2, '0')}
                     </span>
-                    <div className={`px-1.5 py-0.5 rounded-md text-[7px] font-black uppercase tracking-widest ${isSelected ? 'bg-brand-accent text-brand-dark' : `${c.accent} text-white`}`}>
-                        {statusText}
-                    </div>
+                    {guestCount && guestCount > 0 && (
+                        <div className="w-6 h-6 rounded-full bg-brand-accent text-brand-dark flex items-center justify-center text-[10px] font-black shadow-md">
+                            {guestCount}
+                        </div>
+                    )}
+                    {!guestCount && (
+                        <div className={`px-1.5 py-0.5 rounded-md text-[7px] font-black uppercase tracking-widest ${isSelected ? 'bg-brand-accent text-brand-dark' : `${c.accent} text-white`}`}>
+                            {statusText}
+                        </div>
+                    )}
                 </div>
                 <div className="relative flex items-center justify-center">
                     <div className={`
@@ -113,7 +130,9 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
     const [showActivityLog, setShowActivityLog] = useState(false);
     const [activityTab, setActivityTab] = useState<'active' | 'completed' | 'cancelled'>('active');
     const [tablesOpen, setTablesOpen] = useState(true);
-    const [manualOccupied, setManualOccupied] = useState<Set<string>>(new Set());
+    const [tableGuestCounts, setTableGuestCounts] = useState<Map<string, number>>(new Map());
+    const [longPressTable, setLongPressTable] = useState<string | null>(null);
+    const [guestCountInput, setGuestCountInput] = useState('');
 
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [notifiedReadyIds, setNotifiedReadyIds] = useState<Set<string>>(new Set());
@@ -198,31 +217,30 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
             setTimeout(() => setCompletionSuccess(null), 3000);
         } else {
             onSelectTable(num);
-            const isAvailable = !readyByTable[num] && !occupiedByOrder[num] && !manualOccupied.has(num);
-            if (isAvailable) {
-                setManualOccupied(prev => {
-                    const next = new Set(prev);
-                    next.add(num);
-                    return next;
-                });
-            }
         }
-    }, [onCompleteOrder, onSelectTable, readyByTable, occupiedByOrder, manualOccupied]);
+    }, [onCompleteOrder, onSelectTable]);
 
-    const handleTableDoubleClick = useCallback((num: string) => {
-        if (!occupiedByOrder[num] && !readyByTable[num]) {
-            setManualOccupied(prev => {
-                const next = new Set(prev);
-                if (next.has(num)) next.delete(num);
-                else next.add(num);
-                return next;
-            });
+    const handleTableLongPress = useCallback((num: string) => {
+        setLongPressTable(num);
+        setGuestCountInput(tableGuestCounts.get(num)?.toString() || '');
+    }, [tableGuestCounts]);
+
+    const handleSaveGuestCount = () => {
+        const count = parseInt(guestCountInput) || 0;
+        if (count > 0) {
+            setTableGuestCounts(prev => new Map(prev).set(longPressTable!, count));
+        } else if (longPressTable) {
+            const newMap = new Map(tableGuestCounts);
+            newMap.delete(longPressTable);
+            setTableGuestCounts(newMap);
         }
-    }, [occupiedByOrder, readyByTable]);
+        setLongPressTable(null);
+        setGuestCountInput('');
+    };
 
     const availableCount = useMemo(() => Array.from({ length: tablesCount }, (_, i) => String(i + 1))
-        .filter(n => !readyByTable[n] && !occupiedByOrder[n] && !manualOccupied.has(n)).length,
-        [tablesCount, readyByTable, occupiedByOrder, manualOccupied]);
+        .filter(n => !readyByTable[n] && !occupiedByOrder[n]).length,
+        [tablesCount, readyByTable, occupiedByOrder]);
     const occupiedCount = tablesCount - availableCount;
 
     return (
@@ -265,6 +283,65 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                             <CheckCircle size={20} />
                         </div>
                         <p className="text-brand-dark font-black text-sm">تم استلام طلب <span className="text-emerald-600">{completionSuccess.tableName}</span> بنجاح!</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Guest Count Modal for Long Press */}
+            {longPressTable && (
+                <div className="fixed inset-0 z-[500] bg-brand-dark/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+                    <div className="bg-white w-full max-w-sm rounded-[3rem] shadow-4xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-500">
+                        <div className="p-8 bg-gradient-to-br from-brand-primary to-brand-secondary text-white">
+                            <h3 className="text-2xl font-black mb-2">عدد الأشخاص</h3>
+                            <p className="text-sm text-white/80 font-bold">الطاولة #{longPressTable.padStart(2, '0')}</p>
+                        </div>
+
+                        <div className="p-8 space-y-6">
+                            <div className="space-y-3">
+                                <label className="block text-sm font-black text-brand-dark">أدخل عدد الأشخاص:</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="20"
+                                    value={guestCountInput}
+                                    onChange={(e) => setGuestCountInput(e.target.value)}
+                                    placeholder="0"
+                                    autoFocus
+                                    className="w-full px-4 py-3 text-center text-2xl font-black border-2 border-brand-primary/20 rounded-2xl focus:border-brand-primary outline-none transition-all"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleSaveGuestCount();
+                                        if (e.key === 'Escape') setLongPressTable(null);
+                                    }}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-4 gap-2">
+                                {[1, 2, 3, 4, 5, 6, 8, 10].map(num => (
+                                    <button
+                                        key={num}
+                                        onClick={() => setGuestCountInput(num.toString())}
+                                        className="py-2 rounded-xl font-black text-sm transition-all bg-brand-light/50 text-brand-primary hover:bg-brand-primary hover:text-white"
+                                    >
+                                        {num}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="px-8 pb-8 flex gap-3">
+                            <button
+                                onClick={() => setLongPressTable(null)}
+                                className="flex-1 py-3 rounded-2xl font-black text-brand-dark bg-gray-100 hover:bg-gray-200 transition-all"
+                            >
+                                إلغاء
+                            </button>
+                            <button
+                                onClick={handleSaveGuestCount}
+                                className="flex-1 py-3 rounded-2xl font-black text-white bg-gradient-to-r from-brand-primary to-brand-secondary hover:shadow-lg transition-all"
+                            >
+                                حفظ
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -362,10 +439,9 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                             <div className="flex gap-8 py-6 px-2">
                                 {Array.from({ length: tablesCount }, (_, i) => {
                                     const num = String(i + 1);
-                                    let status: 'available' | 'occupied' | 'ready' | 'manual' = 'available';
+                                    let status: 'available' | 'occupied' | 'ready' = 'available';
                                     if (readyByTable[num]) status = 'ready';
                                     else if (occupiedByOrder[num]) status = 'occupied';
-                                    else if (manualOccupied.has(num)) status = 'manual';
 
                                     return (
                                         <TableItem
@@ -373,9 +449,10 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                                             num={num}
                                             isSelected={selectedTableNumber === num}
                                             status={status}
+                                            guestCount={tableGuestCounts.get(num)}
                                             readyOrder={readyByTable[num]}
                                             onClick={handleTableClick}
-                                            onDoubleClick={handleTableDoubleClick}
+                                            onLongPress={handleTableLongPress}
                                         />
                                     );
                                 })}

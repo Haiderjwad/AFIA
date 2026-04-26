@@ -140,6 +140,7 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isReceiptPanelOpen, setIsReceiptPanelOpen] = useState(false);
   const [selectedTableNumber, setSelectedTableNumber] = useState<string>('');
+  const [tableGuestCounts, setTableGuestCounts] = useState<Map<string, number>>(new Map());
   const [inventorySearchQuery, setInventorySearchQuery] = useState('');
 
   // 4. Memoized Handlers for Performance
