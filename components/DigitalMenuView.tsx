@@ -6,7 +6,7 @@ import {
     Smartphone, Sparkles, Image as ImageIcon,
     Brush, Type, Settings2, Languages,
     ArrowRightCircle, MonitorSmartphone,
-    LayoutGrid, List as ListIcon
+    LayoutGrid, List as ListIcon, ExternalLink
 } from 'lucide-react';
 import { MenuItem, AppSettings } from '../types';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -235,6 +235,16 @@ const DigitalMenuView: React.FC<DigitalMenuViewProps> = ({ products, storeName, 
                             <div className="w-12 h-12 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-xl flex items-center justify-center text-white shadow-xl shadow-brand-primary/20">
                                 <Sparkles size={24} />
                             </div>
+                            <a
+                                href={`${window.location.origin}/menu`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-brand-primary to-brand-secondary text-white rounded-lg font-bold text-[12px] hover:shadow-lg hover:scale-105 transition-all duration-300 shadow-md"
+                                title="عرض المنيو الإلكتروني"
+                            >
+                                <ExternalLink size={16} className="group-hover:rotate-45 transition-transform duration-300" />
+                                <span>المنيو العام</span>
+                            </a>
                         </div>
                         <h2 className="text-2xl font-black text-brand-dark mb-1">سمارت منيو</h2>
                         <p className="text-[9px] text-brand-secondary font-black uppercase tracking-[0.2em]">Digital Menu Visual Studio</p>

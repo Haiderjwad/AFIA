@@ -706,7 +706,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                             {(emp.salary || 0).toLocaleString()} {settings.currency}
                           </td>
                           <td className="px-8 py-5 text-left">
-                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex items-center justify-end gap-2 opacity-100 transition-all">
                               <button
                                 onClick={() => {
                                   setEditingEmployee(emp);
@@ -721,13 +721,13 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                                   });
                                   setIsEmployeeModalOpen(true);
                                 }}
-                                className="p-2.5 bg-gray-50 text-gray-400 hover:bg-brand-primary hover:text-white rounded-xl transition-all"
+                                className="p-2.5 bg-brand-primary/10 text-brand-primary hover:bg-brand-primary hover:text-white rounded-xl transition-all duration-300 font-bold shadow-sm"
                               >
                                 <Edit size={18} />
                               </button>
                               <button
                                 onClick={() => setItemToDelete(emp.uid || emp.employeeId)}
-                                className="p-2.5 bg-gray-50 text-gray-400 hover:bg-red-500 hover:text-white rounded-xl transition-all"
+                                className="p-2.5 bg-red-100/50 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all duration-300 font-bold shadow-sm"
                               >
                                 <Trash2 size={18} />
                               </button>

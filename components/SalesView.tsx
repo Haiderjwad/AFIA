@@ -230,7 +230,7 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
 
             {/* Professional Order Ready Alert (Premium Notification) */}
             {activeReadyAlert && (
-                <div className="fixed top-12 right-10 z-[2000] animate-in slide-in-from-right-40 fade-in duration-700">
+                <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[2000] animate-in slide-in-from-top fade-in duration-700">
                     <div className="bg-brand-dark/95 backdrop-blur-2xl text-white rounded-[2.8rem] p-2.5 pr-8 flex items-center gap-7 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.4)] border border-white/10 relative overflow-hidden group">
                         {/* Interactive Shine Effect */}
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
