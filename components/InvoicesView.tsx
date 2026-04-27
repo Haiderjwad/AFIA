@@ -7,7 +7,7 @@ import {
     Wifi, CheckCircle, Search, AlertCircle, Plus, Minus,
     Trash2, ShoppingCart, Coffee, Eye, X, Receipt,
     ChevronLeft, ListFilter, History, Check, UtensilsCrossed, PackageCheck,
-    DoorOpen, Undo2, MoveHorizontal
+    DoorOpen, Undo2, MoveHorizontal, RefreshCw, ArrowLeft
 } from 'lucide-react';
 import { CURRENCY } from '../constants';
 import { firestoreService } from '../services/firestoreService';
@@ -38,7 +38,17 @@ const AuditCard: React.FC<{ icon: React.ReactNode, label: string, value?: string
     </div>
 );
 
-const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePayment, onCloseTable, onCancelOrder, canFinalize, products = [], settings, currentUser }) => {
+const InvoicesView: React.FC<InvoicesViewProps> = ({
+    transactions,
+    onFinalizePayment,
+    onCloseTable,
+    onCancelOrder,
+    onMoveTable,
+    canFinalize,
+    products = [],
+    settings,
+    currentUser
+}) => {
     const [activeTab, setActiveTab] = useState<'all' | 'pending'>('pending');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedForPayment, setSelectedForPayment] = useState<Transaction | null>(null);
@@ -56,6 +66,9 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
         title: string,
         message: string
     } | null>(null);
+
+    const [movingTransactionId, setMovingTransactionId] = useState<string | null>(null);
+    const [moveSuccess, setMoveSuccess] = useState<{ isOpen: boolean, from: string, to: string } | null>(null);
 
     React.useEffect(() => {
         localStorage.setItem('afia_auto_print', String(autoPrint));
@@ -1082,6 +1095,32 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                 <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
             </div>
 
+            {/* Premium Move Table Success Toast */}
+            {moveSuccess?.isOpen && (
+                <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[3000] animate-in slide-in-from-top-4 fade-in duration-500">
+                    <div className="bg-brand-dark/95 backdrop-blur-2xl px-10 py-6 rounded-[3rem] border border-white/10 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.4)] flex items-center gap-7 relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-transparent to-transparent" />
+                        <div className="w-16 h-16 bg-purple-600 text-white rounded-[1.8rem] flex items-center justify-center shadow-2xl shadow-purple-500/40 relative z-10">
+                            <RefreshCw size={28} className="animate-spin-slow" />
+                        </div>
+                        <div className="flex flex-col relative z-10 text-right">
+                            <span className="text-[12px] font-black text-purple-400 uppercase tracking-[0.3em] mb-1.5">نقل طلب الطاولة بنجاح</span>
+                            <div className="flex items-center gap-5">
+                                <div className="flex flex-col">
+                                    <span className="text-white/40 text-[10px] font-bold uppercase mb-0.5">من</span>
+                                    <span className="text-white/60 font-bold text-lg">{moveSuccess.from === 'Takeaway' ? 'سفري' : `طاولة ${moveSuccess.from}`}</span>
+                                </div>
+                                <ArrowLeft size={24} className="text-purple-400" />
+                                <div className="flex flex-col">
+                                    <span className="text-white/40 text-[10px] font-bold uppercase mb-0.5">إلى</span>
+                                    <span className="text-white text-2xl font-black">{moveSuccess.to === 'Takeaway' ? 'سفري' : `طاولة ${moveSuccess.to}`}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Global Live Table Monitor (Top-most & Permanent) */}
             <div className="mb-10 relative z-20">
                 <div className="bg-white/40 backdrop-blur-2xl px-6 py-4 rounded-[2.5rem] border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.03)] overflow-x-auto no-scrollbar animate-in slide-in-from-top-4 duration-700">
@@ -1237,7 +1276,15 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                             )}
 
                             <div className="flex justify-between items-start mb-8">
-                                <div className={`h-16 px-5 rounded-[1.5rem] flex flex-col items-center justify-center font-bold transition-all transform group-hover:scale-105 ${transaction.isManual || !transaction.tableNumber ? 'bg-red-50 text-red-600' : 'bg-brand-light/20 text-brand-dark group-hover:bg-brand-primary group-hover:text-white'}`}>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (!transaction.isPaid && transaction.status !== 'cancelled' && transaction.status !== 'refunded') {
+                                            setMovingTransactionId(movingTransactionId === transaction.id ? null : transaction.id);
+                                        }
+                                    }}
+                                    className={`h-16 px-5 rounded-[1.5rem] flex flex-col items-center justify-center font-bold transition-all transform hover:scale-105 active:scale-95 ${transaction.isManual || !transaction.tableNumber ? 'bg-red-50 text-red-600' : 'bg-brand-light/20 text-brand-dark group-hover:bg-brand-primary group-hover:text-white'}`}
+                                >
                                     <span className="text-[10px] opacity-60 uppercase mb-0.5">
                                         {transaction.tableNumber === 'Takeaway' ? 'طريقة الاستلام' : transaction.tableNumber ? 'رقم الطاولة' : 'نوع الطلب'}
                                     </span>
@@ -1254,7 +1301,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                             <MoveHorizontal size={8} /> تم النقل من {transaction.previousTable}
                                         </span>
                                     )}
-                                </div>
+                                </button>
 
                                 <div className="flex flex-col items-end gap-2">
                                     {transaction.status === 'waiting_payment' ? (
@@ -1349,19 +1396,81 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                             </button>
                                         )}
 
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handlePrint(transaction);
-                                            }}
-                                            className="group/print w-12 h-12 flex items-center justify-center rounded-2xl bg-orange-50 text-orange-500 hover:bg-orange-500 hover:text-white transition-all shadow-sm border border-orange-100 hover:scale-110 active:scale-95"
-                                            title="طباعة الفاتورة"
-                                        >
-                                            <Printer size={20} className="group-hover/print:rotate-[-12deg] transition-transform" />
-                                        </button>
+                                        {transaction.isMoved && (
+                                            <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand-primary/10 text-brand-primary px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter flex items-center gap-1 border border-brand-primary/20 backdrop-blur-sm shadow-sm z-10">
+                                                <RefreshCw size={8} className="animate-spin" /> من {transaction.previousTable}
+                                            </span>
+                                        )}
 
-                                        <div className="w-12 h-12 flex items-center justify-center rounded-2xl bg-brand-light/30 text-brand-primary group-hover:bg-brand-primary group-hover:text-white transition-all shadow-sm">
-                                            <Eye size={20} />
+                                        <div className="flex gap-2 relative">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setMovingTransactionId(movingTransactionId === transaction.id ? null : transaction.id);
+                                                }}
+                                                className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all shadow-sm border ${movingTransactionId === transaction.id ? 'bg-brand-primary text-white border-brand-primary' : 'bg-brand-primary/5 text-brand-primary border-brand-primary/10 hover:bg-brand-primary hover:text-white'} hover:scale-110 active:scale-95`}
+                                                title="تغيير الطاولة"
+                                            >
+                                                <MoveHorizontal size={20} />
+                                            </button>
+
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handlePrint(transaction);
+                                                }}
+                                                className="group/print w-12 h-12 flex items-center justify-center rounded-2xl bg-brand-accent/10 text-brand-accent hover:bg-brand-accent hover:text-white transition-all shadow-sm border border-brand-accent/20 hover:scale-110 active:scale-95"
+                                                title="طباعة الفاتورة"
+                                            >
+                                                <Printer size={20} className="group-hover/print:rotate-[-12deg] transition-transform" />
+                                            </button>
+
+                                            <div className="w-12 h-12 flex items-center justify-center rounded-2xl bg-brand-light/30 text-brand-primary group-hover:bg-brand-primary group-hover:text-white transition-all shadow-sm">
+                                                <Eye size={20} />
+                                            </div>
+
+                                            {/* Change Table Dropdown */}
+                                            {movingTransactionId === transaction.id && (
+                                                <div
+                                                    className="absolute top-full right-0 mt-4 bg-white rounded-3xl shadow-4xl border border-brand-primary/10 p-6 z-[700] w-72 animate-in zoom-in-95 slide-in-from-top-2 duration-300"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <div className="flex items-center justify-between mb-4 px-2">
+                                                        <p className="text-[10px] font-black text-brand-dark uppercase tracking-widest">تحويل لطاولة جديدة</p>
+                                                        <button onClick={() => setMovingTransactionId(null)} className="text-gray-300 hover:text-brand-accent transition-colors"><X size={16} /></button>
+                                                    </div>
+                                                    <div className="grid grid-cols-4 gap-3 max-h-48 overflow-y-auto premium-scrollbar">
+                                                        {Array.from({ length: settings?.tablesCount || 24 }, (_, i) => String(i + 1)).map(num => (
+                                                            <button
+                                                                key={num}
+                                                                onClick={() => {
+                                                                    const fromTab = transaction.tableNumber || 'Takeaway';
+                                                                    onMoveTable?.(transaction.id, num);
+                                                                    setMovingTransactionId(null);
+                                                                    setMoveSuccess({ isOpen: true, from: fromTab, to: num });
+                                                                    setTimeout(() => setMoveSuccess(null), 3000);
+                                                                }}
+                                                                disabled={num === transaction.tableNumber}
+                                                                className={`h-11 rounded-xl flex items-center justify-center font-black text-xs transition-all ${num === transaction.tableNumber ? 'bg-gray-50 text-gray-200 cursor-not-allowed' : 'bg-brand-primary/5 text-brand-primary border border-transparent hover:border-brand-primary/20 hover:bg-brand-primary hover:text-white active:scale-95 shadow-sm'}`}
+                                                            >
+                                                                {num}
+                                                            </button>
+                                                        ))}
+                                                        <button
+                                                            onClick={() => {
+                                                                const fromTab = transaction.tableNumber || 'Takeaway';
+                                                                onMoveTable?.(transaction.id, 'Takeaway');
+                                                                setMovingTransactionId(null);
+                                                                setMoveSuccess({ isOpen: true, from: fromTab, to: 'Takeaway' });
+                                                                setTimeout(() => setMoveSuccess(null), 3000);
+                                                            }}
+                                                            className="col-span-4 h-11 rounded-xl bg-brand-accent/5 text-brand-accent border border-brand-accent/10 font-black text-xs hover:bg-brand-accent hover:text-white transition-all flex items-center justify-center gap-2"
+                                                        >
+                                                            <ShoppingCart size={14} /> تحويل لطلب سفري
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -1395,7 +1504,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
 
             {/* Order Details Modal - Professional & Commercial Design */}
             {viewingTransaction && (
-                <div className="fixed inset-0 z-[1000] bg-brand-dark/40 backdrop-blur-xl flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
+                <div className="fixed inset-0 z-[9999] bg-brand-dark/80 backdrop-blur-xl flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
                     <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-[3rem] shadow-4xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-500 border border-white/20">
                         {/* Header - Premium Gradient */}
                         <div className="p-8 bg-gradient-to-r from-brand-dark to-[#1e293b] text-white flex justify-between items-center relative shrink-0">

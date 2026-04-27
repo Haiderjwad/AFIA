@@ -371,7 +371,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({
 
       {/* Add/Edit Product Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-brand-dark/80 backdrop-blur-xl animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[9999] bg-brand-dark/80 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-4xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col max-h-[90vh] relative border border-white/20">
             <div className="px-10 py-8 border-b border-brand-primary/5 flex justify-between items-center bg-brand-light/20 shrink-0 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>

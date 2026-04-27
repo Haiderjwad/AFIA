@@ -355,28 +355,27 @@ const App: React.FC = () => {
           setTableGuestCounts(prev => {
             const next = new Map(prev);
             // Transactions are the source of truth for guest counts of occupied tables
-            t.filter(trans =>
-              trans.tableNumber &&
-              trans.tableNumber !== 'Takeaway' &&
-              (trans.isTableClosed === false || (trans.isTableClosed === undefined && !trans.isPaid && !['completed', 'refunded', 'cancelled'].includes(trans.status)))
-            )
-              .forEach(trans => {
-                if (trans.guestCount !== undefined) {
-                  next.set(trans.tableNumber!, trans.guestCount);
+            [...t].reverse().forEach(trans => {
+              if (trans.tableNumber && trans.tableNumber !== 'Takeaway' &&
+                (trans.isTableClosed === false || (trans.isTableClosed === undefined && !trans.isPaid && !['completed', 'refunded', 'cancelled'].includes(trans.status)))) {
+                if (trans.guestCount !== undefined && trans.guestCount > 0) {
+                  next.set(trans.tableNumber, trans.guestCount);
                 }
-              });
+              }
+            });
 
-            // Clean up old guest counts for tables that are now available
-            const occupiedTables = new Set<string>(t.filter(trans =>
+            // Clean up guest counts ONLY for tables that have just been closed or are confirmed empty
+            const occupiedOrReady = new Set(t.filter(trans =>
               trans.tableNumber &&
               trans.tableNumber !== 'Takeaway' &&
               (trans.isTableClosed === false || (trans.isTableClosed === undefined && !trans.isPaid && !['completed', 'refunded', 'cancelled'].includes(trans.status)))
             ).map(tr => tr.tableNumber!));
-            // Clean up guest counts for tables that are no longer occupied or ready
+
             Array.from(next.keys()).forEach(tableNum => {
-              const num = tableNum as string;
-              if (!occupiedTables.has(num) && t.some(tr => tr.tableNumber === num && tr.isTableClosed === true)) {
-                next.delete(num);
+              // If a table is no longer in transactions AND its latest transaction was closed, remove it
+              const tableTrans = t.filter(tr => tr.tableNumber === tableNum);
+              if (!occupiedOrReady.has(tableNum) && tableTrans.length > 0 && tableTrans[0].isTableClosed === true) {
+                next.delete(tableNum);
               }
             });
 
@@ -618,6 +617,7 @@ const App: React.FC = () => {
             products={products}
             settings={settings}
             currentUser={currentUser}
+            onMoveTable={handleMoveTable}
           />;
         }
         break;

@@ -4,7 +4,7 @@ import {
     ShoppingCart, UtensilsCrossed, CheckCircle2, ChevronDown, ChevronUp,
     Table2, Layers, CheckCircle, Bell, AlertCircle, Ban, Utensils,
     ChefHat, Wallet, User, Monitor, ChevronRight, ChevronLeft,
-    Pencil, RefreshCw, Trash2, MoveHorizontal
+    Pencil, RefreshCw, Trash2, MoveHorizontal, ArrowLeft
 } from 'lucide-react';
 import { MenuItem, AppSettings, Transaction, Employee } from '../types';
 import { formatCurrency } from '../utils/currencyUtils';
@@ -181,6 +181,7 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
     }, []);
 
     const [completionSuccess, setCompletionSuccess] = useState<{ isOpen: boolean, tableName: string } | null>(null);
+    const [moveSuccess, setMoveSuccess] = useState<{ isOpen: boolean, from: string, to: string } | null>(null);
     const categories = useMemo(() => ['all', ...Array.from(new Set(products.map(p => p.category)))], [products]);
 
     const filteredProducts = useMemo(() => products.filter(p => {
@@ -252,7 +253,7 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
     const occupiedCount = tablesCount - availableCount;
 
     return (
-        <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#F1F3F6] p-4 md:p-6 text-right relative" dir="rtl">
+        <div className="view-container" dir="rtl">
 
             {/* Professional Order Ready Alert (Premium Notification) */}
             {activeReadyAlert && (
@@ -291,6 +292,26 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                             <CheckCircle size={20} />
                         </div>
                         <p className="text-brand-dark font-black text-sm">تم استلام طلب <span className="text-emerald-600">{completionSuccess.tableName}</span> بنجاح!</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Premium Move Table Success Toast */}
+            {moveSuccess?.isOpen && (
+                <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[2000] animate-in slide-in-from-top-4 fade-in duration-500">
+                    <div className="bg-brand-dark/95 backdrop-blur-2xl px-8 py-5 rounded-[2.5rem] border border-white/10 shadow-4xl flex items-center gap-6 relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-transparent to-transparent" />
+                        <div className="w-14 h-14 bg-purple-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/30 relative z-10">
+                            <RefreshCw size={24} className="animate-spin-slow" />
+                        </div>
+                        <div className="flex flex-col relative z-10">
+                            <span className="text-[10px] font-black text-purple-400 uppercase tracking-[0.2em] mb-1">تم نقل الطاولة بنجاح</span>
+                            <div className="flex items-center gap-3">
+                                <span className="text-white/60 font-bold">{moveSuccess.from === 'Takeaway' ? 'سفري' : `طاولة ${moveSuccess.from}`}</span>
+                                <ArrowLeft size={16} className="text-purple-400" />
+                                <span className="text-white text-xl font-black">{moveSuccess.to === 'Takeaway' ? 'سفري' : `طاولة ${moveSuccess.to}`}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
@@ -534,7 +555,7 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
             </div>
 
             {/* Detailed Products Grid */}
-            <div className="flex-1 overflow-y-auto no-scrollbar pb-10">
+            <div className="pb-10">
                 {filteredProducts.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
                         {filteredProducts.map(product => {
@@ -605,9 +626,9 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
             {/* Modern Sidebar Activity Menu */}
             {
                 showActivityLog && (
-                    <div className="fixed inset-0 z-[600] flex justify-end animate-in fade-in duration-300">
-                        <div className="absolute inset-0 bg-brand-dark/40 backdrop-blur-md" onClick={() => setShowActivityLog(false)} />
-                        <div className="relative w-full max-w-lg bg-white h-full shadow-[0_0_100px_rgba(0,0,0,0.2)] flex flex-col animate-in slide-in-from-left duration-500">
+                    <div className="fixed inset-y-0 right-0 lg:right-28 left-0 z-[1000] flex justify-start animate-in fade-in duration-300">
+                        <div className="absolute inset-0 bg-brand-dark/60 backdrop-blur-[2px]" onClick={() => setShowActivityLog(false)} />
+                        <div className="relative w-full max-w-lg bg-white h-full shadow-[0_0_100px_rgba(0,0,0,0.3)] flex flex-col animate-in slide-in-from-right duration-500">
                             <div className="p-10 bg-brand-dark text-white relative">
                                 <div className="flex items-center gap-5">
                                     <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center text-brand-accent">
@@ -701,7 +722,7 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                                                                         <div className="flex items-center gap-2">
                                                                             <p className="font-black text-brand-dark text-lg whitespace-nowrap">{order.tableNumber === 'Takeaway' ? 'طلب سفري' : `طاولة ${order.tableNumber}`}</p>
                                                                             {order.isMoved && (
-                                                                                <span className="bg-purple-50 text-purple-600 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter flex items-center gap-1 border border-purple-100/50">
+                                                                                <span className="bg-brand-primary/10 text-brand-primary px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter flex items-center gap-1 border border-brand-primary/20">
                                                                                     <RefreshCw size={8} className="animate-spin" /> من {order.previousTable}
                                                                                 </span>
                                                                             )}
@@ -721,8 +742,11 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                                                                                     <button
                                                                                         key={num}
                                                                                         onClick={() => {
+                                                                                            const fromTable = order.tableNumber || 'Takeaway';
                                                                                             onMoveTable?.(order.id, num);
                                                                                             setMovingOrderId(null);
+                                                                                            setMoveSuccess({ isOpen: true, from: fromTable, to: num });
+                                                                                            setTimeout(() => setMoveSuccess(null), 3000);
                                                                                         }}
                                                                                         disabled={num === order.tableNumber}
                                                                                         className={`h-11 rounded-xl flex items-center justify-center font-black text-xs transition-all ${num === order.tableNumber ? 'bg-gray-50 text-gray-200 cursor-not-allowed' : 'bg-brand-primary/5 text-brand-primary hover:bg-brand-primary hover:text-white active:scale-95 shadow-sm'}`}
@@ -732,10 +756,13 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                                                                                 ))}
                                                                                 <button
                                                                                     onClick={() => {
+                                                                                        const fromTable = order.tableNumber || 'Takeaway';
                                                                                         onMoveTable?.(order.id, 'Takeaway');
                                                                                         setMovingOrderId(null);
+                                                                                        setMoveSuccess({ isOpen: true, from: fromTable, to: 'Takeaway' });
+                                                                                        setTimeout(() => setMoveSuccess(null), 3000);
                                                                                     }}
-                                                                                    className="col-span-4 h-11 rounded-xl bg-orange-50 text-orange-600 font-black text-xs hover:bg-orange-500 hover:text-white transition-all flex items-center justify-center gap-2"
+                                                                                    className="col-span-4 h-11 rounded-xl bg-brand-accent/10 text-brand-accent font-black text-xs hover:bg-brand-accent hover:text-white transition-all flex items-center justify-center gap-2"
                                                                                 >
                                                                                     <ShoppingCart size={14} /> تحويل لسفري
                                                                                 </button>
@@ -840,9 +867,10 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
             {confirmCancel && (
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-brand-dark/40 backdrop-blur-sm animate-in fade-in duration-300">
                     <div className="bg-white w-full max-w-sm rounded-[2rem] shadow-4xl overflow-hidden animate-in zoom-in-95 duration-300">
-                        <div className="p-8 bg-rose-500 text-white flex items-center gap-4">
-                            <AlertCircle size={32} />
-                            <div>
+                        <div className="p-8 bg-brand-dark text-white flex items-center gap-4 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-brand-accent/20 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+                            <AlertCircle size={32} className="text-brand-accent" />
+                            <div className="relative z-10">
                                 <h3 className="text-xl font-black">إلغاء الطلب</h3>
                                 <p className="text-[10px] opacity-80 font-bold uppercase tracking-widest mt-1">تأكيد عملية الحذف</p>
                             </div>
@@ -857,7 +885,7 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                                         onCancelOrder?.(confirmCancel);
                                         setConfirmCancel(null);
                                     }}
-                                    className="flex-1 py-4 bg-rose-500 text-white rounded-2xl font-black shadow-xl shadow-rose-200 active:scale-95 transition-all"
+                                    className="flex-1 py-4 bg-brand-accent text-white rounded-2xl font-black shadow-xl shadow-brand-accent/20 active:scale-95 transition-all"
                                 >
                                     تأكيد الإلغاء
                                 </button>

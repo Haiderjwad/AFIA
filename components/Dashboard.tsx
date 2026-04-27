@@ -50,7 +50,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   onNavigate
 }) => {
   return (
-    <div className="flex-1 p-8 overflow-y-auto animate-in fade-in slide-in-from-bottom-4 bg-brand-cream pb-20 relative">
+    <div className="view-container">
       {/* Background Leaf Patterns (Subtle) */}
       <div className="absolute top-0 left-0 w-64 h-64 opacity-5 pointer-events-none -translate-x-1/2 -translate-y-1/2">
         <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
