@@ -1402,17 +1402,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
                                             </span>
                                         )}
 
-                                        <div className="flex gap-2 relative">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setMovingTransactionId(movingTransactionId === transaction.id ? null : transaction.id);
-                                                }}
-                                                className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all shadow-sm border ${movingTransactionId === transaction.id ? 'bg-brand-primary text-white border-brand-primary' : 'bg-brand-primary/5 text-brand-primary border-brand-primary/10 hover:bg-brand-primary hover:text-white'} hover:scale-110 active:scale-95`}
-                                                title="تغيير الطاولة"
-                                            >
-                                                <MoveHorizontal size={20} />
-                                            </button>
+                                        <div className="flex gap-2">
 
                                             <button
                                                 onClick={(e) => {
@@ -1429,48 +1419,6 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
                                                 <Eye size={20} />
                                             </div>
 
-                                            {/* Change Table Dropdown */}
-                                            {movingTransactionId === transaction.id && (
-                                                <div
-                                                    className="absolute top-full right-0 mt-4 bg-white rounded-3xl shadow-4xl border border-brand-primary/10 p-6 z-[700] w-72 animate-in zoom-in-95 slide-in-from-top-2 duration-300"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                >
-                                                    <div className="flex items-center justify-between mb-4 px-2">
-                                                        <p className="text-[10px] font-black text-brand-dark uppercase tracking-widest">تحويل لطاولة جديدة</p>
-                                                        <button onClick={() => setMovingTransactionId(null)} className="text-gray-300 hover:text-brand-accent transition-colors"><X size={16} /></button>
-                                                    </div>
-                                                    <div className="grid grid-cols-4 gap-3 max-h-48 overflow-y-auto premium-scrollbar">
-                                                        {Array.from({ length: settings?.tablesCount || 24 }, (_, i) => String(i + 1)).map(num => (
-                                                            <button
-                                                                key={num}
-                                                                onClick={() => {
-                                                                    const fromTab = transaction.tableNumber || 'Takeaway';
-                                                                    onMoveTable?.(transaction.id, num);
-                                                                    setMovingTransactionId(null);
-                                                                    setMoveSuccess({ isOpen: true, from: fromTab, to: num });
-                                                                    setTimeout(() => setMoveSuccess(null), 3000);
-                                                                }}
-                                                                disabled={num === transaction.tableNumber}
-                                                                className={`h-11 rounded-xl flex items-center justify-center font-black text-xs transition-all ${num === transaction.tableNumber ? 'bg-gray-50 text-gray-200 cursor-not-allowed' : 'bg-brand-primary/5 text-brand-primary border border-transparent hover:border-brand-primary/20 hover:bg-brand-primary hover:text-white active:scale-95 shadow-sm'}`}
-                                                            >
-                                                                {num}
-                                                            </button>
-                                                        ))}
-                                                        <button
-                                                            onClick={() => {
-                                                                const fromTab = transaction.tableNumber || 'Takeaway';
-                                                                onMoveTable?.(transaction.id, 'Takeaway');
-                                                                setMovingTransactionId(null);
-                                                                setMoveSuccess({ isOpen: true, from: fromTab, to: 'Takeaway' });
-                                                                setTimeout(() => setMoveSuccess(null), 3000);
-                                                            }}
-                                                            className="col-span-4 h-11 rounded-xl bg-brand-accent/5 text-brand-accent border border-brand-accent/10 font-black text-xs hover:bg-brand-accent hover:text-white transition-all flex items-center justify-center gap-2"
-                                                        >
-                                                            <ShoppingCart size={14} /> تحويل لطلب سفري
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -1496,13 +1444,83 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
                                     <CheckCircle size={20} /> تم التحصيل بنجاح
                                 </div>
                             )}
+
+                            {/* Floating Table Move Mini-Modal - Activity Center Style */}
+                            {movingTransactionId === transaction.id && (
+                                <div
+                                    className="absolute inset-0 bg-brand-dark/10 backdrop-blur-[3px] z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <div className="bg-white w-full max-w-[280px] rounded-[2.5rem] shadow-[0_30px_80px_-15px_rgba(0,0,0,0.25)] border border-brand-primary/10 flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+                                        <div className="p-5 border-b border-gray-50 flex items-center justify-between bg-gray-50/50">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 bg-brand-primary text-white rounded-lg flex items-center justify-center shadow-lg shadow-brand-primary/20">
+                                                    <RefreshCw size={14} className="animate-spin-slow" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[9px] font-black text-brand-dark/30 uppercase tracking-widest leading-none mb-1">Transfer</p>
+                                                    <h3 className="text-xs font-black text-brand-dark">تحديد الطاولة</h3>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => setMovingTransactionId(null)}
+                                                className="w-8 h-8 flex items-center justify-center text-gray-400 hover:bg-rose-50 hover:text-rose-500 rounded-lg transition-all"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        </div>
+
+                                        <div className="p-5 flex-1 max-h-[300px] overflow-y-auto no-scrollbar">
+                                            <div className="grid grid-cols-4 gap-2 mb-4">
+                                                {Array.from({ length: settings?.tablesCount || 24 }, (_, i) => String(i + 1)).map(num => (
+                                                    <button
+                                                        key={num}
+                                                        onClick={() => {
+                                                            const fromTab = transaction.tableNumber || 'Takeaway';
+                                                            onMoveTable?.(transaction.id, num);
+                                                            setMovingTransactionId(null);
+                                                            setMoveSuccess({ isOpen: true, from: fromTab, to: num });
+                                                            setTimeout(() => setMoveSuccess(null), 3000);
+                                                        }}
+                                                        disabled={num === transaction.tableNumber}
+                                                        className={`h-11 rounded-xl flex items-center justify-center font-black text-xs transition-all ${num === transaction.tableNumber
+                                                            ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                                                            : 'bg-brand-primary/5 text-brand-primary hover:bg-brand-primary hover:text-white active:scale-90 shadow-sm'}`}
+                                                    >
+                                                        {num}
+                                                    </button>
+                                                ))}
+                                            </div>
+
+                                            <button
+                                                onClick={() => {
+                                                    const fromTab = transaction.tableNumber || 'Takeaway';
+                                                    onMoveTable?.(transaction.id, 'Takeaway');
+                                                    setMovingTransactionId(null);
+                                                    setMoveSuccess({ isOpen: true, from: fromTab, to: 'Takeaway' });
+                                                    setTimeout(() => setMoveSuccess(null), 3000);
+                                                }}
+                                                className="w-full h-12 rounded-xl bg-brand-accent/10 text-brand-accent font-black text-xs hover:bg-brand-accent hover:text-white transition-all flex items-center justify-center gap-2 active:scale-95"
+                                            >
+                                                <ShoppingCart size={14} /> تحويل لسفري
+                                            </button>
+                                        </div>
+
+                                        <div className="px-5 py-3 bg-gray-50 flex items-center justify-center">
+                                            <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest flex items-center gap-1">
+                                                <div className="w-1 h-1 bg-brand-primary rounded-full animate-pulse" />
+                                                Golden Intelligent POS
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     ))
                 )}
             </div>
 
 
-            {/* Order Details Modal - Professional & Commercial Design */}
             {viewingTransaction && (
                 <div className="fixed inset-0 z-[9999] bg-brand-dark/80 backdrop-blur-xl flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
                     <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-[3rem] shadow-4xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-500 border border-white/20">
@@ -1672,382 +1690,391 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
                         </div>
                     </div>
                 </div>
-            )}
+            )
+            }
 
             {/* Invoices Log Modal - Professional Collection View */}
-            {isLogOpen && (
-                <div className="fixed inset-0 z-[1100] bg-brand-dark/50 backdrop-blur-2xl flex items-center justify-center p-4 md:p-10 animate-in fade-in duration-300">
-                    <div className="bg-[#fdfaf7] w-full max-w-5xl h-[90vh] rounded-[4rem] shadow-4xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-10 duration-500">
-                        <div className="p-10 border-b border-brand-primary/10 bg-white flex justify-between items-center">
-                            <div className="flex items-center gap-6">
-                                <div className="w-20 h-20 bg-brand-primary text-white rounded-[2rem] flex items-center justify-center shadow-xl shadow-brand-primary/20">
-                                    <Banknote size={40} />
+            {
+                isLogOpen && (
+                    <div className="fixed inset-0 z-[1100] bg-brand-dark/50 backdrop-blur-2xl flex items-center justify-center p-4 md:p-10 animate-in fade-in duration-300">
+                        <div className="bg-[#fdfaf7] w-full max-w-5xl h-[90vh] rounded-[4rem] shadow-4xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-10 duration-500">
+                            <div className="p-10 border-b border-brand-primary/10 bg-white flex justify-between items-center">
+                                <div className="flex items-center gap-6">
+                                    <div className="w-20 h-20 bg-brand-primary text-white rounded-[2rem] flex items-center justify-center shadow-xl shadow-brand-primary/20">
+                                        <Banknote size={40} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-4xl font-black text-brand-dark mb-1">سجل التحصيل اليومي</h2>
+                                        <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">PERSONAL FINANCIAL COLLECTION LOG</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h2 className="text-4xl font-black text-brand-dark mb-1">سجل التحصيل اليومي</h2>
-                                    <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">PERSONAL FINANCIAL COLLECTION LOG</p>
+                                <div className="flex gap-4">
+                                    <div className="bg-emerald-50 px-6 py-2 rounded-2xl border border-emerald-100 text-center">
+                                        <p className="text-[10px] font-black text-emerald-600 uppercase mb-1">إجمالي تحصيلي اليوم</p>
+                                        <p className="font-black text-xl text-emerald-700">
+                                            {formatCurrency(transactions
+                                                .filter(t => t.cashierPerson === currentUser?.name && t.isPaid && new Date(t.date).toDateString() === new Date().toDateString())
+                                                .reduce((sum, t) => sum + t.total, 0), settings?.currency || CURRENCY)}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => setIsLogOpen(false)}
+                                        className="w-14 h-14 flex items-center justify-center bg-gray-100 text-gray-400 hover:bg-red-500 hover:text-white rounded-2xl transition-all shadow-sm"
+                                    >
+                                        <X size={32} />
+                                    </button>
                                 </div>
                             </div>
-                            <div className="flex gap-4">
-                                <div className="bg-emerald-50 px-6 py-2 rounded-2xl border border-emerald-100 text-center">
-                                    <p className="text-[10px] font-black text-emerald-600 uppercase mb-1">إجمالي تحصيلي اليوم</p>
-                                    <p className="font-black text-xl text-emerald-700">
-                                        {formatCurrency(transactions
+
+                            <div className="flex-1 overflow-y-auto p-10 space-y-6 no-scrollbar">
+                                <p className="text-[10px] font-black text-brand-primary uppercase tracking-widest px-6">عمليات التحصيل التي قمت بها اليوم ✨</p>
+                                {transactions.filter(t => t.cashierPerson === currentUser?.name && t.isPaid && new Date(t.date).toDateString() === new Date().toDateString()).length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-gray-300 opacity-30 py-20">
+                                        <History size={120} />
+                                        <p className="text-2xl font-black mt-4 uppercase">No Collections Found Today</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 gap-4">
+                                        {transactions
                                             .filter(t => t.cashierPerson === currentUser?.name && t.isPaid && new Date(t.date).toDateString() === new Date().toDateString())
-                                            .reduce((sum, t) => sum + t.total, 0), settings?.currency || CURRENCY)}
-                                    </p>
+                                            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                            .map(t => (
+                                                <div
+                                                    key={t.id}
+                                                    onClick={() => { setViewingTransaction(t); setIsLogOpen(false); }}
+                                                    className="bg-white p-6 rounded-[2.5rem] border border-brand-primary/10 shadow-sm hover:shadow-xl transition-all flex items-center justify-between cursor-pointer group"
+                                                >
+                                                    <div className="flex items-center gap-6">
+                                                        <div className={`h-16 px-4 rounded-2xl flex flex-col items-center justify-center font-black transition-all ${t.isManual || !t.tableNumber ? 'bg-red-50 text-red-600' : 'bg-brand-light/30 text-brand-primary group-hover:bg-brand-primary group-hover:text-white'}`}>
+                                                            <span className="text-[10px] opacity-60 uppercase mb-0.5">{t.tableNumber === 'Takeaway' ? 'استلام' : t.tableNumber ? 'طاولة' : 'نوع'}</span>
+                                                            <span className="text-lg">{t.tableNumber === 'Takeaway' ? 'سفري 🛍️' : t.tableNumber ? `#${t.tableNumber}` : 'يدوي'}</span>
+                                                        </div>
+                                                        <div className="space-y-1 text-right">
+                                                            <p className="font-black text-coffee-900 text-lg uppercase tracking-tighter">
+                                                                تم تحصيل مبلغ الفاتورة بنجاح
+                                                            </p>
+
+                                                            <div className="flex items-center gap-4 text-xs text-gray-400 font-bold">
+                                                                <span className="flex items-center gap-1"><Calendar size={12} /> {new Date(t.date).toLocaleDateString()}</span>
+                                                                <span className="flex items-center gap-1"><Clock size={12} /> {new Date(t.date).toLocaleTimeString()}</span>
+                                                                <span className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 rounded-md text-[10px]">#{t.id.slice(-8)}</span>
+                                                                <span className="px-2 py-0.5 bg-brand-primary/10 text-brand-primary rounded-md text-[10px]">{t.paymentMethod === 'cash' ? 'نقدي' : t.paymentMethod === 'card' ? 'بطاقة' : 'إلكتروني'}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-8">
+                                                        <div className="text-right">
+                                                            <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">المبلغ المحصل</p>
+                                                            <p className="text-2xl font-black text-brand-dark">{formatCurrency(t.total, settings?.currency || CURRENCY)}</p>
+                                                        </div>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handlePrint(t); }}
+                                                            className="w-14 h-14 bg-brand-light/40 text-brand-primary rounded-3xl flex items-center justify-center hover:bg-brand-primary hover:text-white transition-all"
+                                                        >
+                                                            <Printer size={24} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="p-8 bg-white border-t border-brand-primary/10 flex justify-center text-gray-400 text-xs font-bold uppercase tracking-widest">
+                                Golden POS Intelligence System - Secure Financial Log
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Manual Order Emergency Modal - Commercial Engine */}
+            {
+                isManualModalOpen && (
+                    <div className="fixed inset-0 z-[1200] bg-brand-dark/50 backdrop-blur-2xl flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-500">
+                        <div className="bg-white w-full max-w-6xl h-[88vh] rounded-[4rem] shadow-4xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-700 border-4 border-white/20">
+                            <div className="p-10 bg-brand-primary text-white flex justify-between items-center relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+                                <div className="flex items-center gap-6 relative z-10">
+                                    <div className="bg-white/20 p-5 rounded-[2rem] backdrop-blur-md shadow-inner">
+                                        <AlertCircle size={40} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-4xl font-black mb-1">واجهة القيد اليدوي</h2>
+                                        <p className="text-white/60 font-black text-xs uppercase tracking-[0.3em]">Direct Transaction Engine</p>
+                                    </div>
                                 </div>
                                 <button
-                                    onClick={() => setIsLogOpen(false)}
-                                    className="w-14 h-14 flex items-center justify-center bg-gray-100 text-gray-400 hover:bg-red-500 hover:text-white rounded-2xl transition-all shadow-sm"
+                                    onClick={() => setIsManualModalOpen(false)}
+                                    className="w-14 h-14 flex items-center justify-center bg-white/10 hover:bg-black/20 rounded-2xl transition-all text-white relative z-10 border border-white/10"
                                 >
                                     <X size={32} />
                                 </button>
                             </div>
-                        </div>
 
-                        <div className="flex-1 overflow-y-auto p-10 space-y-6 no-scrollbar">
-                            <p className="text-[10px] font-black text-brand-primary uppercase tracking-widest px-6">عمليات التحصيل التي قمت بها اليوم ✨</p>
-                            {transactions.filter(t => t.cashierPerson === currentUser?.name && t.isPaid && new Date(t.date).toDateString() === new Date().toDateString()).length === 0 ? (
-                                <div className="h-full flex flex-col items-center justify-center text-gray-300 opacity-30 py-20">
-                                    <History size={120} />
-                                    <p className="text-2xl font-black mt-4 uppercase">No Collections Found Today</p>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-1 gap-4">
-                                    {transactions
-                                        .filter(t => t.cashierPerson === currentUser?.name && t.isPaid && new Date(t.date).toDateString() === new Date().toDateString())
-                                        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                                        .map(t => (
-                                            <div
-                                                key={t.id}
-                                                onClick={() => { setViewingTransaction(t); setIsLogOpen(false); }}
-                                                className="bg-white p-6 rounded-[2.5rem] border border-brand-primary/10 shadow-sm hover:shadow-xl transition-all flex items-center justify-between cursor-pointer group"
+                            <div className="flex flex-1 overflow-hidden">
+                                {/* Products list for manual selection */}
+                                <div className="flex-[2] p-10 overflow-y-auto bg-gray-50/50 no-scrollbar relative">
+                                    <div className="absolute inset-0 bg-brand-primary/5 opacity-30 pointer-events-none"></div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 relative z-10">
+                                        {products.map(p => (
+                                            <button
+                                                key={p.id}
+                                                onClick={() => addToManualCart(p)}
+                                                className="bg-white p-6 rounded-[2.5rem] border-2 border-transparent hover:border-brand-primary hover:shadow-2xl transition-all text-right flex items-center gap-4 group active:scale-95"
                                             >
-                                                <div className="flex items-center gap-6">
-                                                    <div className={`h-16 px-4 rounded-2xl flex flex-col items-center justify-center font-black transition-all ${t.isManual || !t.tableNumber ? 'bg-red-50 text-red-600' : 'bg-brand-light/30 text-brand-primary group-hover:bg-brand-primary group-hover:text-white'}`}>
-                                                        <span className="text-[10px] opacity-60 uppercase mb-0.5">{t.tableNumber === 'Takeaway' ? 'استلام' : t.tableNumber ? 'طاولة' : 'نوع'}</span>
-                                                        <span className="text-lg">{t.tableNumber === 'Takeaway' ? 'سفري 🛍️' : t.tableNumber ? `#${t.tableNumber}` : 'يدوي'}</span>
-                                                    </div>
-                                                    <div className="space-y-1 text-right">
-                                                        <p className="font-black text-coffee-900 text-lg uppercase tracking-tighter">
-                                                            تم تحصيل مبلغ الفاتورة بنجاح
-                                                        </p>
+                                                <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center text-3xl group-hover:bg-brand-primary/10 group-hover:rotate-12 transition-all">
+                                                    {p.category === 'Coffee' ? '☕' : p.category === 'Tea' ? '🍵' : '🍰'}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h4 className="font-black text-brand-dark mb-1">{p.name}</h4>
+                                                    <span className="text-brand-primary font-black text-sm">{formatCurrency(p.price, settings?.currency || CURRENCY)}</span>
+                                                </div>
+                                                <div className="opacity-0 group-hover:opacity-100 transition-all">
+                                                    <Plus className="text-brand-primary" size={20} />
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
 
-                                                        <div className="flex items-center gap-4 text-xs text-gray-400 font-bold">
-                                                            <span className="flex items-center gap-1"><Calendar size={12} /> {new Date(t.date).toLocaleDateString()}</span>
-                                                            <span className="flex items-center gap-1"><Clock size={12} /> {new Date(t.date).toLocaleTimeString()}</span>
-                                                            <span className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 rounded-md text-[10px]">#{t.id.slice(-8)}</span>
-                                                            <span className="px-2 py-0.5 bg-brand-primary/10 text-brand-primary rounded-md text-[10px]">{t.paymentMethod === 'cash' ? 'نقدي' : t.paymentMethod === 'card' ? 'بطاقة' : 'إلكتروني'}</span>
+                                {/* Manual Cart */}
+                                <div className="w-[420px] border-r border-brand-primary/5 flex flex-col bg-white shadow-2xl relative z-20">
+                                    <div className="p-8 border-b border-brand-primary/5 flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-brand-primary/10 rounded-lg text-brand-primary">
+                                                <ShoppingCart size={20} />
+                                            </div>
+                                            <span className="font-black text-brand-dark">سلة القيد السريع</span>
+                                        </div>
+                                        <span className="text-[10px] font-black bg-brand-primary/5 text-brand-primary px-3 py-1 rounded-full uppercase">Queue</span>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto p-8 space-y-4 no-scrollbar">
+                                        {manualCart.length === 0 ? (
+                                            <div className="h-full flex flex-col items-center justify-center text-gray-300 gap-4 opacity-30">
+                                                <div className="w-24 h-24 border-4 border-dashed border-gray-200 rounded-full flex items-center justify-center">
+                                                    <Coffee size={40} />
+                                                </div>
+                                                <p className="font-black text-xs uppercase tracking-widest">Cart is empty</p>
+                                            </div>
+                                        ) : (
+                                            manualCart.map(i => (
+                                                <div key={i.id} className="flex justify-between items-center bg-gray-50 p-5 rounded-[2rem] border border-brand-primary/5 hover:border-brand-primary transition-all group">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-black text-brand-primary shadow-sm">
+                                                            {i.quantity}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-black text-sm text-brand-dark">{i.name}</p>
+                                                            <p className="text-[10px] text-gray-400 font-bold">{formatCurrency(i.price * i.quantity, settings?.currency || CURRENCY)}</p>
                                                         </div>
                                                     </div>
-                                                </div>
-                                                <div className="flex items-center gap-8">
-                                                    <div className="text-right">
-                                                        <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">المبلغ المحصل</p>
-                                                        <p className="text-2xl font-black text-brand-dark">{formatCurrency(t.total, settings?.currency || CURRENCY)}</p>
-                                                    </div>
                                                     <button
-                                                        onClick={(e) => { e.stopPropagation(); handlePrint(t); }}
-                                                        className="w-14 h-14 bg-brand-light/40 text-brand-primary rounded-3xl flex items-center justify-center hover:bg-brand-primary hover:text-white transition-all"
+                                                        onClick={() => removeFromManualCart(i.id)}
+                                                        className="w-10 h-10 flex items-center justify-center bg-white text-gray-300 hover:bg-red-500 hover:text-white rounded-xl transition-all shadow-sm"
                                                     >
-                                                        <Printer size={24} />
+                                                        <Trash2 size={16} />
                                                     </button>
                                                 </div>
-                                            </div>
-                                        ))}
-                                </div>
-                            )}
-                        </div>
+                                            ))
+                                        )}
+                                    </div>
 
-                        <div className="p-8 bg-white border-t border-brand-primary/10 flex justify-center text-gray-400 text-xs font-bold uppercase tracking-widest">
-                            Golden POS Intelligence System - Secure Financial Log
+                                    <div className="p-10 border-t border-brand-primary/5 bg-gray-50/50">
+                                        <div className="space-y-4 mb-8">
+                                            <div className="flex justify-between text-xs font-bold text-gray-400 uppercase">
+                                                <span>Subtotal</span>
+                                                <span>{formatCurrency(manualCart.reduce((acc, i) => acc + (i.price * i.quantity), 0), settings?.currency || CURRENCY)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-xs font-bold text-gray-400 uppercase border-b border-dashed border-gray-200 pb-4">
+                                                <span>Tax Flow</span>
+                                                <span>{formatCurrency((manualCart.reduce((acc, i) => acc + (i.price * i.quantity), 0)) * (settings?.taxRate || 1) / 100, settings?.currency || CURRENCY)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-brand-dark/40 font-black uppercase text-xs">Total Amount</span>
+                                                <span className="text-4xl font-black text-brand-dark">
+                                                    {formatCurrency(manualCart.reduce((acc, i) => acc + (i.price * i.quantity), 0) * (1 + (settings?.taxRate || 0) / 100), settings?.currency || CURRENCY)}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={createManualTransaction}
+                                            disabled={manualCart.length === 0}
+                                            className="w-full bg-brand-primary hover:bg-brand-secondary disabled:opacity-30 disabled:hover:bg-brand-primary text-white py-6 rounded-[2rem] font-black text-lg flex items-center justify-center gap-4 shadow-3xl shadow-brand-primary/20 transition-all active:scale-95 group"
+                                        >
+                                            <Check size={28} className="group-hover:scale-125 transition-transform" />
+                                            تأكيد القيد اليدوي
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
-            {/* Manual Order Emergency Modal - Commercial Engine */}
-            {isManualModalOpen && (
-                <div className="fixed inset-0 z-[1200] bg-brand-dark/50 backdrop-blur-2xl flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-500">
-                    <div className="bg-white w-full max-w-6xl h-[88vh] rounded-[4rem] shadow-4xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-700 border-4 border-white/20">
-                        <div className="p-10 bg-brand-primary text-white flex justify-between items-center relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-                            <div className="flex items-center gap-6 relative z-10">
-                                <div className="bg-white/20 p-5 rounded-[2rem] backdrop-blur-md shadow-inner">
-                                    <AlertCircle size={40} />
-                                </div>
-                                <div>
-                                    <h2 className="text-4xl font-black mb-1">واجهة القيد اليدوي</h2>
-                                    <p className="text-white/60 font-black text-xs uppercase tracking-[0.3em]">Direct Transaction Engine</p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => setIsManualModalOpen(false)}
-                                className="w-14 h-14 flex items-center justify-center bg-white/10 hover:bg-black/20 rounded-2xl transition-all text-white relative z-10 border border-white/10"
-                            >
-                                <X size={32} />
-                            </button>
-                        </div>
-
-                        <div className="flex flex-1 overflow-hidden">
-                            {/* Products list for manual selection */}
-                            <div className="flex-[2] p-10 overflow-y-auto bg-gray-50/50 no-scrollbar relative">
-                                <div className="absolute inset-0 bg-brand-primary/5 opacity-30 pointer-events-none"></div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 relative z-10">
-                                    {products.map(p => (
-                                        <button
-                                            key={p.id}
-                                            onClick={() => addToManualCart(p)}
-                                            className="bg-white p-6 rounded-[2.5rem] border-2 border-transparent hover:border-brand-primary hover:shadow-2xl transition-all text-right flex items-center gap-4 group active:scale-95"
-                                        >
-                                            <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center text-3xl group-hover:bg-brand-primary/10 group-hover:rotate-12 transition-all">
-                                                {p.category === 'Coffee' ? '☕' : p.category === 'Tea' ? '🍵' : '🍰'}
-                                            </div>
-                                            <div className="flex-1">
-                                                <h4 className="font-black text-brand-dark mb-1">{p.name}</h4>
-                                                <span className="text-brand-primary font-black text-sm">{formatCurrency(p.price, settings?.currency || CURRENCY)}</span>
-                                            </div>
-                                            <div className="opacity-0 group-hover:opacity-100 transition-all">
-                                                <Plus className="text-brand-primary" size={20} />
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Manual Cart */}
-                            <div className="w-[420px] border-r border-brand-primary/5 flex flex-col bg-white shadow-2xl relative z-20">
-                                <div className="p-8 border-b border-brand-primary/5 flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-brand-primary/10 rounded-lg text-brand-primary">
-                                            <ShoppingCart size={20} />
-                                        </div>
-                                        <span className="font-black text-brand-dark">سلة القيد السريع</span>
+            {/* Payment Selection Modal for Cashier - Final Authority */}
+            {
+                selectedForPayment && (
+                    <div className="fixed inset-0 z-[1300] bg-brand-dark/40 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
+                        <div className="bg-white w-full max-w-lg rounded-[3.5rem] shadow-4xl overflow-hidden animate-in zoom-in-95 duration-500 border-4 border-white/20">
+                            <div className={`p-8 border-b border-gray-100 flex justify-between items-center ${selectedForPayment.isManual ? 'bg-red-50' : 'bg-brand-light/20'}`}>
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${selectedForPayment.isManual ? 'bg-red-500 text-white' : 'bg-brand-primary text-white'}`}>
+                                        {paymentStep === 1 ? <Banknote size={24} /> : <CheckCircle size={24} />}
                                     </div>
-                                    <span className="text-[10px] font-black bg-brand-primary/5 text-brand-primary px-3 py-1 rounded-full uppercase">Queue</span>
+                                    <div>
+                                        <h2 className={`text-xl font-black ${selectedForPayment.isManual ? 'text-red-600' : 'text-brand-dark'}`}>
+                                            {paymentStep === 1 ? (selectedForPayment.isManual ? 'تحصيل يدوي' : 'طريقة الدفع') : 'تأكيد العملية'}
+                                        </h2>
+                                        <p className="text-gray-400 text-[10px] font-black uppercase tracking-tighter">
+                                            فاتورة رقم #{selectedForPayment.id.slice(-6)}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="flex-1 overflow-y-auto p-8 space-y-4 no-scrollbar">
-                                    {manualCart.length === 0 ? (
-                                        <div className="h-full flex flex-col items-center justify-center text-gray-300 gap-4 opacity-30">
-                                            <div className="w-24 h-24 border-4 border-dashed border-gray-200 rounded-full flex items-center justify-center">
-                                                <Coffee size={40} />
-                                            </div>
-                                            <p className="font-black text-xs uppercase tracking-widest">Cart is empty</p>
-                                        </div>
-                                    ) : (
-                                        manualCart.map(i => (
-                                            <div key={i.id} className="flex justify-between items-center bg-gray-50 p-5 rounded-[2rem] border border-brand-primary/5 hover:border-brand-primary transition-all group">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-black text-brand-primary shadow-sm">
-                                                        {i.quantity}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-black text-sm text-brand-dark">{i.name}</p>
-                                                        <p className="text-[10px] text-gray-400 font-bold">{formatCurrency(i.price * i.quantity, settings?.currency || CURRENCY)}</p>
-                                                    </div>
-                                                </div>
+                                <button
+                                    onClick={() => {
+                                        setSelectedForPayment(null);
+                                        setPaymentStep(1);
+                                        setSelectedMethod(null);
+                                    }}
+                                    className="p-3 bg-white/50 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-2xl transition-all shadow-sm"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="p-10">
+                                {paymentStep === 1 ? (
+                                    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
+                                        <div className="text-center">
+                                            <span className="text-gray-400 block text-[10px] mb-2 font-black uppercase tracking-[0.2em]">اختيار الوسيلة</span>
+                                            <div className="grid grid-cols-3 gap-4">
                                                 <button
-                                                    onClick={() => removeFromManualCart(i.id)}
-                                                    className="w-10 h-10 flex items-center justify-center bg-white text-gray-300 hover:bg-red-500 hover:text-white rounded-xl transition-all shadow-sm"
+                                                    onClick={() => { setSelectedMethod('cash'); setPaymentStep(2); }}
+                                                    className="flex flex-col items-center gap-3 p-6 rounded-[2.5rem] bg-gray-50 border-2 border-transparent hover:border-green-500 hover:bg-green-50 text-brand-dark transition-all group active:scale-95"
                                                 >
-                                                    <Trash2 size={16} />
+                                                    <div className="p-4 bg-white rounded-2xl shadow-sm text-green-600 group-hover:scale-110 transition-all">
+                                                        <Banknote size={32} />
+                                                    </div>
+                                                    <span className="font-black text-xs">نقد</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => { setSelectedMethod('card'); setPaymentStep(2); }}
+                                                    className="flex flex-col items-center gap-3 p-6 rounded-[2.5rem] bg-gray-50 border-2 border-transparent hover:border-blue-500 hover:bg-blue-50 text-brand-dark transition-all group active:scale-95"
+                                                >
+                                                    <div className="p-4 bg-white rounded-2xl shadow-sm text-blue-600 group-hover:scale-110 transition-all">
+                                                        <CreditCard size={32} />
+                                                    </div>
+                                                    <span className="font-black text-xs">بطاقة</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => { setSelectedMethod('online'); setPaymentStep(2); }}
+                                                    className="flex flex-col items-center gap-3 p-6 rounded-[2.5rem] bg-gray-50 border-2 border-transparent hover:border-purple-500 hover:bg-purple-50 text-brand-dark transition-all group active:scale-95"
+                                                >
+                                                    <div className="p-4 bg-white rounded-2xl shadow-sm text-purple-600 group-hover:scale-110 transition-all">
+                                                        <Wifi size={32} />
+                                                    </div>
+                                                    <span className="font-black text-xs">إلكتروني</span>
                                                 </button>
                                             </div>
-                                        ))
-                                    )}
-                                </div>
-
-                                <div className="p-10 border-t border-brand-primary/5 bg-gray-50/50">
-                                    <div className="space-y-4 mb-8">
-                                        <div className="flex justify-between text-xs font-bold text-gray-400 uppercase">
-                                            <span>Subtotal</span>
-                                            <span>{formatCurrency(manualCart.reduce((acc, i) => acc + (i.price * i.quantity), 0), settings?.currency || CURRENCY)}</span>
-                                        </div>
-                                        <div className="flex justify-between text-xs font-bold text-gray-400 uppercase border-b border-dashed border-gray-200 pb-4">
-                                            <span>Tax Flow</span>
-                                            <span>{formatCurrency((manualCart.reduce((acc, i) => acc + (i.price * i.quantity), 0)) * (settings?.taxRate || 1) / 100, settings?.currency || CURRENCY)}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-brand-dark/40 font-black uppercase text-xs">Total Amount</span>
-                                            <span className="text-4xl font-black text-brand-dark">
-                                                {formatCurrency(manualCart.reduce((acc, i) => acc + (i.price * i.quantity), 0) * (1 + (settings?.taxRate || 0) / 100), settings?.currency || CURRENCY)}
-                                            </span>
                                         </div>
                                     </div>
+                                ) : (
+                                    <div className="space-y-10 animate-in fade-in zoom-in-95 duration-500">
+                                        <div className="text-center">
+                                            <div className="inline-flex items-center gap-2 bg-brand-primary/10 px-6 py-2 rounded-full text-brand-primary text-xs font-black uppercase tracking-widest mb-6">
+                                                {selectedMethod === 'cash' ? '💵 دفع نقدي' : selectedMethod === 'card' ? '💳 بطاقة بنكية' : '📱 دفع إلكتروني'}
+                                            </div>
+                                            <span className="text-gray-400 block text-[10px] mb-2 font-black uppercase tracking-[0.3em]">المبلغ المطلوب تحصيله</span>
+                                            <span className={`text-6xl font-black block tracking-tighter ${selectedForPayment.isManual ? 'text-red-600' : 'text-brand-dark'}`}>
+                                                {formatCurrency(selectedForPayment.total, settings?.currency || CURRENCY)}
+                                            </span>
+                                        </div>
 
+                                        <div className="flex gap-4">
+                                            <button
+                                                onClick={handleComplete}
+                                                className="flex-[2] py-5 rounded-[2rem] bg-brand-primary text-white font-black text-lg hover:bg-brand-secondary transition-all shadow-2xl shadow-brand-primary/30 flex items-center justify-center gap-3 active:scale-95"
+                                            >
+                                                <CheckCircle size={24} /> تم استلام المبلغ
+                                            </button>
+                                            <button
+                                                onClick={() => setPaymentStep(1)}
+                                                className="flex-1 py-5 rounded-[2rem] bg-gray-100 text-gray-400 font-black text-sm hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+                                            >
+                                                <ChevronLeft size={18} /> تراجع
+                                            </button>
+                                        </div>
+
+                                        {autoPrint && (
+                                            <div className="flex items-center justify-center gap-2 text-[10px] text-gray-400 font-bold uppercase tracking-widest animate-pulse">
+                                                <Printer size={12} /> سيتم إجراء الطباعة فور الحفظ
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Shared Confirmation Modal for Critical Actions */}
+            {
+                confirmModal && confirmModal.isOpen && (
+                    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-brand-dark/60 backdrop-blur-sm animate-in fade-in duration-300">
+                        <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-4xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/20">
+                            <div className={`p-8 text-white flex items-center gap-5 ${confirmModal.type === 'cancel' ? 'bg-gradient-to-r from-rose-600 to-rose-500 border-b-4 border-rose-700' : 'bg-gradient-to-r from-brand-dark to-[#1e293b] border-b-4 border-brand-accent'}`}>
+                                <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-md">
+                                    {confirmModal.type === 'cancel' ? <AlertCircle size={32} /> : <DoorOpen size={32} className="text-brand-accent" />}
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black tracking-tight">{confirmModal.title}</h3>
+                                    <p className="text-[10px] opacity-70 font-black uppercase tracking-widest mt-1">يتطلب تأكيد الموظف المسؤول</p>
+                                </div>
+                            </div>
+                            <div className="p-10 text-center">
+                                <p className="text-brand-dark font-black text-lg leading-relaxed mb-10">
+                                    {confirmModal.message}
+                                </p>
+                                <div className="flex gap-4">
                                     <button
-                                        onClick={createManualTransaction}
-                                        disabled={manualCart.length === 0}
-                                        className="w-full bg-brand-primary hover:bg-brand-secondary disabled:opacity-30 disabled:hover:bg-brand-primary text-white py-6 rounded-[2rem] font-black text-lg flex items-center justify-center gap-4 shadow-3xl shadow-brand-primary/20 transition-all active:scale-95 group"
+                                        onClick={async () => {
+                                            setIsProcessing(true);
+                                            try {
+                                                if (confirmModal.type === 'cancel' && onCancelOrder) {
+                                                    const ids = Array.isArray(confirmModal.targetId) ? confirmModal.targetId : [confirmModal.targetId];
+                                                    for (const id of ids) await onCancelOrder(id);
+                                                } else if (confirmModal.type === 'close' && onCloseTable) {
+                                                    await onCloseTable(confirmModal.targetId);
+                                                }
+                                            } catch (error) {
+                                                console.error("Action execution failed:", error);
+                                            } finally {
+                                                setIsProcessing(false);
+                                                setConfirmModal(null);
+                                            }
+                                        }}
+                                        disabled={isProcessing}
+                                        className={`flex-[2] py-4 px-8 rounded-2xl font-black text-white shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2 ${confirmModal.type === 'cancel' ? 'bg-rose-500 shadow-rose-200 hover:bg-rose-600' : 'bg-brand-dark shadow-brand-dark/20 hover:bg-black'}`}
                                     >
-                                        <Check size={28} className="group-hover:scale-125 transition-transform" />
-                                        تأكيد القيد اليدوي
+                                        {isProcessing ? <Clock size={18} className="animate-spin" /> : <Check size={18} />}
+                                        تأكيد العملية
+                                    </button>
+                                    <button
+                                        onClick={() => setConfirmModal(null)}
+                                        className="flex-1 py-4 rounded-2xl bg-gray-50 text-gray-400 font-black hover:bg-gray-100 transition-all active:scale-95"
+                                    >
+                                        تراجع
                                     </button>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
-
-            {/* Payment Selection Modal for Cashier - Final Authority */}
-            {selectedForPayment && (
-                <div className="fixed inset-0 z-[1300] bg-brand-dark/40 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
-                    <div className="bg-white w-full max-w-lg rounded-[3.5rem] shadow-4xl overflow-hidden animate-in zoom-in-95 duration-500 border-4 border-white/20">
-                        <div className={`p-8 border-b border-gray-100 flex justify-between items-center ${selectedForPayment.isManual ? 'bg-red-50' : 'bg-brand-light/20'}`}>
-                            <div className="flex items-center gap-4">
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${selectedForPayment.isManual ? 'bg-red-500 text-white' : 'bg-brand-primary text-white'}`}>
-                                    {paymentStep === 1 ? <Banknote size={24} /> : <CheckCircle size={24} />}
-                                </div>
-                                <div>
-                                    <h2 className={`text-xl font-black ${selectedForPayment.isManual ? 'text-red-600' : 'text-brand-dark'}`}>
-                                        {paymentStep === 1 ? (selectedForPayment.isManual ? 'تحصيل يدوي' : 'طريقة الدفع') : 'تأكيد العملية'}
-                                    </h2>
-                                    <p className="text-gray-400 text-[10px] font-black uppercase tracking-tighter">
-                                        فاتورة رقم #{selectedForPayment.id.slice(-6)}
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => {
-                                    setSelectedForPayment(null);
-                                    setPaymentStep(1);
-                                    setSelectedMethod(null);
-                                }}
-                                className="p-3 bg-white/50 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-2xl transition-all shadow-sm"
-                            >
-                                <X size={20} />
-                            </button>
-                        </div>
-
-                        <div className="p-10">
-                            {paymentStep === 1 ? (
-                                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
-                                    <div className="text-center">
-                                        <span className="text-gray-400 block text-[10px] mb-2 font-black uppercase tracking-[0.2em]">اختيار الوسيلة</span>
-                                        <div className="grid grid-cols-3 gap-4">
-                                            <button
-                                                onClick={() => { setSelectedMethod('cash'); setPaymentStep(2); }}
-                                                className="flex flex-col items-center gap-3 p-6 rounded-[2.5rem] bg-gray-50 border-2 border-transparent hover:border-green-500 hover:bg-green-50 text-brand-dark transition-all group active:scale-95"
-                                            >
-                                                <div className="p-4 bg-white rounded-2xl shadow-sm text-green-600 group-hover:scale-110 transition-all">
-                                                    <Banknote size={32} />
-                                                </div>
-                                                <span className="font-black text-xs">نقد</span>
-                                            </button>
-                                            <button
-                                                onClick={() => { setSelectedMethod('card'); setPaymentStep(2); }}
-                                                className="flex flex-col items-center gap-3 p-6 rounded-[2.5rem] bg-gray-50 border-2 border-transparent hover:border-blue-500 hover:bg-blue-50 text-brand-dark transition-all group active:scale-95"
-                                            >
-                                                <div className="p-4 bg-white rounded-2xl shadow-sm text-blue-600 group-hover:scale-110 transition-all">
-                                                    <CreditCard size={32} />
-                                                </div>
-                                                <span className="font-black text-xs">بطاقة</span>
-                                            </button>
-                                            <button
-                                                onClick={() => { setSelectedMethod('online'); setPaymentStep(2); }}
-                                                className="flex flex-col items-center gap-3 p-6 rounded-[2.5rem] bg-gray-50 border-2 border-transparent hover:border-purple-500 hover:bg-purple-50 text-brand-dark transition-all group active:scale-95"
-                                            >
-                                                <div className="p-4 bg-white rounded-2xl shadow-sm text-purple-600 group-hover:scale-110 transition-all">
-                                                    <Wifi size={32} />
-                                                </div>
-                                                <span className="font-black text-xs">إلكتروني</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="space-y-10 animate-in fade-in zoom-in-95 duration-500">
-                                    <div className="text-center">
-                                        <div className="inline-flex items-center gap-2 bg-brand-primary/10 px-6 py-2 rounded-full text-brand-primary text-xs font-black uppercase tracking-widest mb-6">
-                                            {selectedMethod === 'cash' ? '💵 دفع نقدي' : selectedMethod === 'card' ? '💳 بطاقة بنكية' : '📱 دفع إلكتروني'}
-                                        </div>
-                                        <span className="text-gray-400 block text-[10px] mb-2 font-black uppercase tracking-[0.3em]">المبلغ المطلوب تحصيله</span>
-                                        <span className={`text-6xl font-black block tracking-tighter ${selectedForPayment.isManual ? 'text-red-600' : 'text-brand-dark'}`}>
-                                            {formatCurrency(selectedForPayment.total, settings?.currency || CURRENCY)}
-                                        </span>
-                                    </div>
-
-                                    <div className="flex gap-4">
-                                        <button
-                                            onClick={handleComplete}
-                                            className="flex-[2] py-5 rounded-[2rem] bg-brand-primary text-white font-black text-lg hover:bg-brand-secondary transition-all shadow-2xl shadow-brand-primary/30 flex items-center justify-center gap-3 active:scale-95"
-                                        >
-                                            <CheckCircle size={24} /> تم استلام المبلغ
-                                        </button>
-                                        <button
-                                            onClick={() => setPaymentStep(1)}
-                                            className="flex-1 py-5 rounded-[2rem] bg-gray-100 text-gray-400 font-black text-sm hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
-                                        >
-                                            <ChevronLeft size={18} /> تراجع
-                                        </button>
-                                    </div>
-
-                                    {autoPrint && (
-                                        <div className="flex items-center justify-center gap-2 text-[10px] text-gray-400 font-bold uppercase tracking-widest animate-pulse">
-                                            <Printer size={12} /> سيتم إجراء الطباعة فور الحفظ
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Shared Confirmation Modal for Critical Actions */}
-            {confirmModal && confirmModal.isOpen && (
-                <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-brand-dark/60 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-4xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/20">
-                        <div className={`p-8 text-white flex items-center gap-5 ${confirmModal.type === 'cancel' ? 'bg-gradient-to-r from-rose-600 to-rose-500 border-b-4 border-rose-700' : 'bg-gradient-to-r from-brand-dark to-[#1e293b] border-b-4 border-brand-accent'}`}>
-                            <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-md">
-                                {confirmModal.type === 'cancel' ? <AlertCircle size={32} /> : <DoorOpen size={32} className="text-brand-accent" />}
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-black tracking-tight">{confirmModal.title}</h3>
-                                <p className="text-[10px] opacity-70 font-black uppercase tracking-widest mt-1">يتطلب تأكيد الموظف المسؤول</p>
-                            </div>
-                        </div>
-                        <div className="p-10 text-center">
-                            <p className="text-brand-dark font-black text-lg leading-relaxed mb-10">
-                                {confirmModal.message}
-                            </p>
-                            <div className="flex gap-4">
-                                <button
-                                    onClick={async () => {
-                                        setIsProcessing(true);
-                                        try {
-                                            if (confirmModal.type === 'cancel' && onCancelOrder) {
-                                                const ids = Array.isArray(confirmModal.targetId) ? confirmModal.targetId : [confirmModal.targetId];
-                                                for (const id of ids) await onCancelOrder(id);
-                                            } else if (confirmModal.type === 'close' && onCloseTable) {
-                                                await onCloseTable(confirmModal.targetId);
-                                            }
-                                        } catch (error) {
-                                            console.error("Action execution failed:", error);
-                                        } finally {
-                                            setIsProcessing(false);
-                                            setConfirmModal(null);
-                                        }
-                                    }}
-                                    disabled={isProcessing}
-                                    className={`flex-[2] py-4 px-8 rounded-2xl font-black text-white shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2 ${confirmModal.type === 'cancel' ? 'bg-rose-500 shadow-rose-200 hover:bg-rose-600' : 'bg-brand-dark shadow-brand-dark/20 hover:bg-black'}`}
-                                >
-                                    {isProcessing ? <Clock size={18} className="animate-spin" /> : <Check size={18} />}
-                                    تأكيد العملية
-                                </button>
-                                <button
-                                    onClick={() => setConfirmModal(null)}
-                                    className="flex-1 py-4 rounded-2xl bg-gray-50 text-gray-400 font-black hover:bg-gray-100 transition-all active:scale-95"
-                                >
-                                    تراجع
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Unified Status Modal */}
             <StatusModal
@@ -2057,7 +2084,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
                 title={statusModal.title}
                 message={statusModal.message}
             />
-        </div>
+        </div >
     );
 };
 

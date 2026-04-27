@@ -744,7 +744,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
 
         {/* Add/Edit Employee Modal */}
         {isEmployeeModalOpen && (
-          <div className="fixed inset-0 z-[9999] bg-brand-dark/80 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="fixed top-20 inset-x-0 bottom-0 z-[9999] bg-brand-dark/80 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
             <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-4xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-500">
               <div className="p-8 bg-brand-dark text-white flex justify-between items-center">
                 <div className="flex items-center gap-4">
