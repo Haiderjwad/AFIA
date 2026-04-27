@@ -37,7 +37,7 @@ export const generateSalesInsight = async (totalRevenue: number, transactionCoun
 
     const response = await client.models.generateContent({
       model: MODEL_NAME,
-      contents: prompt,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
     });
 
     return response.text || "لا توجد بيانات كافية للتحليل حالياً.";
@@ -61,7 +61,7 @@ export const suggestUpsell = async (currentItems: string[]): Promise<string> => 
 
     const response = await client.models.generateContent({
       model: MODEL_NAME,
-      contents: prompt,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
     });
 
     return response.text || "";
@@ -98,7 +98,7 @@ export const generateDailyReport = async (transactions: Transaction[]): Promise<
 
     const response = await client.models.generateContent({
       model: MODEL_NAME,
-      contents: prompt,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
     });
 
     return response.text || "لم يتم إنشاء التقرير.";

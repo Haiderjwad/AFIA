@@ -285,6 +285,18 @@ const App: React.FC = () => {
     soundService.playClick();
   }, [transactions]);
 
+  const handleMoveTable = useCallback(async (transactionId: string, newTable: string) => {
+    const transaction = transactions.find(t => t.id === transactionId);
+    if (transaction) {
+      await firestoreService.updateTransaction(transactionId, {
+        tableNumber: newTable,
+        isMoved: true,
+        previousTable: transaction.tableNumber || 'Takeaway'
+      });
+      soundService.playSuccess();
+    }
+  }, [transactions]);
+
   const handleFinalizePayment = useCallback(async (transactionIds: string | string[], paymentMethod: 'cash' | 'card' | 'online') => {
     const ids = Array.isArray(transactionIds) ? transactionIds : [transactionIds];
     setTransactions(currentTransactions => {
@@ -355,15 +367,16 @@ const App: React.FC = () => {
               });
 
             // Clean up old guest counts for tables that are now available
-            const occupiedTables = new Set(t.filter(trans =>
+            const occupiedTables = new Set<string>(t.filter(trans =>
               trans.tableNumber &&
               trans.tableNumber !== 'Takeaway' &&
               (trans.isTableClosed === false || (trans.isTableClosed === undefined && !trans.isPaid && !['completed', 'refunded', 'cancelled'].includes(trans.status)))
             ).map(tr => tr.tableNumber!));
             // Clean up guest counts for tables that are no longer occupied or ready
             Array.from(next.keys()).forEach(tableNum => {
-              if (!occupiedTables.has(tableNum) && t.some(tr => tr.tableNumber === tableNum && tr.isTableClosed === true)) {
-                next.delete(tableNum);
+              const num = tableNum as string;
+              if (!occupiedTables.has(num) && t.some(tr => tr.tableNumber === num && tr.isTableClosed === true)) {
+                next.delete(num);
               }
             });
 
@@ -448,7 +461,7 @@ const App: React.FC = () => {
         status: 'pending', // Reset to pending when edited
         isUpdated: true,
         salesPerson: currentUser?.name || 'Unknown',
-        guestCount: tableNumber ? tableGuestCounts.get(tableNumber) : undefined
+        guestCount: (tableNumber ? tableGuestCounts.get(tableNumber) : 0) ?? 0
       });
 
       for (const cartItem of cart) await firestoreService.decrementStock(cartItem.id, cartItem.quantity);
@@ -480,7 +493,7 @@ const App: React.FC = () => {
         isUpdated: true,
         notes: notes ? (masterOrder.notes ? `${masterOrder.notes} | ${notes}` : notes) : masterOrder.notes,
         salesPerson: currentUser?.name || 'Unknown',
-        guestCount: tableNumber ? tableGuestCounts.get(tableNumber) : masterOrder.guestCount
+        guestCount: (tableNumber ? tableGuestCounts.get(tableNumber) : masterOrder.guestCount) ?? 0
       });
       for (const cartItem of cart) await firestoreService.decrementStock(cartItem.id, cartItem.quantity);
     } else {
@@ -493,10 +506,10 @@ const App: React.FC = () => {
         total: subtotal + taxAmount,
         status: 'pending',
         paymentMethod: method,
-        tableNumber,
-        notes,
+        tableNumber: tableNumber || "Takeaway",
+        notes: notes || "",
         salesPerson: currentUser?.name || 'Unknown',
-        guestCount: tableNumber ? tableGuestCounts.get(tableNumber) : 0
+        guestCount: (tableNumber ? tableGuestCounts.get(tableNumber) : 0) ?? 0
       };
       await firestoreService.addTransaction(newTransaction);
       for (const cartItem of cart) await firestoreService.decrementStock(cartItem.id, cartItem.quantity);
@@ -555,6 +568,7 @@ const App: React.FC = () => {
             onCompleteOrder={handleSendToCashier}
             onCancelOrder={handleCancelOrder}
             onEditOrder={handleEditOrder}
+            onMoveTable={handleMoveTable}
             isEditing={!!editingTransactionId}
             onToggleReceiptPanel={() => setIsReceiptPanelOpen(!isReceiptPanelOpen)}
             cartCount={cartCount}
@@ -756,6 +770,7 @@ const App: React.FC = () => {
           tableNumber={selectedTableNumber}
           onTableChange={setSelectedTableNumber}
           products={products}
+          isEditing={!!editingTransactionId}
           guestCount={selectedTableNumber ? tableGuestCounts.get(selectedTableNumber) : 0}
           onGuestCountChange={(count) => {
             if (selectedTableNumber) {

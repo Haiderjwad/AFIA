@@ -50,6 +50,8 @@ export interface Transaction {
   cashierPerson?: string;   // Who finalized payment
   guestCount?: number;      // Number of guests at table
   isTableClosed?: boolean;  // Whether the table has been manually released
+  isMoved?: boolean;        // Whether the order was moved to another table
+  previousTable?: string;   // Previous table number if moved
 }
 
 export interface Supplier {

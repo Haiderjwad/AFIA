@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import StatusModal from './StatusModal';
 import { CartItem, MenuItem, AppSettings } from '../types';
 import { formatCurrency } from '../utils/currencyUtils';
-import { Plus, Minus, Sparkles, Coffee, CreditCard, Loader2, Banknote, Wifi, ArrowLeft, Check, AlertCircle, Hash, MessageSquare, X, ShoppingBag, CheckCircle2 } from 'lucide-react';
+import { Plus, Minus, Sparkles, Coffee, CreditCard, Loader2, Banknote, Wifi, ArrowLeft, Check, AlertCircle, Hash, MessageSquare, X, ShoppingBag, CheckCircle2, RefreshCw } from 'lucide-react';
 import { suggestUpsell } from '../services/geminiService';
 
 interface ReceiptPanelProps {
@@ -22,6 +22,7 @@ interface ReceiptPanelProps {
     products: MenuItem[];
     guestCount?: number;
     onGuestCountChange?: (count: number) => void;
+    isEditing?: boolean;
 }
 
 const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
@@ -39,7 +40,8 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
     onTableChange,
     products,
     guestCount = 0,
-    onGuestCountChange
+    onGuestCountChange,
+    isEditing = false
 }) => {
     const [upsellSuggestion, setUpsellSuggestion] = useState<string>("");
     const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -265,10 +267,11 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                     <button
                         onClick={initiateCheckout}
                         disabled={cart.length === 0 || isSending || !tableNumber}
-                        className={`w-full py-4 text-white rounded-2xl font-black text-base shadow-2xl flex items-center justify-center gap-3 transition-all ${isSending ? 'bg-brand-dark' : 'bg-gradient-to-r from-brand-primary to-brand-secondary active:scale-95 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed'}`}
+                        className={`w-full py-4 text-white rounded-2xl font-black text-base shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed
+                            ${isSending ? 'bg-brand-dark' : isEditing ? 'bg-brand-dark text-brand-accent shadow-brand-dark/20' : 'bg-gradient-to-r from-brand-primary to-brand-secondary'}`}
                     >
-                        {isSending ? <Loader2 size={20} className="animate-spin" /> : <CheckCircle2 size={20} />}
-                        <span>{isSending ? 'جاري الإرسال...' : 'إرسال الطلب للمطبخ'}</span>
+                        {isSending ? <Loader2 size={20} className="animate-spin" /> : isEditing ? <RefreshCw size={20} className="animate-pulse" /> : <CheckCircle2 size={20} />}
+                        <span>{isSending ? 'جاري الإرسال...' : isEditing ? 'تحديث الطلب وارسال للمطبخ' : 'إرسال الطلب للمطبخ'}</span>
                     </button>
                 </div>
             </div>

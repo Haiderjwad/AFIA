@@ -3,7 +3,8 @@ import {
     Search, Coffee, Plus, History, X, Clock, PackageCheck,
     ShoppingCart, UtensilsCrossed, CheckCircle2, ChevronDown, ChevronUp,
     Table2, Layers, CheckCircle, Bell, AlertCircle, Ban, Utensils,
-    ChefHat, Wallet, User, Monitor, ChevronRight, ChevronLeft
+    ChefHat, Wallet, User, Monitor, ChevronRight, ChevronLeft,
+    Pencil, RefreshCw, Trash2, MoveHorizontal
 } from 'lucide-react';
 import { MenuItem, AppSettings, Transaction, Employee } from '../types';
 import { formatCurrency } from '../utils/currencyUtils';
@@ -18,6 +19,9 @@ interface SalesViewProps {
     currentUser: Employee | null;
     onCompleteOrder: (id: string) => void;
     onCancelOrder?: (id: string) => void;
+    onEditOrder?: (id: string) => void;
+    onMoveTable?: (id: string, newTable: string) => void;
+    isEditing?: boolean;
     onToggleReceiptPanel?: () => void;
     cartCount?: number;
     selectedTableNumber?: string;
@@ -125,12 +129,15 @@ const TableItem = React.memo<TableItemProps>(({ num, isSelected, status, guestCo
 const SalesView: React.FC<SalesViewProps> = React.memo(({
     products, addToCart, settings, readyOrders, transactions,
     currentUser, onCompleteOrder, onCancelOrder, onToggleReceiptPanel, cartCount,
-    selectedTableNumber, onSelectTable, tableGuestCounts, onGuestCountChange
+    selectedTableNumber, onSelectTable, tableGuestCounts, onGuestCountChange,
+    onEditOrder, isEditing, onMoveTable
 }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [showActivityLog, setShowActivityLog] = useState(false);
     const [activityTab, setActivityTab] = useState<'active' | 'completed' | 'cancelled'>('active');
+    const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
+    const [movingOrderId, setMovingOrderId] = useState<string | null>(null);
     const [tablesOpen, setTablesOpen] = useState(true);
     const [longPressTable, setLongPressTable] = useState<string | null>(null);
     const [guestCountInput, setGuestCountInput] = useState('');
@@ -677,21 +684,83 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                                                         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                                                         .map(order => (
                                                             <div key={order.id} className="bg-white border-2 border-gray-50 p-5 rounded-[2rem] flex justify-between items-center group hover:border-brand-primary/20 transition-all">
-                                                                <div className="flex items-center gap-5">
-                                                                    <div className="w-12 h-12 bg-gray-50 text-gray-400 rounded-2xl flex items-center justify-center font-black">
-                                                                        {order.tableNumber === 'Takeaway' ? 'SB' : order.tableNumber}
+                                                                <div className="flex items-center gap-5 relative">
+                                                                    <button
+                                                                        onClick={() => setMovingOrderId(order.id)}
+                                                                        className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center font-black transition-all hover:scale-105 active:scale-95 shadow-lg group/title ${order.isMoved ? 'bg-purple-600 text-white shadow-purple-500/20' : 'bg-gray-50 text-gray-400 border border-gray-100 hover:border-brand-primary/30 hover:bg-white'}`}
+                                                                    >
+                                                                        <span className="text-[10px] opacity-60 uppercase leading-none mb-1">{order.isMoved ? 'محول' : 'رقم'}</span>
+                                                                        <span className="text-xl leading-none">{order.tableNumber === 'Takeaway' ? 'SB' : order.tableNumber}</span>
+                                                                        {order.isMoved && (
+                                                                            <div className="absolute -top-1 -right-1 bg-white text-purple-600 rounded-full p-1 shadow-sm border border-purple-100 animate-bounce">
+                                                                                <MoveHorizontal size={10} />
+                                                                            </div>
+                                                                        )}
+                                                                    </button>
+                                                                    <div className="flex flex-col">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <p className="font-black text-brand-dark text-lg whitespace-nowrap">{order.tableNumber === 'Takeaway' ? 'طلب سفري' : `طاولة ${order.tableNumber}`}</p>
+                                                                            {order.isMoved && (
+                                                                                <span className="bg-purple-50 text-purple-600 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter flex items-center gap-1 border border-purple-100/50">
+                                                                                    <RefreshCw size={8} className="animate-spin" /> من {order.previousTable}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        <p className="text-xs text-gray-400 font-bold tracking-tight">{new Date(order.date).toLocaleTimeString('ar-EG')}</p>
                                                                     </div>
-                                                                    <div>
-                                                                        <p className="font-black text-brand-dark text-sm">{order.tableNumber === 'Takeaway' ? 'طلب سفري' : `طاولة ${order.tableNumber}`}</p>
-                                                                        <p className="text-[10px] text-gray-400 font-bold">{new Date(order.date).toLocaleTimeString('ar-EG')}</p>
-                                                                    </div>
+
+                                                                    {/* Inline Move Table Dropdown */}
+                                                                    {movingOrderId === order.id && (
+                                                                        <div className="absolute top-full right-0 mt-4 bg-white rounded-3xl shadow-4xl border border-gray-100 p-6 z-[700] w-72 animate-in zoom-in-95 slide-in-from-top-2 duration-300">
+                                                                            <div className="flex items-center justify-between mb-4 px-2">
+                                                                                <p className="text-[10px] font-black text-brand-dark uppercase tracking-widest">اختر الطاولة الجديدة</p>
+                                                                                <button onClick={() => setMovingOrderId(null)} className="text-gray-300 hover:text-rose-500 transition-colors"><X size={16} /></button>
+                                                                            </div>
+                                                                            <div className="grid grid-cols-4 gap-3 max-h-48 overflow-y-auto no-scrollbar">
+                                                                                {Array.from({ length: settings.tablesCount || 24 }, (_, i) => String(i + 1)).map(num => (
+                                                                                    <button
+                                                                                        key={num}
+                                                                                        onClick={() => {
+                                                                                            onMoveTable?.(order.id, num);
+                                                                                            setMovingOrderId(null);
+                                                                                        }}
+                                                                                        disabled={num === order.tableNumber}
+                                                                                        className={`h-11 rounded-xl flex items-center justify-center font-black text-xs transition-all ${num === order.tableNumber ? 'bg-gray-50 text-gray-200 cursor-not-allowed' : 'bg-brand-primary/5 text-brand-primary hover:bg-brand-primary hover:text-white active:scale-95 shadow-sm'}`}
+                                                                                    >
+                                                                                        {num}
+                                                                                    </button>
+                                                                                ))}
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        onMoveTable?.(order.id, 'Takeaway');
+                                                                                        setMovingOrderId(null);
+                                                                                    }}
+                                                                                    className="col-span-4 h-11 rounded-xl bg-orange-50 text-orange-600 font-black text-xs hover:bg-orange-500 hover:text-white transition-all flex items-center justify-center gap-2"
+                                                                                >
+                                                                                    <ShoppingCart size={14} /> تحويل لسفري
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
-                                                                <div className="flex items-center gap-4">
+                                                                <div className="flex items-center gap-2">
                                                                     <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase ${order.status === 'pending' ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'}`}>
                                                                         {order.status === 'pending' ? 'في الانتظار' : 'جاري العمل'}
                                                                     </span>
-                                                                    {order.status === 'pending' && (
-                                                                        <button onClick={() => onCancelOrder?.(order.id)} className="w-10 h-10 flex items-center justify-center text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
+                                                                    {order.status === 'pending' && onEditOrder && (
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                onEditOrder(order.id);
+                                                                                setShowActivityLog(false);
+                                                                            }}
+                                                                            className="w-10 h-10 flex items-center justify-center text-brand-primary hover:bg-brand-primary/10 rounded-xl transition-all"
+                                                                            title="تعديل الطلب"
+                                                                        >
+                                                                            <Pencil size={18} />
+                                                                        </button>
+                                                                    )}
+                                                                    {(order.status === 'pending' || order.status === 'preparing') && (
+                                                                        <button onClick={() => setConfirmCancel(order.id)} className="w-10 h-10 flex items-center justify-center text-rose-500 hover:bg-rose-50 rounded-xl transition-all" title="إلغاء الطلب">
                                                                             <X size={18} />
                                                                         </button>
                                                                     )}
@@ -767,6 +836,42 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                     </div>
                 )
             }
+            {/* Confirmation Dialog for Cancellation */}
+            {confirmCancel && (
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-brand-dark/40 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white w-full max-w-sm rounded-[2rem] shadow-4xl overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className="p-8 bg-rose-500 text-white flex items-center gap-4">
+                            <AlertCircle size={32} />
+                            <div>
+                                <h3 className="text-xl font-black">إلغاء الطلب</h3>
+                                <p className="text-[10px] opacity-80 font-bold uppercase tracking-widest mt-1">تأكيد عملية الحذف</p>
+                            </div>
+                        </div>
+                        <div className="p-8 text-center">
+                            <p className="text-brand-dark font-bold text-lg mb-8 leading-relaxed">
+                                هل أنت متأكد من رغبتك في إلغاء هذا الطلب؟ لا يمكن التراجع عن هذا الإجراء لاحقاً.
+                            </p>
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => {
+                                        onCancelOrder?.(confirmCancel);
+                                        setConfirmCancel(null);
+                                    }}
+                                    className="flex-1 py-4 bg-rose-500 text-white rounded-2xl font-black shadow-xl shadow-rose-200 active:scale-95 transition-all"
+                                >
+                                    تأكيد الإلغاء
+                                </button>
+                                <button
+                                    onClick={() => setConfirmCancel(null)}
+                                    className="flex-1 py-4 bg-gray-50 text-gray-400 rounded-2xl font-black hover:bg-gray-100 active:scale-95 transition-all"
+                                >
+                                    تراجع
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 });

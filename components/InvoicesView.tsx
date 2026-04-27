@@ -7,7 +7,7 @@ import {
     Wifi, CheckCircle, Search, AlertCircle, Plus, Minus,
     Trash2, ShoppingCart, Coffee, Eye, X, Receipt,
     ChevronLeft, ListFilter, History, Check, UtensilsCrossed, PackageCheck,
-    DoorOpen, Undo2
+    DoorOpen, Undo2, MoveHorizontal
 } from 'lucide-react';
 import { CURRENCY } from '../constants';
 import { firestoreService } from '../services/firestoreService';
@@ -1247,6 +1247,11 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                     {transaction.isMerged && (
                                         <span className="text-[9px] bg-brand-dark text-brand-accent px-2 py-0.5 rounded-full mt-1 animate-pulse">
                                             فاتورة مدمجة ({transaction.groupCount} طلبات)
+                                        </span>
+                                    )}
+                                    {transaction.isMoved && (
+                                        <span className="text-[8px] bg-purple-500 text-white px-2 py-0.5 rounded-full mt-1 flex items-center gap-1 border border-purple-400">
+                                            <MoveHorizontal size={8} /> تم النقل من {transaction.previousTable}
                                         </span>
                                     )}
                                 </div>
