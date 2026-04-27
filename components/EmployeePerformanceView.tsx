@@ -1,18 +1,32 @@
 
-import React, { useMemo } from 'react';
-import { Transaction, Employee } from '../types';
+import React, { useMemo, useState, useRef } from 'react';
+import { Transaction, Employee, AppSettings } from '../types';
 import {
     Users, TrendingUp, ShoppingBag, ChefHat,
     Truck, Banknote, Star, Award, Search,
-    Filter, Download
+    Filter, Download, RefreshCw, Sparkles, FileText
 } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
+import { patchClonedSubtreeForHtml2Canvas } from '../utils/html2canvasCompat';
+import StatusModal from './StatusModal';
 
 interface EmployeePerformanceViewProps {
     employees: Employee[];
     transactions: Transaction[];
+    settings: AppSettings;
 }
 
-const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ employees, transactions }) => {
+const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ employees, transactions, settings }) => {
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [statusModal, setStatusModal] = useState<{ isOpen: boolean, type: 'success' | 'error' | 'loading', title: string, message: string }>({
+        isOpen: false,
+        type: 'loading',
+        title: '',
+        message: ''
+    });
+    const reportRef = useRef<HTMLDivElement>(null);
+
     const performanceData = useMemo(() => {
         return employees.map(emp => {
             const salesCount = transactions.filter(t => t.salesPerson === emp.name).length;
@@ -35,6 +49,74 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
         }).sort((a, b) => b.stats.total - a.stats.total);
     }, [employees, transactions]);
 
+    const handleExportPDF = async () => {
+        if (!reportRef.current) return;
+
+        setIsGenerating(true);
+        setStatusModal({
+            isOpen: true,
+            type: 'loading',
+            title: 'جاري حوسبة تقارير الأداء الفردية',
+            message: 'نقوم الآن بتحليل إنتاجية الموظفين وتوليد حصيلة العمليات لكل قسم، يرجى الانتظار...'
+        });
+
+        const exportId = 'employee-performance-report';
+        reportRef.current.setAttribute('data-export-capture', exportId);
+
+        try {
+            await new Promise(resolve => setTimeout(resolve, 800));
+
+            const canvas = await html2canvas(reportRef.current, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                logging: false,
+                onclone: (clonedDoc) => {
+                    patchClonedSubtreeForHtml2Canvas(clonedDoc, {
+                        exportId,
+                        attributeName: 'data-export-capture',
+                        fallbackColor: '#2D6A4F'
+                    });
+                }
+            });
+
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const margin = 10;
+            const contentWidth = pageWidth - (margin * 2);
+            const imgHeightInPDF = (canvas.height * contentWidth) / canvas.width;
+
+            pdf.addImage(imgData, 'JPEG', margin, margin, contentWidth, imgHeightInPDF);
+
+            pdf.save(`تقرير_أداء_الموظفين_${settings.storeName}_${new Date().toISOString().split('T')[0]}.pdf`);
+
+            setStatusModal({
+                isOpen: true,
+                type: 'success',
+                title: 'تم تصدير تقرير الأداء بنجاح',
+                message: 'تم حفظ الكشف التفصيلي لإنتاجية الكادر بنجاح.'
+            });
+
+            setTimeout(() => {
+                setStatusModal(prev => ({ ...prev, isOpen: false }));
+            }, 3000);
+
+        } catch (error) {
+            console.error("PDF Generation error:", error);
+            setStatusModal({
+                isOpen: true,
+                type: 'error',
+                title: 'خطأ في معالجة التقرير',
+                message: 'عذراً، واجهنا صعوبة في إنشاء ملف PDF. يرجى المحاولة مرة أخرى.'
+            });
+        } finally {
+            setIsGenerating(false);
+            reportRef.current?.removeAttribute('data-export-capture');
+        }
+    };
+
     return (
         <div className="view-container">
             {/* Background Patterns */}
@@ -54,8 +136,13 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                 </div>
 
                 <div className="flex gap-3 w-full lg:w-auto">
-                    <button className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-white px-6 py-3 rounded-2xl font-bold text-brand-dark border border-brand-primary/10 shadow-sm hover:border-brand-primary transition-all text-sm md:text-base">
-                        <Download size={18} /> تحميل التقرير
+                    <button
+                        onClick={handleExportPDF}
+                        disabled={isGenerating}
+                        className="flex-1 lg:flex-none flex items-center justify-center gap-3 bg-brand-primary hover:bg-brand-secondary px-8 py-4 rounded-[1.5rem] font-black text-white shadow-xl shadow-brand-primary/20 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                        {isGenerating ? <RefreshCw size={20} className="animate-spin" /> : <Download size={20} />}
+                        <span>تحميل تقرير الأداء</span>
                     </button>
                 </div>
             </div>
@@ -162,6 +249,90 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                     </table>
                 </div>
             </div>
+
+            {/* Hidden Report Container for PDF Export */}
+            <div className="fixed left-[-9999px] top-[-9999px]">
+                <div
+                    ref={reportRef}
+                    className="w-[210mm] bg-white p-16"
+                    dir="rtl"
+                >
+                    <div className="flex justify-between items-start border-b-8 border-brand-dark pb-10 mb-12">
+                        <div className="text-right">
+                            <h1 className="text-5xl font-black text-brand-dark mb-3">{settings.storeName}</h1>
+                            <div className="flex items-center gap-2 text-brand-accent">
+                                <Sparkles size={20} />
+                                <p className="text-xl font-bold uppercase tracking-[0.2em]">كشف إنتاجية وأداء الكادر الوظيفي</p>
+                            </div>
+                        </div>
+                        <div className="text-left">
+                            <p className="text-gray-400 font-black text-sm mb-1 uppercase tracking-widest">تاريخ الإصدار</p>
+                            <p className="text-2xl font-black text-brand-dark">{new Date().toLocaleDateString('ar-IQ')}</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-6 mb-16">
+                        <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 flex flex-col items-center">
+                            <ShoppingBag className="text-brand-primary mb-2" size={24} />
+                            <p className="text-[10px] font-black text-gray-400 uppercase">مبيعات</p>
+                            <p className="text-2xl font-black text-brand-dark">{transactions.filter(t => t.salesPerson).length}</p>
+                        </div>
+                        <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 flex flex-col items-center">
+                            <ChefHat className="text-orange-500 mb-2" size={24} />
+                            <p className="text-[10px] font-black text-gray-400 uppercase">تحضير</p>
+                            <p className="text-2xl font-black text-brand-dark">{transactions.filter(t => t.kitchenPerson).length}</p>
+                        </div>
+                        <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 flex flex-col items-center">
+                            <Truck className="text-blue-500 mb-2" size={24} />
+                            <p className="text-[10px] font-black text-gray-400 uppercase">استلام</p>
+                            <p className="text-2xl font-black text-brand-dark">{transactions.filter(t => t.deliveredBy).length}</p>
+                        </div>
+                        <div className="bg-brand-dark p-6 rounded-3xl flex flex-col items-center text-white">
+                            <Banknote className="text-brand-accent mb-2" size={24} />
+                            <p className="text-[10px] font-black opacity-60 uppercase">فواتير</p>
+                            <p className="text-2xl font-black">{transactions.filter(t => t.cashierPerson).length}</p>
+                        </div>
+                    </div>
+
+                    <table className="w-full text-right border-collapse">
+                        <thead>
+                            <tr className="border-b-2 border-brand-dark">
+                                <th className="py-4 font-black text-sm">الموظف</th>
+                                <th className="py-4 font-black text-sm">الدور</th>
+                                <th className="py-4 font-black text-sm text-center">مبيعات</th>
+                                <th className="py-4 font-black text-sm text-center">مطبخ</th>
+                                <th className="py-4 font-black text-sm text-center">كاشير</th>
+                                <th className="py-4 font-black text-sm text-left">المجموع</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {performanceData.map((emp) => (
+                                <tr key={emp.uid} className="border-b border-gray-100">
+                                    <td className="py-6 font-black text-brand-dark">{emp.name}</td>
+                                    <td className="py-6 text-sm font-bold text-gray-500">{emp.role}</td>
+                                    <td className="py-6 text-center font-black">{emp.stats.sales}</td>
+                                    <td className="py-6 text-center font-black">{emp.stats.kitchen}</td>
+                                    <td className="py-6 text-center font-black">{emp.stats.cashier}</td>
+                                    <td className="py-6 text-left font-black text-brand-primary">{emp.stats.total}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+
+                    <div className="mt-20 pt-10 border-t border-gray-100 flex justify-between items-center opacity-40">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em]">© Al Afia Performance Intelligence - Official Document</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em]">Generated via AFIA POS Cloud</p>
+                    </div>
+                </div>
+            </div>
+
+            <StatusModal
+                isOpen={statusModal.isOpen}
+                onClose={() => setStatusModal(prev => ({ ...prev, isOpen: false }))}
+                type={statusModal.type}
+                title={statusModal.title}
+                message={statusModal.message}
+            />
         </div>
     );
 };

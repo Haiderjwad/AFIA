@@ -59,15 +59,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
       </div>
 
-      {/* Search Bar */}
-      <div className="mb-10 relative max-w-md" dir="rtl">
-        <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-        <input
-          type="text"
-          placeholder="بحث سريع في النظام..."
-          className="w-full pr-12 pl-4 py-3 bg-white rounded-2xl border border-gold-200 outline-none focus:ring-2 focus:ring-gold-500 transition-all font-bold placeholder-gray-300 shadow-sm"
-        />
-      </div>
+
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 relative z-0" dir="rtl">
@@ -131,9 +123,9 @@ const Dashboard: React.FC<DashboardProps> = ({
               <button className="text-[10px] uppercase tracking-widest font-black px-6 py-2.5 rounded-xl text-brand-primary bg-brand-primary/5 hover:bg-brand-primary hover:text-white transition-all shadow-sm">تحميل التقرير الكامل</button>
             </div>
           </div>
-          <div className="h-72 w-full relative z-10">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50} style={{ minWidth: 0, minHeight: 0 }}>
-              <AreaChart data={SALES_DATA}>
+          <div className="h-72 w-full relative z-10 overflow-hidden">
+            <ResponsiveContainer width="100%" height="100%" debounce={100}>
+              <AreaChart data={SALES_DATA} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#52B788" stopOpacity={0.4} />
@@ -166,9 +158,9 @@ const Dashboard: React.FC<DashboardProps> = ({
               كشف التفاصيل
             </button>
           </div>
-          <div className="h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={50} style={{ minWidth: 0, minHeight: 0 }}>
-              <BarChart data={BAR_DATA}>
+          <div className="h-72 w-full relative overflow-hidden">
+            <ResponsiveContainer width="100%" height="100%" debounce={100}>
+              <BarChart data={BAR_DATA} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#2D6A4F', fontSize: 10, fontWeight: 'bold' }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#2D6A4F', fontSize: 10, fontWeight: 'bold' }} />
                 <Tooltip cursor={{ fill: 'rgba(82, 183, 136, 0.1)' }} contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 40px rgba(0,0,0,0.1)', fontWeight: 'bold' }} />

@@ -259,31 +259,35 @@ const InventoryView: React.FC<InventoryViewProps> = ({
         {/* Toolbar */}
         <div className="p-10 border-b border-gray-50 flex flex-col xl:flex-row gap-6 bg-gray-50/20">
           <div className="flex-1 relative group">
-            <div className="absolute inset-y-0 right-0 pr-6 flex items-center pointer-events-none">
-              <Search className="text-gray-300 group-focus-within:text-brand-primary transition-colors" size={24} />
-            </div>
-            <input
-              type="text"
-              placeholder="ابحث عن اسم المنتج، التصنيف، أو كود المعرف..."
-              value={searchQuery}
-              onChange={(e) => {
-                const val = e.target.value;
-                setSearchQuery(val);
-                if (onSearchChange) onSearchChange(val);
-              }}
-              className="w-full pr-16 pl-16 py-5 bg-white rounded-[2rem] border-2 border-transparent focus:border-brand-primary/20 focus:ring-8 focus:ring-brand-primary/5 outline-none transition-all text-brand-dark font-black placeholder-gray-200 shadow-inner"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => {
-                  setSearchQuery('');
-                  if (onSearchChange) onSearchChange('');
+            {/* Professional Search Frame Design */}
+            <div className="absolute -inset-1 bg-gradient-to-r from-brand-primary/20 via-brand-secondary/20 to-brand-primary/20 rounded-[2.2rem] blur opacity-0 group-focus-within:opacity-100 transition-opacity duration-500" />
+            <div className="relative">
+              <div className="absolute inset-y-0 right-0 pr-6 flex items-center pointer-events-none">
+                <Search className="text-brand-primary/30 group-focus-within:text-brand-primary transition-colors" size={24} />
+              </div>
+              <input
+                type="text"
+                placeholder="ابحث عن اسم المنتج، التصنيف، أو كود المعرف الرقمي..."
+                value={searchQuery}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSearchQuery(val);
+                  if (onSearchChange) onSearchChange(val);
                 }}
-                className="absolute inset-y-0 left-0 pl-6 flex items-center text-gray-300 hover:text-red-500 transition-all hover:scale-110 active:scale-90 animate-in fade-in zoom-in duration-300"
-              >
-                <X size={20} />
-              </button>
-            )}
+                className="w-full pr-16 pl-16 py-5 bg-white rounded-[2rem] border-2 border-brand-primary/10 group-focus-within:border-brand-primary/40 focus:ring-8 focus:ring-brand-primary/5 outline-none transition-all text-brand-dark font-black placeholder-gray-300 shadow-xl shadow-brand-dark/5"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    if (onSearchChange) onSearchChange('');
+                  }}
+                  className="absolute inset-y-0 left-0 pl-6 flex items-center text-gray-300 hover:text-rose-500 transition-all hover:scale-110 active:scale-90"
+                >
+                  <X size={20} />
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-4">

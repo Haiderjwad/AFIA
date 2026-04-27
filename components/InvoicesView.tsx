@@ -6,7 +6,8 @@ import {
     FileText, Calendar, Clock, Printer, CreditCard, Banknote,
     Wifi, CheckCircle, Search, AlertCircle, Plus, Minus,
     Trash2, ShoppingCart, Coffee, Eye, X, Receipt,
-    ChevronLeft, ListFilter, History, Check, UtensilsCrossed, PackageCheck
+    ChevronLeft, ListFilter, History, Check, UtensilsCrossed, PackageCheck,
+    DoorOpen, Undo2
 } from 'lucide-react';
 import { CURRENCY } from '../constants';
 import { firestoreService } from '../services/firestoreService';
@@ -15,9 +16,12 @@ import { formatCurrency } from '../utils/currencyUtils';
 interface InvoicesViewProps {
     transactions: Transaction[];
     onFinalizePayment?: (id: string | string[], method: 'cash' | 'card' | 'online') => Promise<void>;
+    onCloseTable?: (id: string | string[]) => Promise<void>;
+    onCancelOrder?: (id: string) => Promise<void>;
     canFinalize?: boolean;
     products?: MenuItem[];
     settings?: AppSettings;
+    currentUser?: any;
 }
 
 const AuditCard: React.FC<{ icon: React.ReactNode, label: string, value?: string, color: string }> = ({ icon, label, value, color }) => (
@@ -34,7 +38,7 @@ const AuditCard: React.FC<{ icon: React.ReactNode, label: string, value?: string
     </div>
 );
 
-const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePayment, canFinalize, products = [], settings, currentUser }) => {
+const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePayment, onCloseTable, onCancelOrder, canFinalize, products = [], settings, currentUser }) => {
     const [activeTab, setActiveTab] = useState<'all' | 'pending'>('pending');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedForPayment, setSelectedForPayment] = useState<Transaction | null>(null);
@@ -42,7 +46,20 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
     const [isManualModalOpen, setIsManualModalOpen] = useState(false);
     const [isLogOpen, setIsLogOpen] = useState(false);
     const [manualCart, setManualCart] = useState<CartItem[]>([]);
-    const [autoPrint, setAutoPrint] = useState(false);
+    const [autoPrint, setAutoPrint] = useState(() => {
+        return localStorage.getItem('afia_auto_print') === 'true';
+    });
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean,
+        type: 'cancel' | 'close',
+        targetId: string | string[],
+        title: string,
+        message: string
+    } | null>(null);
+
+    React.useEffect(() => {
+        localStorage.setItem('afia_auto_print', String(autoPrint));
+    }, [autoPrint]);
     const [paymentStep, setPaymentStep] = useState<1 | 2>(1);
     const [selectedMethod, setSelectedMethod] = useState<'cash' | 'card' | 'online' | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -62,7 +79,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
         }
 
         transactions.forEach(t => {
-            if (t.tableNumber && t.tableNumber !== 'Takeaway' && !['completed', 'refunded', 'cancelled'].includes(t.status) && !t.isPaid) {
+            if (t.tableNumber && t.tableNumber !== 'Takeaway' && (t.isTableClosed === false || (t.isTableClosed === undefined && !t.isPaid && !['completed', 'refunded', 'cancelled'].includes(t.status)))) {
                 statuses[t.tableNumber] = 'occupied';
             }
         });
@@ -72,11 +89,11 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
 
     const filteredTransactions = transactions.filter(t => {
         // Tab filter
-        // Tab filter: Pending shows all active orders that are NOT yet paid
-        if (activeTab === 'pending' && (t.status !== 'waiting_payment' || t.isPaid)) return false;
+        // Tab filter: Pending shows all orders that are NOT yet table-closed
+        if (activeTab === 'pending' && (t.isTableClosed || t.status === 'cancelled')) return false;
 
-        // All tab shows historical (completed/refunded/paid)
-        if (activeTab === 'all' && !(['completed', 'refunded'].includes(t.status) || t.isPaid)) return false;
+        // All tab shows historical (table-closed / refunded / cancelled)
+        if (activeTab === 'all' && !t.isTableClosed && t.status !== 'cancelled' && t.status !== 'refunded') return false;
 
         // Search filter
         const matchesSearch = t.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -100,7 +117,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
 
         filteredTransactions.forEach(t => {
             // Only group physical tables, exclude Takeaway (should be unique)
-            if (t.tableNumber && t.tableNumber !== 'Takeaway' && !['completed', 'refunded', 'cancelled'].includes(t.status) && !t.isPaid) {
+            if (t.tableNumber && t.tableNumber !== 'Takeaway' && !t.isTableClosed) {
                 if (!tableGroups[t.tableNumber]) tableGroups[t.tableNumber] = [];
                 tableGroups[t.tableNumber].push(t);
             } else {
@@ -1132,9 +1149,9 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                             className={`flex-1 sm:flex-none px-4 md:px-8 py-3 rounded-2xl font-black transition-all flex items-center justify-center gap-2 text-xs md:text-sm ${activeTab === 'pending' ? 'bg-brand-primary text-white shadow-xl shadow-brand-primary/20' : 'text-brand-dark/40 hover:bg-brand-light/30'}`}
                         >
                             <ListFilter size={18} /> العالقة
-                            {transactions.filter(t => t.status === 'waiting_payment').length > 0 && (
+                            {transactions.filter(t => !t.isTableClosed && t.status !== 'cancelled' && t.status !== 'refunded').length > 0 && (
                                 <span className="bg-brand-accent px-2 py-0.5 rounded-full text-[10px] animate-bounce">
-                                    {transactions.filter(t => t.status === 'waiting_payment').length}
+                                    {transactions.filter(t => !t.isTableClosed && t.status !== 'cancelled' && t.status !== 'refunded').length}
                                 </span>
                             )}
                         </button>
@@ -1182,13 +1199,41 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                         <div
                             key={transaction.id}
                             onClick={() => setViewingTransaction(transaction)}
-                            className={`bg-white p-7 rounded-[3rem] shadow-xl border cursor-pointer transition-all hover:shadow-2xl hover:-translate-y-1 group relative overflow-hidden flex flex-col h-full ${transaction.isManual ? 'ring-2 ring-red-100 border-red-100' : 'border-gold-100'}`}
+                            className={`p-7 rounded-[3rem] shadow-xl border cursor-pointer transition-all hover:shadow-2xl hover:-translate-y-1 group relative overflow-hidden flex flex-col h-full bg-white
+                                ${transaction.isPaid && !transaction.isTableClosed
+                                    ? 'border-brand-accent/50 ring-8 ring-brand-accent/5'
+                                    : transaction.isManual ? 'ring-2 ring-red-100 border-red-100' : 'border-gold-100'}`}
                         >
+                            {transaction.isPaid && !transaction.isTableClosed && (
+                                <div className="absolute top-0 left-0 bg-brand-accent text-white text-[10px] font-black px-6 py-2 rounded-br-[1.5rem] uppercase tracking-widest z-30 animate-pulse shadow-lg">
+                                    دفع مستحصل - الطاولة مشغولة
+                                </div>
+                            )}
 
                             {transaction.isManual && (
                                 <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-black px-4 py-1.5 rounded-bl-2xl uppercase tracking-tighter z-20">
                                     Manual / يدوي
                                 </div>
+                            )}
+
+                            {/* Cancellation Icon Button at Top */}
+                            {(!transaction.isPaid && transaction.status !== 'cancelled' && transaction.status !== 'refunded') && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setConfirmModal({
+                                            isOpen: true,
+                                            type: 'cancel',
+                                            targetId: (transaction as any).originalIds || transaction.id,
+                                            title: 'تأكيد إلغاء الطلب',
+                                            message: 'هل أنت متأكد من رغبتك في إلغاء هذا الطلب؟ سيتم إرجاع الكميات للمخزن وسيتوقف العمل عليه.'
+                                        });
+                                    }}
+                                    className="absolute top-4 left-4 w-10 h-10 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-sm z-30 peer"
+                                    title="إلغاء الطلب"
+                                >
+                                    <X size={18} />
+                                </button>
                             )}
 
                             <div className="flex justify-between items-start mb-8">
@@ -1277,16 +1322,39 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                     </div>
 
                                     <div className="flex items-center gap-2">
+                                        {/* Close Table Icon Action */}
+                                        {!transaction.isTableClosed && onCloseTable && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const targetId = (transaction as any).originalIds || transaction.id;
+                                                    setConfirmModal({
+                                                        isOpen: true,
+                                                        type: 'close',
+                                                        targetId,
+                                                        title: 'تأكيد إخلاء الطاولة',
+                                                        message: 'هل تريد غلق الطاولة الآن وجعلها متاحة لزبائن جدد؟'
+                                                    });
+                                                }}
+                                                className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all shadow-sm border animate-in zoom-in duration-300 ${transaction.isPaid ? 'bg-brand-dark text-brand-accent border-brand-accent/30 hover:bg-black' : 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'}`}
+                                                title={transaction.isPaid ? "إخلاء الطاولة (متاح)" : "يجب تحصيل المبلغ أولاً لغلق الطاولة"}
+                                                disabled={!transaction.isPaid}
+                                            >
+                                                <DoorOpen size={20} />
+                                            </button>
+                                        )}
+
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 handlePrint(transaction);
                                             }}
                                             className="group/print w-12 h-12 flex items-center justify-center rounded-2xl bg-orange-50 text-orange-500 hover:bg-orange-500 hover:text-white transition-all shadow-sm border border-orange-100 hover:scale-110 active:scale-95"
-                                            title="طباعة"
+                                            title="طباعة الفاتورة"
                                         >
                                             <Printer size={20} className="group-hover/print:rotate-[-12deg] transition-transform" />
                                         </button>
+
                                         <div className="w-12 h-12 flex items-center justify-center rounded-2xl bg-brand-light/30 text-brand-primary group-hover:bg-brand-primary group-hover:text-white transition-all shadow-sm">
                                             <Eye size={20} />
                                         </div>
@@ -1294,7 +1362,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                 </div>
                             </div>
 
-                            {!['completed', 'refunded'].includes(transaction.status) && canFinalize && (
+                            {(!transaction.isPaid && transaction.status !== 'refunded' && transaction.status !== 'cancelled') && canFinalize && (
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
@@ -1307,6 +1375,12 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                 >
                                     <CreditCard size={20} /> تحصيل الفاتورة
                                 </button>
+                            )}
+
+                            {transaction.isPaid && !transaction.isTableClosed && (
+                                <div className="mt-6 w-full py-5 rounded-[1.5rem] bg-green-50 border-2 border-green-100 text-green-700 flex items-center justify-center gap-3 font-black text-md">
+                                    <CheckCircle size={20} /> تم التحصيل بنجاح
+                                </div>
                             )}
                         </div>
                     ))
@@ -1803,6 +1877,59 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({ transactions, onFinalizePay
                                     )}
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Shared Confirmation Modal for Critical Actions */}
+            {confirmModal && confirmModal.isOpen && (
+                <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-brand-dark/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-4xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/20">
+                        <div className={`p-8 text-white flex items-center gap-5 ${confirmModal.type === 'cancel' ? 'bg-gradient-to-r from-rose-600 to-rose-500 border-b-4 border-rose-700' : 'bg-gradient-to-r from-brand-dark to-[#1e293b] border-b-4 border-brand-accent'}`}>
+                            <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-md">
+                                {confirmModal.type === 'cancel' ? <AlertCircle size={32} /> : <DoorOpen size={32} className="text-brand-accent" />}
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-black tracking-tight">{confirmModal.title}</h3>
+                                <p className="text-[10px] opacity-70 font-black uppercase tracking-widest mt-1">يتطلب تأكيد الموظف المسؤول</p>
+                            </div>
+                        </div>
+                        <div className="p-10 text-center">
+                            <p className="text-brand-dark font-black text-lg leading-relaxed mb-10">
+                                {confirmModal.message}
+                            </p>
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={async () => {
+                                        setIsProcessing(true);
+                                        try {
+                                            if (confirmModal.type === 'cancel' && onCancelOrder) {
+                                                const ids = Array.isArray(confirmModal.targetId) ? confirmModal.targetId : [confirmModal.targetId];
+                                                for (const id of ids) await onCancelOrder(id);
+                                            } else if (confirmModal.type === 'close' && onCloseTable) {
+                                                await onCloseTable(confirmModal.targetId);
+                                            }
+                                        } catch (error) {
+                                            console.error("Action execution failed:", error);
+                                        } finally {
+                                            setIsProcessing(false);
+                                            setConfirmModal(null);
+                                        }
+                                    }}
+                                    disabled={isProcessing}
+                                    className={`flex-[2] py-4 px-8 rounded-2xl font-black text-white shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2 ${confirmModal.type === 'cancel' ? 'bg-rose-500 shadow-rose-200 hover:bg-rose-600' : 'bg-brand-dark shadow-brand-dark/20 hover:bg-black'}`}
+                                >
+                                    {isProcessing ? <Clock size={18} className="animate-spin" /> : <Check size={18} />}
+                                    تأكيد العملية
+                                </button>
+                                <button
+                                    onClick={() => setConfirmModal(null)}
+                                    className="flex-1 py-4 rounded-2xl bg-gray-50 text-gray-400 font-black hover:bg-gray-100 transition-all active:scale-95"
+                                >
+                                    تراجع
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

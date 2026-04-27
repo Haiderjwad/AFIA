@@ -131,60 +131,55 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                     <span className="text-brand-accent text-[8px] tracking-[0.2em] uppercase font-black opacity-50">Expert POS Solutions</span>
                 </div>
 
-                {/* Table Context Bar */}
+                {/* Table Context Bar - Professional Split Layout */}
                 <div className="px-4 py-4 shrink-0">
-                    <div className={`p-4 rounded-3xl border-2 transition-all flex items-center justify-between shadow-inner ${tableNumber ? (isTakeaway ? 'bg-orange-50 border-orange-200' : 'bg-brand-primary/5 border-brand-primary/20') : 'bg-red-50 border-red-200 animate-pulse'}`}>
-                        {/* Left: Table Number */}
-                        <div className="flex items-center gap-3 flex-1">
-                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm ${tableNumber ? (isTakeaway ? 'bg-orange-500 text-white' : 'bg-brand-primary text-white') : 'bg-red-500 text-white'}`}>
-                                {isTakeaway ? <ShoppingBag size={18} /> : <Hash size={18} />}
+                    <div className="grid grid-cols-2 gap-3">
+                        {/* Right: Table Selection Card */}
+                        <div className={`p-4 rounded-[2rem] border-2 transition-all flex flex-col items-center justify-center gap-2 shadow-sm relative overflow-hidden ${tableNumber ? (isTakeaway ? 'bg-orange-50 border-orange-200' : 'bg-brand-primary/5 border-brand-primary/20 shadow-brand-primary/5') : 'bg-rose-50 border-rose-200 animate-pulse'}`}>
+                            {tableNumber && (
+                                <div className={`absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center ${isTakeaway ? 'bg-orange-500' : 'bg-brand-primary'} text-white shadow-md`}>
+                                    <Check size={10} strokeWidth={4} />
+                                </div>
+                            )}
+                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-transform hover:scale-110 ${tableNumber ? (isTakeaway ? 'bg-orange-500 text-white shadow-orange-500/30' : 'bg-brand-primary text-white shadow-brand-primary/30') : 'bg-rose-500 text-white shadow-rose-500/30'}`}>
+                                {isTakeaway ? <ShoppingBag size={22} /> : <Hash size={22} />}
                             </div>
-                            <div>
-                                <p className="text-[10px] font-black opacity-40 uppercase tracking-widest">رقم الطاولة</p>
-                                <p className={`font-black text-sm ${!tableNumber ? 'text-red-500' : 'text-brand-dark'}`}>
-                                    {tableNumber ? (isTakeaway ? 'طلب سفري' : `الطاولة ${tableNumber}`) : 'برجاء الاختيار'}
+                            <div className="text-center">
+                                <p className="text-[9px] font-black opacity-30 uppercase tracking-[0.2em] mb-0.5">موقع الطلب</p>
+                                <p className={`font-black text-xs ${!tableNumber ? 'text-rose-500' : 'text-brand-dark'}`}>
+                                    {tableNumber ? (isTakeaway ? 'طلب سفري' : `طاولة ${tableNumber}`) : 'حدد الموقع'}
                                 </p>
                             </div>
                         </div>
 
-                        {/* Divider */}
-                        {tableNumber && !isTakeaway && <div className="w-px h-10 bg-brand-primary/10 mx-3" />}
-
-                        {/* Right: Guest Count */}
-                        {tableNumber && !isTakeaway && (
-                            <div className="flex items-center gap-2 flex-1 justify-end">
-                                <div className="flex items-center gap-2 bg-white/50 rounded-2xl px-3 py-2 border border-brand-primary/10">
-                                    <button
-                                        onClick={() => onGuestCountChange && guestCount > 0 && onGuestCountChange(guestCount - 1)}
-                                        className="p-1 hover:bg-brand-primary/10 rounded-lg transition-all"
-                                    >
-                                        <Minus size={14} className="text-brand-primary" />
-                                    </button>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        max="20"
-                                        value={guestCount}
-                                        onChange={(e) => onGuestCountChange && onGuestCountChange(Math.max(0, parseInt(e.target.value) || 0))}
-                                        className="w-8 text-center font-black text-brand-dark outline-none bg-transparent"
-                                    />
-                                    <button
-                                        onClick={() => onGuestCountChange && guestCount < 20 && onGuestCountChange(guestCount + 1)}
-                                        className="p-1 hover:bg-brand-primary/10 rounded-lg transition-all"
-                                    >
-                                        <Plus size={14} className="text-brand-primary" />
-                                    </button>
+                        {/* Left: Guest Count Card */}
+                        <div className={`p-4 rounded-[2rem] border-2 transition-all flex flex-col items-center justify-center gap-2 shadow-sm ${!isTakeaway && tableNumber ? 'bg-white border-brand-primary/10' : 'bg-gray-50 border-gray-100 opacity-50 cursor-not-allowed'}`}>
+                            <div className="flex items-center gap-2 bg-brand-light/30 rounded-xl px-2 py-1.5 border border-brand-primary/5">
+                                <button
+                                    onClick={() => onGuestCountChange && guestCount > 0 && onGuestCountChange(guestCount - 1)}
+                                    disabled={isTakeaway || !tableNumber}
+                                    className="w-7 h-7 flex items-center justify-center hover:bg-brand-primary hover:text-white rounded-lg transition-all text-brand-dark disabled:opacity-30"
+                                >
+                                    <Minus size={14} />
+                                </button>
+                                <div className="w-8 text-center font-black text-brand-dark text-lg tabular-nums">
+                                    {guestCount}
                                 </div>
-                                <div>
-                                    <p className="text-[10px] font-black opacity-40 uppercase tracking-widest text-right">الأشخاص</p>
-                                    <p className="font-black text-sm text-brand-dark">{guestCount > 0 ? guestCount : '-'}</p>
-                                </div>
+                                <button
+                                    onClick={() => onGuestCountChange && guestCount < 30 && onGuestCountChange(guestCount + 1)}
+                                    disabled={isTakeaway || !tableNumber}
+                                    className="w-7 h-7 flex items-center justify-center hover:bg-brand-primary hover:text-white rounded-lg transition-all text-brand-dark disabled:opacity-30"
+                                >
+                                    <Plus size={14} />
+                                </button>
                             </div>
-                        )}
-
-                        {tableNumber && (
-                            <CheckCircle2 size={18} className={`${isTakeaway ? 'text-orange-500' : 'text-brand-primary'} ml-3`} />
-                        )}
+                            <div className="text-center">
+                                <p className="text-[9px] font-black opacity-30 uppercase tracking-[0.2em] mb-0.5">عدد الأشخاص</p>
+                                <p className="font-black text-xs text-brand-dark">
+                                    {guestCount > 0 ? `${guestCount} ضيوف` : 'غير محدد'}
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

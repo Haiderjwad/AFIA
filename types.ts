@@ -48,6 +48,8 @@ export interface Transaction {
   kitchenPerson?: string;   // Who prepared the order
   deliveredBy?: string;     // Who delivered it to table
   cashierPerson?: string;   // Who finalized payment
+  guestCount?: number;      // Number of guests at table
+  isTableClosed?: boolean;  // Whether the table has been manually released
 }
 
 export interface Supplier {

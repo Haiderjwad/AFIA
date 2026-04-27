@@ -22,6 +22,8 @@ interface SalesViewProps {
     cartCount?: number;
     selectedTableNumber?: string;
     onSelectTable: (num: string) => void;
+    tableGuestCounts: Map<string, number>;
+    onGuestCountChange: (num: string, count: number) => void;
 }
 
 // ── TABLE ITEM COMPONENT (Standalone for Performance) ────────────────
@@ -123,14 +125,13 @@ const TableItem = React.memo<TableItemProps>(({ num, isSelected, status, guestCo
 const SalesView: React.FC<SalesViewProps> = React.memo(({
     products, addToCart, settings, readyOrders, transactions,
     currentUser, onCompleteOrder, onCancelOrder, onToggleReceiptPanel, cartCount,
-    selectedTableNumber, onSelectTable
+    selectedTableNumber, onSelectTable, tableGuestCounts, onGuestCountChange
 }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [showActivityLog, setShowActivityLog] = useState(false);
     const [activityTab, setActivityTab] = useState<'active' | 'completed' | 'cancelled'>('active');
     const [tablesOpen, setTablesOpen] = useState(true);
-    const [tableGuestCounts, setTableGuestCounts] = useState<Map<string, number>>(new Map());
     const [longPressTable, setLongPressTable] = useState<string | null>(null);
     const [guestCountInput, setGuestCountInput] = useState('');
 
@@ -187,7 +188,11 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
     const occupiedByOrder = useMemo(() => {
         const map: Record<string, Transaction[]> = {};
         transactions
-            .filter(t => t.tableNumber && t.tableNumber !== 'Takeaway' && !['completed', 'refunded', 'cancelled'].includes(t.status) && !t.isPaid)
+            .filter(t =>
+                t.tableNumber &&
+                t.tableNumber !== 'Takeaway' &&
+                (t.isTableClosed === false || (t.isTableClosed === undefined && !t.isPaid && !['completed', 'refunded', 'cancelled'].includes(t.status)))
+            )
             .forEach(t => {
                 const key = t.tableNumber!;
                 if (!map[key]) map[key] = [];
@@ -227,12 +232,8 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
 
     const handleSaveGuestCount = () => {
         const count = parseInt(guestCountInput) || 0;
-        if (count > 0) {
-            setTableGuestCounts(prev => new Map(prev).set(longPressTable!, count));
-        } else if (longPressTable) {
-            const newMap = new Map(tableGuestCounts);
-            newMap.delete(longPressTable);
-            setTableGuestCounts(newMap);
+        if (longPressTable) {
+            onGuestCountChange(longPressTable, count);
         }
         setLongPressTable(null);
         setGuestCountInput('');
@@ -449,7 +450,7 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                                             num={num}
                                             isSelected={selectedTableNumber === num}
                                             status={status}
-                                            guestCount={tableGuestCounts.get(num)}
+                                            guestCount={status === 'available' ? undefined : tableGuestCounts.get(num)}
                                             readyOrder={readyByTable[num]}
                                             onClick={handleTableClick}
                                             onLongPress={handleTableLongPress}

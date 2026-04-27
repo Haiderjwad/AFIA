@@ -139,8 +139,9 @@ const App: React.FC = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isReceiptPanelOpen, setIsReceiptPanelOpen] = useState(false);
-  const [selectedTableNumber, setSelectedTableNumber] = useState<string>('');
+  const [selectedTableNumber, setSelectedTableNumber] = useState<string | null>(null);
   const [tableGuestCounts, setTableGuestCounts] = useState<Map<string, number>>(new Map());
+  const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
   const [inventorySearchQuery, setInventorySearchQuery] = useState('');
 
   // 4. Memoized Handlers for Performance
@@ -249,21 +250,40 @@ const App: React.FC = () => {
     // Note: this should be careful with transactions dependency
     // but transactions is needed to find the one to cancel.
     // To optimize, we could pass the transaction object directly.
-    setTransactions(currentTransactions => {
-      const transaction = currentTransactions.find(t => t.id === orderId);
-      if (transaction) {
-        for (const item of transaction.items) {
-          firestoreService.decrementStock(item.id, -item.quantity);
-        }
-        firestoreService.updateTransaction(orderId, {
-          status: 'cancelled',
-          notes: transaction.notes ? `${transaction.notes} | [ملغي]` : '[طلب ملغي]'
-        });
-        soundService.playSuccess();
+    const transaction = transactions.find(t => t.id === orderId);
+    if (transaction) {
+      for (const item of transaction.items) {
+        await firestoreService.decrementStock(item.id, -item.quantity);
       }
-      return currentTransactions;
-    });
-  }, []);
+      await firestoreService.updateTransaction(orderId, {
+        status: 'cancelled',
+        notes: transaction.notes ? `${transaction.notes} | [ملغي]` : '[طلب ملغي]'
+      });
+      soundService.playSuccess();
+    }
+  }, [transactions]);
+
+  const handleEditOrder = useCallback(async (orderId: string) => {
+    const transaction = transactions.find(t => t.id === orderId);
+    if (!transaction) return;
+
+    // Load items into cart
+    setCart(transaction.items.map(item => ({ ...item })));
+    setEditingTransactionId(orderId);
+    if (transaction.tableNumber && transaction.tableNumber !== 'Takeaway') {
+      setSelectedTableNumber(transaction.tableNumber);
+    } else {
+      setSelectedTableNumber(null);
+    }
+
+    // Provisionally restore stock while editing
+    for (const item of transaction.items) {
+      await firestoreService.decrementStock(item.id, -item.quantity);
+    }
+
+    setIsReceiptPanelOpen(true);
+    soundService.playClick();
+  }, [transactions]);
 
   const handleFinalizePayment = useCallback(async (transactionIds: string | string[], paymentMethod: 'cash' | 'card' | 'online') => {
     const ids = Array.isArray(transactionIds) ? transactionIds : [transactionIds];
@@ -279,6 +299,7 @@ const App: React.FC = () => {
             status: finalStatus,
             paymentMethod: paymentMethod,
             isPaid: true,
+            isTableClosed: false, // Keep table occupied until manually closed
             cashierPerson: currentUser?.name || 'Unknown'
           });
         }
@@ -286,6 +307,16 @@ const App: React.FC = () => {
       return currentTransactions;
     });
   }, [currentUser?.name]);
+
+  const handleCloseTable = useCallback(async (transactionIds: string | string[]) => {
+    const ids = Array.isArray(transactionIds) ? transactionIds : [transactionIds];
+    for (const id of ids) {
+      await firestoreService.updateTransaction(id, {
+        isTableClosed: true
+      });
+    }
+    soundService.playSuccess();
+  }, []);
 
   // Derived Data Memoization
   const readyOrders = useMemo(() => transactions.filter(t => t.status === 'ready'), [transactions]);
@@ -307,6 +338,37 @@ const App: React.FC = () => {
           const t = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Transaction));
           t.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
           setTransactions(t);
+
+          // Sync guest counts from active transactions while preserving local changes for new orders
+          setTableGuestCounts(prev => {
+            const next = new Map(prev);
+            // Transactions are the source of truth for guest counts of occupied tables
+            t.filter(trans =>
+              trans.tableNumber &&
+              trans.tableNumber !== 'Takeaway' &&
+              (trans.isTableClosed === false || (trans.isTableClosed === undefined && !trans.isPaid && !['completed', 'refunded', 'cancelled'].includes(trans.status)))
+            )
+              .forEach(trans => {
+                if (trans.guestCount !== undefined) {
+                  next.set(trans.tableNumber!, trans.guestCount);
+                }
+              });
+
+            // Clean up old guest counts for tables that are now available
+            const occupiedTables = new Set(t.filter(trans =>
+              trans.tableNumber &&
+              trans.tableNumber !== 'Takeaway' &&
+              (trans.isTableClosed === false || (trans.isTableClosed === undefined && !trans.isPaid && !['completed', 'refunded', 'cancelled'].includes(trans.status)))
+            ).map(tr => tr.tableNumber!));
+            // Clean up guest counts for tables that are no longer occupied or ready
+            Array.from(next.keys()).forEach(tableNum => {
+              if (!occupiedTables.has(tableNum) && t.some(tr => tr.tableNumber === tableNum && tr.isTableClosed === true)) {
+                next.delete(tableNum);
+              }
+            });
+
+            return next;
+          });
         },
         (error) => console.error("Transactions Snapshot Error:", error)
       );
@@ -376,6 +438,27 @@ const App: React.FC = () => {
   const handleSendToKitchen = useCallback(async (method: 'cash' | 'card' | 'online', tableNumber?: string, notes?: string) => {
     if (cart.length === 0) return;
     const EARLY_STAGES = ['pending', 'preparing'];
+    if (editingTransactionId) {
+      const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+      const taxAmount = subtotal * (settings.taxRate / 100);
+
+      await firestoreService.updateTransaction(editingTransactionId, {
+        items: cart,
+        total: subtotal + taxAmount,
+        status: 'pending', // Reset to pending when edited
+        isUpdated: true,
+        salesPerson: currentUser?.name || 'Unknown',
+        guestCount: tableNumber ? tableGuestCounts.get(tableNumber) : undefined
+      });
+
+      for (const cartItem of cart) await firestoreService.decrementStock(cartItem.id, cartItem.quantity);
+
+      setEditingTransactionId(null);
+      setCart([]);
+      soundService.playSuccess();
+      return;
+    }
+
     const activeTableOrders = (tableNumber && tableNumber !== 'Takeaway')
       ? transactions.filter(t => t.tableNumber === tableNumber && !['completed', 'refunded'].includes(t.status) && !t.isPaid)
       : [];
@@ -396,7 +479,8 @@ const App: React.FC = () => {
         total: subtotal + taxAmount,
         isUpdated: true,
         notes: notes ? (masterOrder.notes ? `${masterOrder.notes} | ${notes}` : notes) : masterOrder.notes,
-        salesPerson: currentUser?.name || 'Unknown'
+        salesPerson: currentUser?.name || 'Unknown',
+        guestCount: tableNumber ? tableGuestCounts.get(tableNumber) : masterOrder.guestCount
       });
       for (const cartItem of cart) await firestoreService.decrementStock(cartItem.id, cartItem.quantity);
     } else {
@@ -411,7 +495,8 @@ const App: React.FC = () => {
         paymentMethod: method,
         tableNumber,
         notes,
-        salesPerson: currentUser?.name || 'Unknown'
+        salesPerson: currentUser?.name || 'Unknown',
+        guestCount: tableNumber ? tableGuestCounts.get(tableNumber) : 0
       };
       await firestoreService.addTransaction(newTransaction);
       for (const cartItem of cart) await firestoreService.decrementStock(cartItem.id, cartItem.quantity);
@@ -469,10 +554,16 @@ const App: React.FC = () => {
             currentUser={currentUser}
             onCompleteOrder={handleSendToCashier}
             onCancelOrder={handleCancelOrder}
+            onEditOrder={handleEditOrder}
+            isEditing={!!editingTransactionId}
             onToggleReceiptPanel={() => setIsReceiptPanelOpen(!isReceiptPanelOpen)}
             cartCount={cartCount}
             selectedTableNumber={selectedTableNumber}
             onSelectTable={setSelectedTableNumber}
+            tableGuestCounts={tableGuestCounts}
+            onGuestCountChange={(num, count) => {
+              setTableGuestCounts(prev => new Map(prev).set(num, count));
+            }}
           />;
         }
         break;
@@ -507,6 +598,8 @@ const App: React.FC = () => {
           return <InvoicesView
             transactions={transactions}
             onFinalizePayment={handleFinalizePayment}
+            onCloseTable={handleCloseTable}
+            onCancelOrder={handleCancelOrder}
             canFinalize={['admin', 'manager', 'cashier'].includes(role) || hasAll}
             products={products}
             settings={settings}
@@ -526,7 +619,7 @@ const App: React.FC = () => {
         break;
       case 'performance':
         if (['admin', 'manager'].includes(role) || hasAll) {
-          return <EmployeePerformanceView employees={employees} transactions={transactions} />;
+          return <EmployeePerformanceView employees={employees} transactions={transactions} settings={settings} />;
         }
         break;
       case 'settings':
@@ -663,6 +756,12 @@ const App: React.FC = () => {
           tableNumber={selectedTableNumber}
           onTableChange={setSelectedTableNumber}
           products={products}
+          guestCount={selectedTableNumber ? tableGuestCounts.get(selectedTableNumber) : 0}
+          onGuestCountChange={(count) => {
+            if (selectedTableNumber) {
+              setTableGuestCounts(prev => new Map(prev).set(selectedTableNumber, count));
+            }
+          }}
         />
       )}
 
