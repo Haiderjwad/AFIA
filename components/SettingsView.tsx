@@ -7,6 +7,7 @@ import StatusModal from './StatusModal';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { db, firebaseConfig } from '../firebase';
+import { formatCurrency } from '../utils/currencyUtils';
 
 interface SettingsViewProps {
   settings: AppSettings;
@@ -703,7 +704,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                             {emp.employeeId}
                           </td>
                           <td className="px-8 py-5 text-center font-bold text-green-600 text-sm">
-                            {(emp.salary || 0).toLocaleString()} {settings.currency}
+                            {formatCurrency(emp.salary || 0, settings.currency)}
                           </td>
                           <td className="px-8 py-5 text-left">
                             <div className="flex items-center justify-end gap-2 opacity-100 transition-all">
