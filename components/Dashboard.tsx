@@ -124,7 +124,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
           <div className="h-72 w-full relative z-10 overflow-hidden">
-            <ResponsiveContainer width="100%" height="100%" debounce={100} minWidth={0} minHeight={0}>
+            <ResponsiveContainer width="100%" height={280} minWidth={0} minHeight={0}>
               <AreaChart data={SALES_DATA} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
@@ -159,7 +159,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             </button>
           </div>
           <div className="h-72 w-full relative overflow-hidden">
-            <ResponsiveContainer width="100%" height="100%" debounce={100} minWidth={0} minHeight={0}>
+            <ResponsiveContainer width="100%" height={280} minWidth={0} minHeight={0}>
               <BarChart data={BAR_DATA} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#2D6A4F', fontSize: 10, fontWeight: 'bold' }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#2D6A4F', fontSize: 10, fontWeight: 'bold' }} />

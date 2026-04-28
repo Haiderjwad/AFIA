@@ -501,7 +501,7 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
 
       {/* Add / Edit Modal */}
       {isModalOpen && (
-        <div className="fixed top-20 inset-x-0 bottom-0 z-[9999] bg-brand-dark/80 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
+        <div className="fixed top-20 right-0 lg:right-28 left-0 bottom-0 z-[80] bg-brand-dark/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-2xl rounded-[4rem] shadow-4xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-500">
             <div className="p-10 bg-brand-primary text-white flex justify-between items-center relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>

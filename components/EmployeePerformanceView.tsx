@@ -1,14 +1,12 @@
 
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Transaction, Employee, AppSettings } from '../types';
 import {
-    Users, TrendingUp, ShoppingBag, ChefHat,
+    Users, ShoppingBag, ChefHat,
     Truck, Banknote, Star, Award, Search,
-    Filter, Download, RefreshCw, Sparkles, FileText
+    Download, RefreshCw, Sparkles
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
-import { patchClonedSubtreeForHtml2Canvas } from '../utils/html2canvasCompat';
 import StatusModal from './StatusModal';
 
 interface EmployeePerformanceViewProps {
@@ -25,7 +23,7 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
         title: '',
         message: ''
     });
-    const reportRef = useRef<HTMLDivElement>(null);
+    const reportRef = React.useRef<HTMLDivElement>(null); // kept for hidden print container
 
     const performanceData = useMemo(() => {
         return employees.map(emp => {
@@ -50,8 +48,6 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
     }, [employees, transactions]);
 
     const handleExportPDF = async () => {
-        if (!reportRef.current) return;
-
         setIsGenerating(true);
         setStatusModal({
             isOpen: true,
@@ -60,43 +56,211 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
             message: 'نقوم الآن بتحليل إنتاجية الموظفين وتوليد حصيلة العمليات لكل قسم، يرجى الانتظار...'
         });
 
-        const exportId = 'employee-performance-report';
-        reportRef.current.setAttribute('data-export-capture', exportId);
-
         try {
-            await new Promise(resolve => setTimeout(resolve, 800));
+            await new Promise(resolve => setTimeout(resolve, 500));
 
-            const canvas = await html2canvas(reportRef.current, {
-                scale: 2,
-                useCORS: true,
-                backgroundColor: '#ffffff',
-                logging: false,
-                onclone: (clonedDoc) => {
-                    patchClonedSubtreeForHtml2Canvas(clonedDoc, {
-                        exportId,
-                        attributeName: 'data-export-capture',
-                        fallbackColor: '#2D6A4F'
-                    });
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pW = pdf.internal.pageSize.getWidth();   // 210
+            const pH = pdf.internal.pageSize.getHeight();  // 297
+            const margin = 18;
+            const contentW = pW - margin * 2;
+            let y = margin;
+
+            // ─── Helpers ─────────────────────────────────────────────
+            const checkNewPage = (neededHeight: number) => {
+                if (y + neededHeight > pH - margin) {
+                    pdf.addPage();
+                    y = margin;
                 }
+            };
+
+            const text = (
+                str: string,
+                x: number,
+                yy: number,
+                opts?: Parameters<typeof pdf.text>[3]
+            ) => {
+                // jsPDF handles Arabic text display left-to-right internally,
+                // wrapping is done manually before calling.
+                pdf.text(str, x, yy, opts);
+            };
+
+            // ─── Brand colors (RGB) ──────────────────────────────────
+            type RGB = [number, number, number];
+            const COL_DARK: RGB = [27, 50, 35];
+            const COL_GREEN: RGB = [45, 106, 79];
+            const COL_GOLD: RGB = [248, 150, 30];
+            const COL_GRAY: RGB = [120, 120, 120];
+            const COL_LIGHT: RGB = [245, 247, 244];
+            // helpers — avoids tuple-spread TS errors on jsPDF overloads
+            const sf = (c: RGB) => pdf.setFillColor(c[0], c[1], c[2]);
+            const sd = (c: RGB) => pdf.setDrawColor(c[0], c[1], c[2]);
+            const sc = (c: RGB) => pdf.setTextColor(c[0], c[1], c[2]);
+
+            // ─── HEADER BAR ──────────────────────────────────────────
+            sf(COL_DARK);
+            pdf.rect(0, 0, pW, 30, 'F');
+
+            // Store name (left side in RTL)
+            pdf.setTextColor(248, 150, 30);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(16);
+            text(settings.storeName, pW - margin, 12, { align: 'right' });
+
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(8);
+            text('EMPLOYEE PERFORMANCE INTELLIGENCE REPORT', margin, 12);
+
+            pdf.setTextColor(180, 180, 180);
+            pdf.setFontSize(7);
+            text(new Date().toLocaleDateString('en-GB'), margin, 20);
+            text(`Al Afia POS System`, pW - margin, 20, { align: 'right' });
+
+            y = 40;
+
+            // ─── SECTION TITLE ───────────────────────────────────────
+            sc(COL_DARK);
+            pdf.setFontSize(13);
+            pdf.setFont('helvetica', 'bold');
+            text('Staff Performance Summary', margin, y);
+            y += 4;
+
+            // Underline
+            sd(COL_GREEN);
+            pdf.setLineWidth(0.8);
+            pdf.line(margin, y, pW - margin, y);
+            y += 8;
+
+            // ─── STAT BOXES ──────────────────────────────────────────
+            const boxW = (contentW - 9) / 4;
+            const boxes: { label: string; value: number; color: RGB }[] = [
+                { label: 'Sales Orders', value: transactions.filter(t => t.salesPerson).length, color: COL_GREEN },
+                { label: 'Kitchen Prep', value: transactions.filter(t => t.kitchenPerson).length, color: [234, 88, 12] },
+                { label: 'Deliveries', value: transactions.filter(t => t.deliveredBy).length, color: [37, 99, 235] },
+                { label: 'Invoices Paid', value: transactions.filter(t => t.cashierPerson).length, color: [22, 163, 74] }
+            ];
+
+            boxes.forEach((box, i) => {
+                const bx = margin + i * (boxW + 3);
+                pdf.setFillColor(246, 248, 246);
+                pdf.roundedRect(bx, y, boxW, 22, 3, 3, 'F');
+                sd(box.color);
+                pdf.setLineWidth(0.5);
+                pdf.roundedRect(bx, y, boxW, 22, 3, 3, 'S');
+
+                pdf.setFontSize(16);
+                pdf.setFont('helvetica', 'bold');
+                sc(box.color);
+                text(String(box.value), bx + boxW / 2, y + 11, { align: 'center' });
+
+                pdf.setFontSize(6.5);
+                pdf.setFont('helvetica', 'normal');
+                sc(COL_GRAY);
+                text(box.label, bx + boxW / 2, y + 18, { align: 'center' });
+            });
+            y += 30;
+
+            // ─── TABLE HEADER ────────────────────────────────────────
+            sf(COL_DARK);
+            pdf.rect(margin, y, contentW, 10, 'F');
+
+            const cols = [
+                { label: 'Employee Name', x: pW - margin, align: 'right' as const, w: 55 },
+                { label: 'Role', x: pW - margin - 55, align: 'right' as const, w: 35 },
+                { label: 'Sales', x: margin + 65, align: 'center' as const, w: 20 },
+                { label: 'Kitchen', x: margin + 47, align: 'center' as const, w: 20 },
+                { label: 'Cashier', x: margin + 29, align: 'center' as const, w: 20 },
+                { label: 'Total', x: margin + 10, align: 'center' as const, w: 20 },
+            ];
+
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(7.5);
+            pdf.setFont('helvetica', 'bold');
+            cols.forEach(c => text(c.label, c.x, y + 6.8, { align: c.align }));
+            y += 10;
+
+            // ─── TABLE ROWS ──────────────────────────────────────────
+            performanceData.forEach((emp, idx) => {
+                checkNewPage(14);
+
+                // Alternate row background
+                if (idx % 2 === 0) {
+                    sf(COL_LIGHT);
+                    pdf.rect(margin, y, contentW, 12, 'F');
+                }
+
+                // Rank medal for top performer
+                if (idx === 0) {
+                    sf(COL_GOLD);
+                    pdf.circle(margin + 5, y + 6, 3.5, 'F');
+                    pdf.setTextColor(255, 255, 255);
+                    pdf.setFontSize(6);
+                    text('1', margin + 5, y + 7.5, { align: 'center' });
+                }
+
+                pdf.setFontSize(8.5);
+                pdf.setFont('helvetica', 'bold');
+                sc(COL_DARK);
+                text(emp.name, pW - margin, y + 7.8, { align: 'right' });
+
+                pdf.setFontSize(7);
+                pdf.setFont('helvetica', 'normal');
+                sc(COL_GRAY);
+                text(emp.role.toUpperCase(), pW - margin - 55, y + 7.8, { align: 'right' });
+
+                // Stats
+                const statColor = (v: number): RGB => v > 0 ? COL_GREEN : COL_GRAY;
+                pdf.setFontSize(8);
+                pdf.setFont('helvetica', 'bold');
+
+                sc(statColor(emp.stats.sales));
+                text(String(emp.stats.sales), margin + 65, y + 7.8, { align: 'center' });
+
+                pdf.setTextColor(234, 88, 12);
+                text(String(emp.stats.kitchen), margin + 47, y + 7.8, { align: 'center' });
+
+                pdf.setTextColor(22, 163, 74);
+                text(String(emp.stats.cashier), margin + 29, y + 7.8, { align: 'center' });
+
+                // Total with highlight box
+                const totalVal = emp.stats.total;
+                if (totalVal > 0) {
+                    sf(COL_GREEN);
+                    pdf.roundedRect(margin + 4, y + 2, 14, 8, 2, 2, 'F');
+                    pdf.setTextColor(255, 255, 255);
+                } else {
+                    sc(COL_GRAY);
+                }
+                text(String(totalVal), margin + 11, y + 7.8, { align: 'center' });
+
+                y += 12;
             });
 
-            const imgData = canvas.toDataURL('image/jpeg', 0.95);
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const pageHeight = pdf.internal.pageSize.getHeight();
-            const margin = 10;
-            const contentWidth = pageWidth - (margin * 2);
-            const imgHeightInPDF = (canvas.height * contentWidth) / canvas.width;
+            // ─── DIVIDER ─────────────────────────────────────────────
+            checkNewPage(20);
+            y += 4;
+            sd(COL_GREEN);
+            pdf.setLineWidth(0.4);
+            pdf.line(margin, y, pW - margin, y);
+            y += 8;
 
-            pdf.addImage(imgData, 'JPEG', margin, margin, contentWidth, imgHeightInPDF);
+            // ─── FOOTER ──────────────────────────────────────────────
+            sf(COL_DARK);
+            pdf.rect(0, pH - 14, pW, 14, 'F');
+            pdf.setTextColor(180, 180, 180);
+            pdf.setFontSize(7);
+            pdf.setFont('helvetica', 'normal');
+            text('© Al Afia Business Intelligence System — Confidential', margin, pH - 5);
+            text(`Generated: ${new Date().toLocaleString('en-GB')}`, pW - margin, pH - 5, { align: 'right' });
 
+            // ─── SAVE ────────────────────────────────────────────────
             pdf.save(`تقرير_أداء_الموظفين_${settings.storeName}_${new Date().toISOString().split('T')[0]}.pdf`);
 
             setStatusModal({
                 isOpen: true,
                 type: 'success',
                 title: 'تم تصدير تقرير الأداء بنجاح',
-                message: 'تم حفظ الكشف التفصيلي لإنتاجية الكادر بنجاح.'
+                message: 'تم حفظ الكشف التفصيلي لإنتاجية الكادر بنجاح في ملف PDF احترافي.'
             });
 
             setTimeout(() => {
@@ -104,18 +268,18 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
             }, 3000);
 
         } catch (error) {
-            console.error("PDF Generation error:", error);
+            console.error('PDF Generation error:', error);
             setStatusModal({
                 isOpen: true,
                 type: 'error',
                 title: 'خطأ في معالجة التقرير',
-                message: 'عذراً، واجهنا صعوبة في إنشاء ملف PDF. يرجى المحاولة مرة أخرى.'
+                message: `تعذّر إنشاء الملف. تفاصيل الخطأ: ${String(error)}`
             });
         } finally {
             setIsGenerating(false);
-            reportRef.current?.removeAttribute('data-export-capture');
         }
     };
+
 
     return (
         <div className="view-container">

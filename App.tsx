@@ -401,8 +401,22 @@ const App: React.FC = () => {
       );
 
       unsubEmployees = onSnapshot(collection(firestoreDb, "employees"), (snapshot) => {
-        const e = snapshot.docs.map(doc => ({ ...doc.data(), uid: doc.id } as Employee));
-        setEmployees(e);
+        // Deduplicate by email — a single employee may have both a legacy doc (employeeId-based)
+        // and a new doc (uid-based). Without dedup, salary/count calculations in Reports
+        // will count them twice and produce inflated totals.
+        const emailMap = new Map<string, Employee>();
+        snapshot.docs.forEach(d => {
+          const data = d.data() as Employee;
+          const emp = { ...data, uid: data.uid || d.id };
+          const key = (emp.email || '').toLowerCase().trim();
+          if (key) {
+            // Prefer the doc whose ID matches the uid (the newer, canonical doc)
+            if (!emailMap.has(key) || d.id === emp.uid) {
+              emailMap.set(key, emp);
+            }
+          }
+        });
+        setEmployees(Array.from(emailMap.values()));
       }, (error) => console.error("Employees Snapshot Error:", error));
 
       unsubSuppliers = onSnapshot(collection(firestoreDb, "suppliers"), (snapshot) => {

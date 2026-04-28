@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import StatusModal from './StatusModal';
 import { CartItem, MenuItem, AppSettings } from '../types';
 import { formatCurrency } from '../utils/currencyUtils';
-import { Plus, Minus, Sparkles, Coffee, CreditCard, Loader2, Banknote, Wifi, ArrowLeft, Check, AlertCircle, Hash, MessageSquare, X, ShoppingBag, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Plus, Minus, Sparkles, Coffee, CreditCard, Loader2, Banknote, Wifi, ArrowLeft, AlertCircle, Hash, MessageSquare, X, ShoppingBag, CheckCircle2, RefreshCw } from 'lucide-react';
 import { suggestUpsell } from '../services/geminiService';
 
 interface ReceiptPanelProps {
@@ -137,12 +137,7 @@ const ReceiptPanel: React.FC<ReceiptPanelProps> = ({
                 <div className="px-4 py-4 shrink-0">
                     <div className="grid grid-cols-2 gap-3">
                         {/* Right: Table Selection Card */}
-                        <div className={`p-4 rounded-[2rem] border-2 transition-all flex flex-col items-center justify-center gap-2 shadow-sm relative overflow-hidden ${tableNumber ? (isTakeaway ? 'bg-orange-50 border-orange-200' : 'bg-brand-primary/5 border-brand-primary/20 shadow-brand-primary/5') : 'bg-rose-50 border-rose-200 animate-pulse'}`}>
-                            {tableNumber && (
-                                <div className={`absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center ${isTakeaway ? 'bg-orange-500' : 'bg-brand-primary'} text-white shadow-md`}>
-                                    <Check size={10} strokeWidth={4} />
-                                </div>
-                            )}
+                        <div className={`p-4 rounded-[2rem] border-2 transition-all flex flex-col items-center justify-center gap-2 shadow-sm ${tableNumber ? (isTakeaway ? 'bg-orange-50 border-orange-200' : 'bg-brand-primary/5 border-brand-primary/20 shadow-brand-primary/5') : 'bg-rose-50 border-rose-200 animate-pulse'}`}>
                             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-transform hover:scale-110 ${tableNumber ? (isTakeaway ? 'bg-orange-500 text-white shadow-orange-500/30' : 'bg-brand-primary text-white shadow-brand-primary/30') : 'bg-rose-500 text-white shadow-rose-500/30'}`}>
                                 {isTakeaway ? <ShoppingBag size={22} /> : <Hash size={22} />}
                             </div>

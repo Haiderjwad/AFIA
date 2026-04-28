@@ -1095,25 +1095,28 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
                 <img src="/branding/afia_logo.png" alt="" className="w-full h-full object-contain" />
             </div>
 
-            {/* Premium Move Table Success Toast */}
+            {/* Premium Move Table Success Toast — Brand Identity */}
             {moveSuccess?.isOpen && (
                 <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[3000] animate-in slide-in-from-top-4 fade-in duration-500">
-                    <div className="bg-brand-dark/95 backdrop-blur-2xl px-10 py-6 rounded-[3rem] border border-white/10 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.4)] flex items-center gap-7 relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-transparent to-transparent" />
-                        <div className="w-16 h-16 bg-purple-600 text-white rounded-[1.8rem] flex items-center justify-center shadow-2xl shadow-purple-500/40 relative z-10">
-                            <RefreshCw size={28} className="animate-spin-slow" />
+                    <div className="bg-brand-dark backdrop-blur-2xl px-10 py-6 rounded-[3rem] border border-brand-accent/20 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.5)] flex items-center gap-7 relative overflow-hidden">
+                        {/* Right accent strip */}
+                        <div className="absolute inset-y-0 right-0 w-2 bg-gradient-to-b from-brand-accent via-brand-primary to-transparent rounded-l-full" />
+                        {/* Icon */}
+                        <div className="w-16 h-16 bg-brand-accent text-brand-dark rounded-[1.8rem] flex items-center justify-center shadow-2xl shadow-brand-accent/30 relative z-10 shrink-0">
+                            <MoveHorizontal size={28} />
                         </div>
+                        {/* Text */}
                         <div className="flex flex-col relative z-10 text-right">
-                            <span className="text-[12px] font-black text-purple-400 uppercase tracking-[0.3em] mb-1.5">نقل طلب الطاولة بنجاح</span>
+                            <span className="text-[11px] font-black text-brand-accent uppercase tracking-[0.3em] mb-2">تحويل الطلب بنجاح</span>
                             <div className="flex items-center gap-5">
-                                <div className="flex flex-col">
-                                    <span className="text-white/40 text-[10px] font-bold uppercase mb-0.5">من</span>
-                                    <span className="text-white/60 font-bold text-lg">{moveSuccess.from === 'Takeaway' ? 'سفري' : `طاولة ${moveSuccess.from}`}</span>
+                                <div className="flex flex-col items-center">
+                                    <span className="text-white/30 text-[9px] font-bold uppercase mb-0.5">من</span>
+                                    <span className="text-white/60 font-bold text-lg">{moveSuccess.from === 'Takeaway' ? 'سفري' : `#${moveSuccess.from}`}</span>
                                 </div>
-                                <ArrowLeft size={24} className="text-purple-400" />
-                                <div className="flex flex-col">
-                                    <span className="text-white/40 text-[10px] font-bold uppercase mb-0.5">إلى</span>
-                                    <span className="text-white text-2xl font-black">{moveSuccess.to === 'Takeaway' ? 'سفري' : `طاولة ${moveSuccess.to}`}</span>
+                                <ArrowLeft size={22} className="text-brand-primary/60" />
+                                <div className="flex flex-col items-center">
+                                    <span className="text-white/30 text-[9px] font-bold uppercase mb-0.5">إلى</span>
+                                    <span className="text-white text-2xl font-black">{moveSuccess.to === 'Takeaway' ? 'سفري' : `#${moveSuccess.to}`}</span>
                                 </div>
                             </div>
                         </div>
@@ -1297,8 +1300,8 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
                                         </span>
                                     )}
                                     {transaction.isMoved && (
-                                        <span className="text-[8px] bg-purple-500 text-white px-2 py-0.5 rounded-full mt-1 flex items-center gap-1 border border-purple-400">
-                                            <MoveHorizontal size={8} /> تم النقل من {transaction.previousTable}
+                                        <span className="text-[8px] bg-brand-primary text-brand-accent px-2 py-0.5 rounded-full mt-1 flex items-center gap-1 border border-brand-primary/30">
+                                            <MoveHorizontal size={8} /> محول من {transaction.previousTable}
                                         </span>
                                     )}
                                 </button>
@@ -1396,11 +1399,6 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
                                             </button>
                                         )}
 
-                                        {transaction.isMoved && (
-                                            <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand-primary/10 text-brand-primary px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter flex items-center gap-1 border border-brand-primary/20 backdrop-blur-sm shadow-sm z-10">
-                                                <RefreshCw size={8} className="animate-spin" /> من {transaction.previousTable}
-                                            </span>
-                                        )}
 
                                         <div className="flex gap-2">
 
@@ -1507,10 +1505,10 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
                                         </div>
 
                                         <div className="px-5 py-3 bg-gray-50 flex items-center justify-center">
-                                            <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest flex items-center gap-1">
-                                                <div className="w-1 h-1 bg-brand-primary rounded-full animate-pulse" />
+                                            <div className="text-[8px] font-black text-gray-300 uppercase tracking-widest flex items-center gap-1">
+                                                <span className="w-1 h-1 bg-brand-primary rounded-full animate-pulse" />
                                                 Golden Intelligent POS
-                                            </p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

@@ -257,7 +257,7 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
 
             {/* Professional Order Ready Alert (Premium Notification) */}
             {activeReadyAlert && (
-                <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[2000] animate-in slide-in-from-top fade-in duration-700">
+                <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[2000] animate-in slide-in-from-top fade-in duration-700">
                     <div className="bg-brand-dark/95 backdrop-blur-2xl text-white rounded-[2.8rem] p-2.5 pr-8 flex items-center gap-7 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.4)] border border-white/10 relative overflow-hidden group">
                         {/* Interactive Shine Effect */}
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
@@ -286,7 +286,7 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
 
             {/* Glossy Success Toast Container */}
             {completionSuccess?.isOpen && (
-                <div className="fixed top-10 left-1/2 -translate-x-1/2 z-[500] animate-in slide-in-from-top-10 fade-in duration-500">
+                <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[500] animate-in slide-in-from-top-10 fade-in duration-500">
                     <div className="bg-white/80 backdrop-blur-xl border border-brand-primary/10 rounded-full px-8 py-4 shadow-[0_20px_50px_rgba(0,0,0,0.1)] flex items-center gap-4">
                         <div className="w-10 h-10 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/20">
                             <CheckCircle size={20} />
@@ -296,20 +296,29 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                 </div>
             )}
 
-            {/* Premium Move Table Success Toast */}
+            {/* Premium Move Table Success Toast — Brand Identity */}
             {moveSuccess?.isOpen && (
-                <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[2000] animate-in slide-in-from-top-4 fade-in duration-500">
-                    <div className="bg-brand-dark/95 backdrop-blur-2xl px-8 py-5 rounded-[2.5rem] border border-white/10 shadow-4xl flex items-center gap-6 relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-transparent to-transparent" />
-                        <div className="w-14 h-14 bg-purple-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/30 relative z-10">
-                            <RefreshCw size={24} className="animate-spin-slow" />
+                <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[2000] animate-in slide-in-from-top-4 fade-in duration-500">
+                    <div className="bg-brand-dark backdrop-blur-2xl px-8 py-5 rounded-[2.5rem] border border-brand-accent/20 shadow-[0_30px_80px_-15px_rgba(0,0,0,0.5)] flex items-center gap-6 relative overflow-hidden">
+                        {/* Accent glow strip */}
+                        <div className="absolute inset-y-0 right-0 w-1.5 bg-gradient-to-b from-brand-accent via-brand-primary to-transparent rounded-l-full" />
+                        {/* Icon */}
+                        <div className="w-14 h-14 bg-brand-accent text-brand-dark rounded-2xl flex items-center justify-center shadow-xl shadow-brand-accent/30 relative z-10 shrink-0">
+                            <MoveHorizontal size={24} />
                         </div>
+                        {/* Content */}
                         <div className="flex flex-col relative z-10">
-                            <span className="text-[10px] font-black text-purple-400 uppercase tracking-[0.2em] mb-1">تم نقل الطاولة بنجاح</span>
+                            <span className="text-[10px] font-black text-brand-accent uppercase tracking-[0.25em] mb-1.5">تم تحويل الطاولة بنجاح</span>
                             <div className="flex items-center gap-3">
-                                <span className="text-white/60 font-bold">{moveSuccess.from === 'Takeaway' ? 'سفري' : `طاولة ${moveSuccess.from}`}</span>
-                                <ArrowLeft size={16} className="text-purple-400" />
-                                <span className="text-white text-xl font-black">{moveSuccess.to === 'Takeaway' ? 'سفري' : `طاولة ${moveSuccess.to}`}</span>
+                                <div className="flex flex-col items-center">
+                                    <span className="text-[9px] text-white/30 font-bold uppercase mb-0.5">من</span>
+                                    <span className="text-white/60 font-bold text-sm">{moveSuccess.from === 'Takeaway' ? 'سفري' : `#${moveSuccess.from}`}</span>
+                                </div>
+                                <ArrowLeft size={18} className="text-brand-primary/60" />
+                                <div className="flex flex-col items-center">
+                                    <span className="text-[9px] text-white/30 font-bold uppercase mb-0.5">إلى</span>
+                                    <span className="text-white font-black text-xl leading-none">{moveSuccess.to === 'Takeaway' ? 'سفري' : `#${moveSuccess.to}`}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -708,12 +717,12 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                                                                 <div className="flex items-center gap-5 relative">
                                                                     <button
                                                                         onClick={() => setMovingOrderId(order.id)}
-                                                                        className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center font-black transition-all hover:scale-105 active:scale-95 shadow-lg group/title ${order.isMoved ? 'bg-purple-600 text-white shadow-purple-500/20' : 'bg-gray-50 text-gray-400 border border-gray-100 hover:border-brand-primary/30 hover:bg-white'}`}
+                                                                        className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center font-black transition-all hover:scale-105 active:scale-95 shadow-lg group/title ${order.isMoved ? 'bg-brand-primary text-white shadow-brand-primary/25' : 'bg-gray-50 text-gray-400 border border-gray-100 hover:border-brand-primary/30 hover:bg-white'}`}
                                                                     >
                                                                         <span className="text-[10px] opacity-60 uppercase leading-none mb-1">{order.isMoved ? 'محول' : 'رقم'}</span>
                                                                         <span className="text-xl leading-none">{order.tableNumber === 'Takeaway' ? 'SB' : order.tableNumber}</span>
                                                                         {order.isMoved && (
-                                                                            <div className="absolute -top-1 -right-1 bg-white text-purple-600 rounded-full p-1 shadow-sm border border-purple-100 animate-bounce">
+                                                                            <div className="absolute -top-1 -right-1 bg-brand-accent text-brand-dark rounded-full p-1 shadow-sm border border-brand-accent/30 animate-bounce">
                                                                                 <MoveHorizontal size={10} />
                                                                             </div>
                                                                         )}

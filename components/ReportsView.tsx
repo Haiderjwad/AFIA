@@ -69,13 +69,29 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
                 return sum;
             }, 0);
 
-            // Calculate Employee Salaries
-            const totalMonthlySalaries = employees.reduce((sum, e) => sum + (e.salary || 0), 0);
-            let salaryExpense = 0;
-            if (p === 'daily') salaryExpense = totalMonthlySalaries / 30;
-            else if (p === 'weekly') salaryExpense = (totalMonthlySalaries / 30) * 7;
-            else if (p === 'monthly') salaryExpense = totalMonthlySalaries;
-            else if (p === 'yearly') salaryExpense = totalMonthlySalaries * 12;
+            // ─── حساب رواتب الموظفين لكل فترة ───────────────────────
+            // القاعدة: الراتب المخزّن هو الراتب الشهري لكل موظف
+            //   يومي   = الشهري ÷ 30
+            //   أسبوعي = اليومي × 7    (= الشهري ÷ 30 × 7)
+            //   شهري   = الشهري كما هو
+            //   سنوي   = الشهري × 4
+            const multiplier = p === 'daily' ? 1 / 30
+                : p === 'weekly' ? 7 / 30
+                    : p === 'monthly' ? 1
+                        : /* yearly */     4;
+
+            // حساب لكل موظف على حدة ثم الجمع (أدق وأوضح للتقرير)
+            const salaryBreakdown = employees
+                .filter(e => (e.salary || 0) > 0)
+                .map(e => ({
+                    name: e.name,
+                    role: e.role,
+                    monthly: e.salary || 0,
+                    period: Math.round((e.salary || 0) * multiplier)
+                }));
+
+            const salaryExpense = salaryBreakdown.reduce((sum, e) => sum + e.period, 0);
+            const totalMonthlySalaries = salaryBreakdown.reduce((sum, e) => sum + e.monthly, 0);
 
             const totalExpenses = supplierExpenses + salaryExpense;
             const netProfit = revenue - totalExpenses;
@@ -93,6 +109,8 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
                 revenue,
                 supplierExpenses,
                 salaryExpense,
+                totalMonthlySalaries,
+                salaryBreakdown,
                 totalExpenses,
                 netProfit,
                 orderCount: periodTransactions.length,
@@ -362,12 +380,57 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
                                         <p className="text-[10px] text-gray-400 mt-4 font-bold leading-relaxed">تشمل هذه القيمة كافة المبالغ المدفوعة لموردي البن والحليب والمواد التكميلية خلال الفترة المختارة.</p>
                                     </div>
                                     <div className="p-8 rounded-3xl border-2 border-dashed border-gray-100">
-                                        <div className="flex justify-between items-center mb-6">
+                                        <div className="flex justify-between items-center mb-4">
                                             <span className="font-black text-gray-500">رواتب وأجور الموظفين</span>
                                             <span className="px-4 py-2 bg-orange-50 text-orange-600 rounded-xl text-xs font-black">الموارد البشرية</span>
                                         </div>
-                                        <p className="text-3xl font-black text-brand-dark">{formatCurrency(currentStats.salaryExpense, settings.currency)}</p>
-                                        <p className="text-[10px] text-gray-400 mt-4 font-bold leading-relaxed">تقدير دقيق للتكلفة التشغيلية للعمالة المحسوبة بناءً على الرواتب الشهرية والمدة الزمنية للتقرير.</p>
+
+                                        {/* إجمالي الفترة */}
+                                        <p className="text-3xl font-black text-brand-dark mb-1">{formatCurrency(currentStats.salaryExpense, settings.currency)}</p>
+                                        <p className="text-[10px] text-orange-500 font-black uppercase tracking-widest mb-5">
+                                            {period === 'daily' ? 'إجمالي رواتب اليوم  (الشهري ÷ 30)' :
+                                                period === 'weekly' ? 'إجمالي رواتب الأسبوع  (الشهري ÷ 30 × 7)' :
+                                                    period === 'monthly' ? 'إجمالي الرواتب الشهرية' :
+                                                        'إجمالي رواتب الموسم  (الشهري × 4)'}
+                                        </p>
+
+                                        {/* تفصيل لكل موظف */}
+                                        {currentStats.salaryBreakdown && currentStats.salaryBreakdown.length > 0 && (
+                                            <div className="border-t border-gray-100 pt-4 space-y-2">
+                                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">كشف راتب كل موظف</p>
+                                                {currentStats.salaryBreakdown.map((emp, i) => (
+                                                    <div key={i} className="flex justify-between items-center py-2.5 px-3 rounded-xl hover:bg-orange-50/50 transition-colors border-b border-dashed border-gray-50 last:border-0">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center font-black text-xs shrink-0">
+                                                                {emp.name.charAt(0)}
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-sm font-black text-brand-dark leading-none">{emp.name}</p>
+                                                                <p className="text-[10px] text-gray-400 font-bold mt-0.5">
+                                                                    شهري: {formatCurrency(emp.monthly, settings.currency)}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="font-black text-sm text-brand-dark">{formatCurrency(emp.period, settings.currency)}</p>
+                                                            <p className="text-[10px] text-orange-500 font-bold">
+                                                                {period === 'daily' ? 'اليوم' :
+                                                                    period === 'weekly' ? 'الأسبوع' :
+                                                                        period === 'monthly' ? 'الشهر' :
+                                                                            'الموسم'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                <div className="flex justify-between items-center pt-3 mt-1 border-t border-orange-100">
+                                                    <div>
+                                                        <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block">إجمالي الرواتب الشهرية</span>
+                                                        <span className="text-[9px] text-gray-400 font-bold">القاعدة المرجعية للحساب</span>
+                                                    </div>
+                                                    <span className="font-black text-orange-600 text-lg">{formatCurrency(currentStats.totalMonthlySalaries, settings.currency)}</span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

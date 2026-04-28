@@ -46,7 +46,7 @@ const StatusModal: React.FC<StatusModalProps> = ({ isOpen, onClose, type, title,
     const config = colors[type];
 
     return (
-        <div className="fixed top-20 inset-x-0 bottom-0 z-[9999] bg-brand-dark/80 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300" dir="rtl">
+        <div className="fixed top-20 right-0 lg:right-28 left-0 bottom-0 z-[150] bg-brand-dark/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300" dir="rtl">
             <div className="bg-white w-full max-w-sm rounded-[3.5rem] shadow-4xl overflow-hidden animate-in zoom-in-95 duration-500 relative border border-white/20">
 
                 {/* Visual Elements */}
