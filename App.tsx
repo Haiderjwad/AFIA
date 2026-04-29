@@ -297,6 +297,74 @@ const App: React.FC = () => {
     }
   }, [transactions]);
 
+  // Move a single item from one order to a specific table
+  const handleMoveOrderItem = useCallback(async (
+    sourceTransactionId: string,
+    itemId: string,
+    targetTable: string
+  ) => {
+    const sourceTransaction = transactions.find(t => t.id === sourceTransactionId);
+    if (!sourceTransaction) return;
+
+    // The item to move
+    const movingItem = sourceTransaction.items.find(it => it.id === itemId);
+    if (!movingItem) return;
+
+    // Remove item from source transaction
+    const remainingItems = sourceTransaction.items.filter(it => it.id !== itemId);
+    const remainingTotal = remainingItems.reduce((sum, it) => sum + it.price * it.quantity, 0);
+
+    if (remainingItems.length === 0) {
+      // Delete source transaction entirely if no items remain
+      await firestoreService.deleteTransaction(sourceTransactionId);
+    } else {
+      await firestoreService.updateTransaction(sourceTransactionId, {
+        items: remainingItems,
+        total: remainingTotal
+      });
+    }
+
+    // Find existing active order on target table
+    const existingOrder = transactions.find(t =>
+      t.tableNumber === targetTable &&
+      t.id !== sourceTransactionId &&
+      (t.isTableClosed === false || (t.isTableClosed === undefined && !t.isPaid && !['completed', 'refunded', 'cancelled'].includes(t.status)))
+    );
+
+    if (existingOrder) {
+      // Merge item into existing order
+      const mergedItems = [...existingOrder.items, movingItem];
+      const mergedTotal = mergedItems.reduce((sum, it) => sum + it.price * it.quantity, 0);
+      await firestoreService.updateTransaction(existingOrder.id, {
+        items: mergedItems,
+        total: mergedTotal,
+        isUpdated: true,
+        status: existingOrder.status === 'pending' ? 'pending' : existingOrder.status
+      });
+    } else {
+      // Create a fresh order on the target table
+      const newTransaction: Transaction = {
+        id: '',
+        date: new Date().toISOString(),
+        items: [movingItem],
+        total: movingItem.price * movingItem.quantity,
+        status: 'pending',
+        paymentMethod: 'cash',
+        tableNumber: targetTable,
+        salesPerson: sourceTransaction.salesPerson,
+        guestCount: 0,
+        notes: `منقول من طاولة ${sourceTransaction.tableNumber || 'سفري'}`,
+        isTableClosed: false,
+        isPaid: false,
+        isMoved: true,
+        previousTable: sourceTransaction.tableNumber || 'Takeaway',
+      };
+      await firestoreService.addTransaction(newTransaction);
+    }
+
+    soundService.playSuccess();
+  }, [transactions]);
+
   const handleFinalizePayment = useCallback(async (transactionIds: string | string[], paymentMethod: 'cash' | 'card' | 'online') => {
     const ids = Array.isArray(transactionIds) ? transactionIds : [transactionIds];
     setTransactions(currentTransactions => {
@@ -371,11 +439,12 @@ const App: React.FC = () => {
               (trans.isTableClosed === false || (trans.isTableClosed === undefined && !trans.isPaid && !['completed', 'refunded', 'cancelled'].includes(trans.status)))
             ).map(tr => tr.tableNumber!));
 
-            Array.from(next.keys()).forEach(tableNum => {
+            Array.from(next.keys()).forEach((tableNum) => {
+              const tableId = tableNum as string;
               // If a table is no longer in transactions AND its latest transaction was closed, remove it
-              const tableTrans = t.filter(tr => tr.tableNumber === tableNum);
-              if (!occupiedOrReady.has(tableNum) && tableTrans.length > 0 && tableTrans[0].isTableClosed === true) {
-                next.delete(tableNum);
+              const tableTrans = t.filter(tr => tr.tableNumber === tableId);
+              if (!occupiedOrReady.has(tableId) && tableTrans.length > 0 && tableTrans[0].isTableClosed === true) {
+                next.delete(tableId);
               }
             });
 
@@ -582,6 +651,7 @@ const App: React.FC = () => {
             onCancelOrder={handleCancelOrder}
             onEditOrder={handleEditOrder}
             onMoveTable={handleMoveTable}
+            onMoveOrderItem={handleMoveOrderItem}
             isEditing={!!editingTransactionId}
             onToggleReceiptPanel={() => setIsReceiptPanelOpen(!isReceiptPanelOpen)}
             cartCount={cartCount}
@@ -632,6 +702,7 @@ const App: React.FC = () => {
             settings={settings}
             currentUser={currentUser}
             onMoveTable={handleMoveTable}
+            onMoveOrderItem={handleMoveOrderItem}
           />;
         }
         break;

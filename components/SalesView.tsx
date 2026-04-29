@@ -4,7 +4,7 @@ import {
     ShoppingCart, UtensilsCrossed, CheckCircle2, ChevronDown, ChevronUp,
     Table2, Layers, CheckCircle, Bell, AlertCircle, Ban, Utensils,
     ChefHat, Wallet, User, Monitor, ChevronRight, ChevronLeft,
-    Pencil, RefreshCw, Trash2, MoveHorizontal, ArrowLeft
+    Pencil, RefreshCw, Trash2, MoveHorizontal, ArrowLeft, ArrowRight, Package
 } from 'lucide-react';
 import { MenuItem, AppSettings, Transaction, Employee } from '../types';
 import { formatCurrency } from '../utils/currencyUtils';
@@ -21,6 +21,7 @@ interface SalesViewProps {
     onCancelOrder?: (id: string) => void;
     onEditOrder?: (id: string) => void;
     onMoveTable?: (id: string, newTable: string) => void;
+    onMoveOrderItem?: (sourceTransactionId: string, itemId: string, targetTable: string) => void;
     isEditing?: boolean;
     onToggleReceiptPanel?: () => void;
     cartCount?: number;
@@ -130,7 +131,7 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
     products, addToCart, settings, readyOrders, transactions,
     currentUser, onCompleteOrder, onCancelOrder, onToggleReceiptPanel, cartCount,
     selectedTableNumber, onSelectTable, tableGuestCounts, onGuestCountChange,
-    onEditOrder, isEditing, onMoveTable
+    onEditOrder, isEditing, onMoveTable, onMoveOrderItem
 }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -141,6 +142,12 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
     const [tablesOpen, setTablesOpen] = useState(true);
     const [longPressTable, setLongPressTable] = useState<string | null>(null);
     const [guestCountInput, setGuestCountInput] = useState('');
+
+    // Order Detail Modal — clicked from activity log
+    const [selectedOrderDetail, setSelectedOrderDetail] = useState<import('../types').Transaction | null>(null);
+    // Item transfer state
+    const [itemTransferTarget, setItemTransferTarget] = useState<{ itemId: string; itemName: string; orderId: string } | null>(null);
+    const [itemTransferConfirm, setItemTransferConfirm] = useState<{ itemId: string; itemName: string; orderId: string; toTable: string } | null>(null);
 
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [notifiedReadyIds, setNotifiedReadyIds] = useState<Set<string>>(new Set());
@@ -713,10 +720,10 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                                                         .filter(t => t.salesPerson === currentUser?.name && ['pending', 'preparing'].includes(t.status))
                                                         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                                                         .map(order => (
-                                                            <div key={order.id} className="bg-white border-2 border-gray-50 p-5 rounded-[2rem] flex justify-between items-center group hover:border-brand-primary/20 transition-all">
+                                                            <div key={order.id} className="bg-white border-2 border-gray-50 p-5 rounded-[2rem] flex justify-between items-center group hover:border-brand-primary/20 hover:shadow-lg transition-all cursor-pointer" onClick={() => setSelectedOrderDetail(order)}>
                                                                 <div className="flex items-center gap-5 relative">
                                                                     <button
-                                                                        onClick={() => setMovingOrderId(order.id)}
+                                                                        onClick={e => { e.stopPropagation(); setMovingOrderId(order.id); }}
                                                                         className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center font-black transition-all hover:scale-105 active:scale-95 shadow-lg group/title ${order.isMoved ? 'bg-brand-primary text-white shadow-brand-primary/25' : 'bg-gray-50 text-gray-400 border border-gray-100 hover:border-brand-primary/30 hover:bg-white'}`}
                                                                     >
                                                                         <span className="text-[10px] opacity-60 uppercase leading-none mb-1">{order.isMoved ? 'محول' : 'رقم'}</span>
@@ -785,7 +792,8 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                                                                     </span>
                                                                     {order.status === 'pending' && onEditOrder && (
                                                                         <button
-                                                                            onClick={() => {
+                                                                            onClick={e => {
+                                                                                e.stopPropagation();
                                                                                 onEditOrder(order.id);
                                                                                 setShowActivityLog(false);
                                                                             }}
@@ -796,7 +804,7 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                                                                         </button>
                                                                     )}
                                                                     {(order.status === 'pending' || order.status === 'preparing') && (
-                                                                        <button onClick={() => setConfirmCancel(order.id)} className="w-10 h-10 flex items-center justify-center text-rose-500 hover:bg-rose-50 rounded-xl transition-all" title="إلغاء الطلب">
+                                                                        <button onClick={e => { e.stopPropagation(); setConfirmCancel(order.id); }} className="w-10 h-10 flex items-center justify-center text-rose-500 hover:bg-rose-50 rounded-xl transition-all" title="إلغاء الطلب">
                                                                             <X size={18} />
                                                                         </button>
                                                                     )}
@@ -872,6 +880,269 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                     </div>
                 )
             }
+            {/* ═══════════════════════════════════════════════════════════
+                ORDER DETAIL MODAL — Full Item Breakdown
+            ═══════════════════════════════════════════════════════════ */}
+            {selectedOrderDetail && !itemTransferTarget && !itemTransferConfirm && (
+                <div className="fixed inset-0 z-[1500] flex items-center justify-center p-4 bg-brand-dark/60 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setSelectedOrderDetail(null)}>
+                    <div
+                        className="bg-white w-full max-w-md rounded-[2.5rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.35)] overflow-hidden flex flex-col animate-in zoom-in-95 slide-in-from-bottom-4 duration-500 max-h-[85vh]"
+                        onClick={e => e.stopPropagation()}
+                        dir="rtl"
+                    >
+                        {/* Header */}
+                        <div className="bg-brand-dark text-white px-8 py-6 relative overflow-hidden shrink-0">
+                            <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/30 to-transparent pointer-events-none" />
+                            <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-brand-accent/10 rounded-full blur-3xl pointer-events-none" />
+                            <div className="relative z-10 flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 bg-brand-accent text-brand-dark rounded-2xl flex items-center justify-center font-black text-xl shadow-xl shadow-brand-accent/30">
+                                        {selectedOrderDetail.tableNumber === 'Takeaway' ? 'SB' : selectedOrderDetail.tableNumber}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-black tracking-tight">
+                                            {selectedOrderDetail.tableNumber === 'Takeaway' ? 'طلب سفري' : `طاولة ${selectedOrderDetail.tableNumber}`}
+                                        </h3>
+                                        <p className="text-white/50 text-[11px] font-bold uppercase tracking-widest mt-0.5">
+                                            {new Date(selectedOrderDetail.date).toLocaleTimeString('ar-EG')} — #{selectedOrderDetail.id.slice(-5).toUpperCase()}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setSelectedOrderDetail(null)}
+                                    className="w-10 h-10 bg-white/10 hover:bg-rose-500 rounded-full flex items-center justify-center transition-all"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+                            {/* Status Badge */}
+                            <div className="relative z-10 mt-4 flex items-center gap-3">
+                                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${selectedOrderDetail.status === 'pending' ? 'bg-orange-500/20 text-orange-300 border-orange-500/30' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'}`}>
+                                    {selectedOrderDetail.status === 'pending' ? '⏳ في الانتظار' : '🔥 جاري التحضير'}
+                                </span>
+                                <span className="text-white/40 text-[10px] font-bold">|</span>
+                                <span className="text-brand-accent font-black text-sm">{formatCurrency(selectedOrderDetail.total, settings.currency)}</span>
+                            </div>
+                        </div>
+
+                        {/* Instructions */}
+                        <div className="px-8 pt-5 pb-2 shrink-0">
+                            <div className="flex items-center gap-3 bg-brand-primary/5 rounded-2xl px-4 py-3 border border-brand-primary/10">
+                                <ArrowRight size={16} className="text-brand-primary shrink-0" />
+                                <p className="text-[11px] font-bold text-brand-dark/60 leading-relaxed">
+                                    انقر على أيقونة السهم بجانب أي عنصر لنقله إلى طاولة أخرى
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Items List */}
+                        <div className="flex-1 overflow-y-auto px-8 py-4 space-y-3 no-scrollbar">
+                            {selectedOrderDetail.items.map((item, index) => (
+                                <div
+                                    key={`${item.id}-${index}`}
+                                    className="flex items-center gap-4 bg-gray-50 rounded-[1.5rem] p-4 border border-gray-100 hover:border-brand-primary/20 hover:bg-brand-primary/5 transition-all group/item"
+                                >
+                                    {/* Item Icon */}
+                                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-sm shrink-0 border border-gray-100">
+                                        🍽️
+                                    </div>
+                                    {/* Item Info */}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-black text-brand-dark text-sm leading-tight truncate">{item.name}</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="text-[10px] font-bold text-gray-400">x{item.quantity}</span>
+                                            <span className="text-brand-accent font-black text-[11px]">{formatCurrency(item.price * item.quantity, settings.currency)}</span>
+                                        </div>
+                                    </div>
+                                    {/* Transfer Arrow Button */}
+                                    <button
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            setItemTransferTarget({
+                                                itemId: item.id,
+                                                itemName: item.name,
+                                                orderId: selectedOrderDetail.id
+                                            });
+                                        }}
+                                        className="w-10 h-10 rounded-2xl bg-brand-primary/10 text-brand-primary hover:bg-brand-primary hover:text-white transition-all flex items-center justify-center shrink-0 shadow-sm active:scale-90"
+                                        title={`نقل ${item.name} إلى طاولة أخرى`}
+                                    >
+                                        <ArrowRight size={18} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-8 pb-6 pt-4 border-t border-gray-100 shrink-0">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase">إجمالي الطلب</p>
+                                    <p className="text-xl font-black text-brand-dark">{formatCurrency(selectedOrderDetail.total, settings.currency)}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Package size={14} className="text-gray-300" />
+                                    <span className="text-[11px] font-bold text-gray-400">{selectedOrderDetail.items.length} عنصر</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ═══════════════════════════════════════════════════════════
+                ITEM TABLE PICKER MODAL — Pick destination table
+            ═══════════════════════════════════════════════════════════ */}
+            {itemTransferTarget && !itemTransferConfirm && (
+                <div className="fixed inset-0 z-[1600] flex items-center justify-center p-4 bg-brand-dark/70 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setItemTransferTarget(null)}>
+                    <div
+                        className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden animate-in zoom-in-95 duration-400"
+                        onClick={e => e.stopPropagation()}
+                        dir="rtl"
+                    >
+                        {/* Header */}
+                        <div className="bg-brand-dark text-white px-7 py-5 relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/20 to-transparent" />
+                            <div className="relative z-10 flex items-center justify-between">
+                                <div>
+                                    <p className="text-[10px] font-black text-brand-accent uppercase tracking-widest mb-1">نقل عنصر</p>
+                                    <h4 className="font-black text-base leading-tight">{itemTransferTarget.itemName}</h4>
+                                </div>
+                                <button onClick={() => setItemTransferTarget(null)} className="w-9 h-9 bg-white/10 hover:bg-rose-500 rounded-full flex items-center justify-center transition-all">
+                                    <X size={16} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Table Grid */}
+                        <div className="p-6">
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 px-1">اختر الطاولة المستهدفة</p>
+                            <div className="grid grid-cols-5 gap-2 max-h-52 overflow-y-auto no-scrollbar mb-3">
+                                {Array.from({ length: settings.tablesCount || 24 }, (_, i) => String(i + 1)).map(num => {
+                                    const sourceOrder = transactions.find(t => t.id === itemTransferTarget.orderId);
+                                    const isSame = num === sourceOrder?.tableNumber;
+                                    const isOccupied = !!occupiedByOrder[num];
+                                    return (
+                                        <button
+                                            key={num}
+                                            disabled={isSame}
+                                            onClick={() => {
+                                                setItemTransferConfirm({
+                                                    ...itemTransferTarget,
+                                                    toTable: num
+                                                });
+                                                setItemTransferTarget(null);
+                                            }}
+                                            className={`h-12 rounded-2xl flex flex-col items-center justify-center font-black text-xs transition-all active:scale-90 ${isSame
+                                                ? 'bg-gray-50 text-gray-200 cursor-not-allowed border border-gray-100'
+                                                : isOccupied
+                                                    ? 'bg-rose-50 text-rose-500 border border-rose-200 hover:bg-rose-500 hover:text-white shadow-sm'
+                                                    : 'bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-500 hover:text-white shadow-sm'
+                                                }`}
+                                        >
+                                            <span className="text-[8px] opacity-60 leading-none">{isOccupied && !isSame ? 'مشغول' : isSame ? 'حالي' : 'متاح'}</span>
+                                            <span>{num}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            {/* Legend */}
+                            <div className="flex items-center gap-4 px-1">
+                                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-emerald-400" /><span className="text-[9px] font-bold text-gray-400">متاحة</span></div>
+                                <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-rose-400" /><span className="text-[9px] font-bold text-gray-400">مشغولة (دمج)</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ═══════════════════════════════════════════════════════════
+                ITEM TRANSFER CONFIRM DIALOG
+            ═══════════════════════════════════════════════════════════ */}
+            {itemTransferConfirm && (
+                <div className="fixed inset-0 z-[1700] flex items-center justify-center p-4 bg-brand-dark/70 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden animate-in zoom-in-95 duration-400" dir="rtl">
+                        {/* Header */}
+                        <div className="bg-brand-dark text-white px-8 py-6 relative overflow-hidden">
+                            <div className="absolute -top-10 -right-10 w-36 h-36 bg-brand-accent/20 rounded-full blur-3xl" />
+                            <div className="relative z-10 flex items-center gap-4">
+                                <div className="w-14 h-14 bg-brand-accent text-brand-dark rounded-2xl flex items-center justify-center shadow-xl shadow-brand-accent/30">
+                                    <MoveHorizontal size={26} />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black text-brand-accent uppercase tracking-[0.2em] mb-1">تأكيد نقل العنصر</p>
+                                    <h3 className="text-xl font-black leading-tight">هل تريد نقل هذا العنصر؟</h3>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Confirm Body */}
+                        <div className="px-8 py-6 space-y-6">
+                            {/* Item being moved */}
+                            <div className="bg-brand-primary/5 rounded-[1.5rem] p-5 border border-brand-primary/10">
+                                <p className="text-[10px] font-black text-brand-primary uppercase tracking-widest mb-2">العنصر المراد نقله</p>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-xl shadow-sm border border-brand-primary/10">🍽️</div>
+                                    <p className="font-black text-brand-dark">{itemTransferConfirm.itemName}</p>
+                                </div>
+                            </div>
+
+                            {/* Transfer Route */}
+                            <div className="flex items-center justify-center gap-4">
+                                <div className="flex flex-col items-center bg-gray-50 rounded-2xl px-6 py-3 border border-gray-100">
+                                    <span className="text-[9px] font-bold text-gray-400 uppercase mb-1">من</span>
+                                    <span className="font-black text-brand-dark text-lg">
+                                        {(() => {
+                                            const src = transactions.find(t => t.id === itemTransferConfirm.orderId);
+                                            return src?.tableNumber === 'Takeaway' ? 'سفري' : `#${src?.tableNumber}`;
+                                        })()}
+                                    </span>
+                                </div>
+                                <div className="flex flex-col items-center">
+                                    <ArrowLeft size={24} className="text-brand-primary" />
+                                </div>
+                                <div className="flex flex-col items-center bg-brand-primary/10 rounded-2xl px-6 py-3 border border-brand-primary/20">
+                                    <span className="text-[9px] font-bold text-brand-primary/60 uppercase mb-1">إلى</span>
+                                    <span className="font-black text-brand-primary text-lg">
+                                        {itemTransferConfirm.toTable === 'Takeaway' ? 'سفري' : `#${itemTransferConfirm.toTable}`}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Destination note */}
+                            <p className="text-center text-xs text-gray-400 font-bold leading-relaxed">
+                                {occupiedByOrder[itemTransferConfirm.toTable]
+                                    ? '⚡ سيتم دمج هذا العنصر مع الطلب النشط الموجود على تلك الطاولة'
+                                    : '✨ سيتم إنشاء طلب جديد على تلك الطاولة وستصبح مشغولة'}
+                            </p>
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setItemTransferConfirm(null)}
+                                    className="flex-1 py-4 bg-gray-50 text-gray-400 rounded-2xl font-black text-sm hover:bg-gray-100 active:scale-95 transition-all"
+                                >
+                                    تراجع
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        const { orderId, itemId, toTable } = itemTransferConfirm;
+                                        setItemTransferConfirm(null);
+                                        setSelectedOrderDetail(null);
+                                        await onMoveOrderItem?.(orderId, itemId, toTable);
+                                        setMoveSuccess({ isOpen: true, from: transactions.find(t => t.id === orderId)?.tableNumber || 'Takeaway', to: toTable });
+                                        setTimeout(() => setMoveSuccess(null), 3000);
+                                    }}
+                                    className="flex-1 py-4 bg-gradient-to-r from-brand-primary to-brand-secondary text-white rounded-2xl font-black text-sm shadow-xl shadow-brand-primary/20 active:scale-95 transition-all"
+                                >
+                                    تأكيد النقل
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Confirmation Dialog for Cancellation */}
             {confirmCancel && (
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-brand-dark/40 backdrop-blur-sm animate-in fade-in duration-300">

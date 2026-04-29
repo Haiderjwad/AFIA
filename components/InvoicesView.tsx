@@ -18,6 +18,8 @@ interface InvoicesViewProps {
     onFinalizePayment?: (id: string | string[], method: 'cash' | 'card' | 'online') => Promise<void>;
     onCloseTable?: (id: string | string[]) => Promise<void>;
     onCancelOrder?: (id: string) => Promise<void>;
+    onMoveTable?: (id: string, newTable: string) => Promise<void>;
+    onMoveOrderItem?: (sourceTransactionId: string, itemId: string, targetTable: string) => Promise<void>;
     canFinalize?: boolean;
     products?: MenuItem[];
     settings?: AppSettings;
@@ -44,6 +46,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
     onCloseTable,
     onCancelOrder,
     onMoveTable,
+    onMoveOrderItem,
     canFinalize,
     products = [],
     settings,
@@ -69,6 +72,9 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
 
     const [movingTransactionId, setMovingTransactionId] = useState<string | null>(null);
     const [moveSuccess, setMoveSuccess] = useState<{ isOpen: boolean, from: string, to: string } | null>(null);
+
+    const [activeItemMenu, setActiveItemMenu] = useState<{ sourceTxId: string, item: CartItem } | null>(null);
+    const [confirmItemMove, setConfirmItemMove] = useState<{ sourceTxId: string, item: CartItem, targetTable: string } | null>(null);
 
     React.useEffect(() => {
         localStorage.setItem('afia_auto_print', String(autoPrint));
@@ -149,7 +155,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
                         if (itemMap[key]) {
                             itemMap[key].quantity += item.quantity;
                         } else {
-                            itemMap[key] = { ...item };
+                            itemMap[key] = { ...item, originalTxId: t.id };
                         }
                     });
                 });
@@ -1604,25 +1610,50 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
                                                 <th className="px-8 py-5 text-xs font-black uppercase text-center">الكمية</th>
                                                 <th className="px-8 py-5 text-xs font-black uppercase text-center">سعر الوحدة</th>
                                                 <th className="px-8 py-5 text-xs font-black uppercase text-left">الإجمالي الفرعي</th>
+                                                {(!viewingTransaction.isPaid && !['completed', 'cancelled', 'refunded'].includes(viewingTransaction.status)) && (
+                                                    <th className="px-8 py-5 text-xs font-black uppercase text-center w-24">إجراء</th>
+                                                )}
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-50">
-                                            {viewingTransaction.items.map((item, i) => (
-                                                <tr key={i} className="hover:bg-brand-primary/5 transition-colors group">
-                                                    <td className="px-8 py-5">
-                                                        <div className="font-bold text-brand-dark text-lg group-hover:text-brand-primary transition-colors">{item.name}</div>
-                                                    </td>
-                                                    <td className="px-8 py-5 text-center">
-                                                        <span className="bg-gray-100 px-4 py-1 rounded-full font-black text-brand-primary">x{item.quantity}</span>
-                                                    </td>
-                                                    <td className="px-8 py-5 text-center font-bold text-gray-500 italic">
-                                                        {formatCurrency(item.price, settings?.currency || CURRENCY)}
-                                                    </td>
-                                                    <td className="px-8 py-5 font-black text-brand-dark text-left text-lg">
-                                                        {formatCurrency(item.price * item.quantity, settings?.currency || CURRENCY)}
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                        <tbody className="divide-y divide-gray-50 relative">
+                                            {viewingTransaction.items.map((item, i) => {
+                                                const canMove = !viewingTransaction.isPaid && !['completed', 'cancelled', 'refunded'].includes(viewingTransaction.status);
+                                                return (
+                                                    <tr key={i} className="hover:bg-brand-primary/5 transition-colors group">
+                                                        <td className="px-8 py-5">
+                                                            <div className="font-bold text-brand-dark text-lg group-hover:text-brand-primary transition-colors">{item.name}</div>
+                                                        </td>
+                                                        <td className="px-8 py-5 text-center">
+                                                            <span className="bg-gray-100 px-4 py-1 rounded-full font-black text-brand-primary">x{item.quantity}</span>
+                                                        </td>
+                                                        <td className="px-8 py-5 text-center font-bold text-gray-500 italic">
+                                                            {formatCurrency(item.price, settings?.currency || CURRENCY)}
+                                                        </td>
+                                                        <td className="px-8 py-5 font-black text-brand-dark text-left text-lg">
+                                                            {formatCurrency(item.price * item.quantity, settings?.currency || CURRENCY)}
+                                                        </td>
+                                                        {canMove && (
+                                                            <td className="px-8 py-5 text-center">
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        const sourceTxId = (item as any).originalTxId || viewingTransaction.id;
+                                                                        if (activeItemMenu && activeItemMenu.item.id === item.id) {
+                                                                            setActiveItemMenu(null);
+                                                                        } else {
+                                                                            setActiveItemMenu({ sourceTxId, item });
+                                                                        }
+                                                                    }}
+                                                                    className="w-10 h-10 rounded-xl bg-gray-50 text-gray-400 hover:bg-brand-primary hover:text-white flex items-center justify-center mx-auto transition-all shadow-sm active:scale-95"
+                                                                    title="نقل العنصر لطاولة أخرى"
+                                                                >
+                                                                    <ArrowLeft size={18} />
+                                                                </button>
+                                                            </td>
+                                                        )}
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>
@@ -1686,10 +1717,107 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
                                 </button>
                             </div>
                         </div>
+
+                        {/* Floating Selection for Moving Item - within the modal */}
+                        {activeItemMenu && (
+                            <div
+                                className="absolute inset-0 bg-brand-dark/20 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in duration-200"
+                                onClick={() => setActiveItemMenu(null)}
+                            >
+                                <div
+                                    className="bg-white rounded-[2rem] p-6 shadow-2xl max-w-sm w-full animate-in zoom-in-95 duration-300 border border-gray-100"
+                                    onClick={e => e.stopPropagation()}
+                                >
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-xl font-black text-brand-dark flex items-center gap-2">
+                                            <MoveHorizontal size={20} className="text-brand-primary" /> نقل صنف
+                                        </h3>
+                                        <button
+                                            onClick={() => setActiveItemMenu(null)}
+                                            className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-rose-50 hover:text-rose-500 transition-colors"
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                    </div>
+                                    <p className="text-sm font-bold text-gray-500 mb-4 bg-brand-primary/5 p-3 rounded-xl border border-brand-primary/10 leading-relaxed">
+                                        اختر الطاولة لنقل الصنف{' '}
+                                        <span className="text-brand-primary font-black">{activeItemMenu.item.name}</span>
+                                    </p>
+                                    <div className="grid grid-cols-4 gap-2 mb-2 max-h-[220px] overflow-y-auto">
+                                        {Array.from({ length: settings?.tablesCount || 24 }, (_, i) => String(i + 1)).map(num => (
+                                            <button
+                                                key={num}
+                                                onClick={() => {
+                                                    setConfirmItemMove({
+                                                        sourceTxId: activeItemMenu.sourceTxId,
+                                                        item: activeItemMenu.item,
+                                                        targetTable: num
+                                                    });
+                                                    setActiveItemMenu(null);
+                                                }}
+                                                disabled={num === viewingTransaction.tableNumber}
+                                                className={`h-12 rounded-xl flex items-center justify-center font-black text-sm transition-all
+                                                    ${num === viewingTransaction.tableNumber
+                                                        ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                                                        : 'bg-brand-primary/10 text-brand-primary hover:bg-brand-primary hover:text-white shadow-sm active:scale-95'
+                                                    }`}
+                                            >
+                                                {num}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Confirm Item Move Dialog */}
+                        {confirmItemMove && (
+                            <div className="absolute inset-0 bg-brand-dark/50 backdrop-blur-md z-[300] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                                <div className="bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl text-center animate-in zoom-in-95 duration-300">
+                                    <div className="w-20 h-20 bg-brand-primary/10 text-brand-primary rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner ring-4 ring-brand-primary/5">
+                                        <ArrowLeft size={32} />
+                                    </div>
+                                    <h3 className="text-2xl font-black text-brand-dark mb-3">تأكيد نقل الصنف</h3>
+                                    <p className="text-gray-500 text-sm mb-7 leading-loose font-bold">
+                                        سيتم نقل الصنف{' '}
+                                        <span className="text-brand-primary font-black bg-brand-primary/5 px-2 py-0.5 rounded-lg">{confirmItemMove.item.name}</span>
+                                        <br />إلى{' '}
+                                        <span className="text-brand-dark font-black bg-brand-light/30 px-2 py-0.5 rounded-lg border border-brand-primary/20">
+                                            طاولة {confirmItemMove.targetTable}
+                                        </span>
+                                        <br />
+                                        <span className="text-xs text-gray-400">إذا كانت الطاولة مشغولة سيتم دمج الصنف مع طلبها النشط</span>
+                                    </p>
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={() => setConfirmItemMove(null)}
+                                            className="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-2xl font-black transition-colors"
+                                        >
+                                            إلغاء
+                                        </button>
+                                        <button
+                                            onClick={async () => {
+                                                if (onMoveOrderItem) {
+                                                    await onMoveOrderItem(
+                                                        confirmItemMove.sourceTxId,
+                                                        confirmItemMove.item.id,
+                                                        confirmItemMove.targetTable
+                                                    );
+                                                    setViewingTransaction(null);
+                                                }
+                                                setConfirmItemMove(null);
+                                            }}
+                                            className="flex-1 py-4 bg-gradient-to-r from-brand-primary to-brand-secondary hover:from-brand-secondary hover:to-brand-primary text-white rounded-2xl font-black transition-all shadow-lg shadow-brand-primary/25"
+                                        >
+                                            تأكيد النقل
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
-            )
-            }
+            )}
 
             {/* Invoices Log Modal - Professional Collection View */}
             {

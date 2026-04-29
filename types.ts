@@ -1,6 +1,8 @@
 
 import { LucideIcon } from 'lucide-react';
 
+export type SystemMode = 'cafe' | 'market' | 'restaurant' | 'retail';
+
 export interface MenuItem {
   id: string;
   name: string;
