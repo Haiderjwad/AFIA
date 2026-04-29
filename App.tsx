@@ -365,6 +365,36 @@ const App: React.FC = () => {
     soundService.playSuccess();
   }, [transactions]);
 
+  const handleRemoveOrderItem = useCallback(async (transactionId: string, itemId: string) => {
+    const transaction = transactions.find(t => t.id === transactionId);
+    if (!transaction) return;
+
+    const removingItem = transaction.items.find(it => it.id === itemId);
+    if (!removingItem) return;
+
+    // Restore stock
+    await firestoreService.decrementStock(removingItem.id, -removingItem.quantity);
+
+    const remainingItems = transaction.items.filter(it => it.id !== itemId);
+    const remainingTotal = remainingItems.reduce((sum, it) => sum + it.price * it.quantity, 0);
+
+    if (remainingItems.length === 0) {
+      // If order is completely empty, we can mark it cancelled or delete it
+      await firestoreService.updateTransaction(transactionId, {
+        status: 'cancelled',
+        notes: transaction.notes ? `${transaction.notes} | [ملغي تلقائياً - فارغ]` : '[طلبية فارغة - ملغي]'
+      });
+    } else {
+      await firestoreService.updateTransaction(transactionId, {
+        items: remainingItems,
+        total: remainingTotal,
+        isUpdated: true
+      });
+    }
+
+    soundService.playSuccess();
+  }, [transactions]);
+
   const handleFinalizePayment = useCallback(async (transactionIds: string | string[], paymentMethod: 'cash' | 'card' | 'online') => {
     const ids = Array.isArray(transactionIds) ? transactionIds : [transactionIds];
     setTransactions(currentTransactions => {
@@ -652,6 +682,7 @@ const App: React.FC = () => {
             onEditOrder={handleEditOrder}
             onMoveTable={handleMoveTable}
             onMoveOrderItem={handleMoveOrderItem}
+            onRemoveOrderItem={handleRemoveOrderItem}
             isEditing={!!editingTransactionId}
             onToggleReceiptPanel={() => setIsReceiptPanelOpen(!isReceiptPanelOpen)}
             cartCount={cartCount}

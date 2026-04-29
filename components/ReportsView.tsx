@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useRef } from 'react';
 import StatusModal from './StatusModal';
 import { Transaction, Employee, Supplier, AppSettings } from '../types';
@@ -7,7 +6,7 @@ import {
     ChevronLeft, ChevronRight, BarChart3,
     PieChart, Clock, DollarSign, Package,
     Sparkles, RefreshCw, ArrowDownRight, ArrowUpRight,
-    Wallet, Users, ShoppingBag
+    Wallet, Users, ShoppingBag, ShieldCheck, CheckCircle2
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -52,9 +51,6 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
             const periodTransactions = filterByDate(p);
             const revenue = periodTransactions.reduce((sum, t) => sum + t.total, 0);
 
-            // Calculate Supplier Expenses for this period
-            // (Assuming lastSupplyDate is the date of the full totalPaid for simplicity in this version, 
-            // but filtering by period if date matches)
             const supplierExpenses = suppliers.reduce((sum, s) => {
                 const supplyDate = new Date(s.lastSupplyDate);
                 const periodStart = new Date();
@@ -69,18 +65,11 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
                 return sum;
             }, 0);
 
-            // ─── حساب رواتب الموظفين لكل فترة ───────────────────────
-            // القاعدة: الراتب المخزّن هو الراتب الشهري لكل موظف
-            //   يومي   = الشهري ÷ 30
-            //   أسبوعي = اليومي × 7    (= الشهري ÷ 30 × 7)
-            //   شهري   = الشهري كما هو
-            //   سنوي   = الشهري × 4
             const multiplier = p === 'daily' ? 1 / 30
                 : p === 'weekly' ? 7 / 30
                     : p === 'monthly' ? 1
-                        : /* yearly */     4;
+                        : 4;
 
-            // حساب لكل موظف على حدة ثم الجمع (أدق وأوضح للتقرير)
             const salaryBreakdown = employees
                 .filter(e => (e.salary || 0) > 0)
                 .map(e => ({
@@ -96,14 +85,14 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
             const totalExpenses = supplierExpenses + salaryExpense;
             const netProfit = revenue - totalExpenses;
 
-            // Popular Items
             const itemMap: Record<string, number> = {};
             periodTransactions.forEach(t => {
                 t.items.forEach(item => {
                     itemMap[item.name] = (itemMap[item.name] || 0) + item.quantity;
                 });
             });
-            const topItem = Object.entries(itemMap).sort((a, b) => b[1] - a[1])[0] || ["لا يوجد", 0];
+            const sortedItems = Object.entries(itemMap).sort((a, b) => b[1] - a[1]);
+            const topItem = sortedItems[0] || ["لا يوجد", 0];
 
             return {
                 revenue,
@@ -148,7 +137,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
             await new Promise(resolve => setTimeout(resolve, 800));
 
             const canvas = await html2canvas(reportRef.current, {
-                scale: 2, // 2x is plenty for a4 and more stable for memory
+                scale: 2,
                 useCORS: true,
                 backgroundColor: '#ffffff',
                 logging: false,
@@ -169,20 +158,17 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
             const margin = 10;
             const contentWidth = pageWidth - (margin * 2);
 
-            // Calculate height of the captured content in PDF mm
             const imgHeightInPDF = (canvas.height * contentWidth) / canvas.width;
 
             let heightLeft = imgHeightInPDF;
             let position = margin;
             const pageContentHeight = pageHeight - (margin * 2);
 
-            // First page
             pdf.addImage(imgData, 'JPEG', margin, position, contentWidth, imgHeightInPDF);
             heightLeft -= pageContentHeight;
 
-            // Add new pages if content is longer than one A4
             while (heightLeft > 0) {
-                position = heightLeft - imgHeightInPDF + margin; // Offset for next page
+                position = heightLeft - imgHeightInPDF + margin;
                 pdf.addPage();
                 pdf.addImage(imgData, 'JPEG', margin, position, contentWidth, imgHeightInPDF);
                 heightLeft -= pageContentHeight;
@@ -197,9 +183,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
                 message: 'تم حفظ الكشف المحاسبي الموحد بجميع صفحاته وتفاصيله على جهازك.'
             });
 
-            setTimeout(() => {
-                setStatusModal(prev => ({ ...prev, isOpen: false }));
-            }, 3000);
+            setTimeout(() => setStatusModal(prev => ({ ...prev, isOpen: false })), 3000);
 
         } catch (error) {
             console.error("PDF Generation error:", error);
@@ -216,249 +200,329 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
     };
 
     const periodLabels: Record<ReportPeriod, string> = {
-        daily: 'يومي',
-        weekly: 'أسبوعي',
-        monthly: 'شهري',
-        yearly: 'سنوي'
+        daily: 'التقرير اليومي',
+        weekly: 'التقرير الأسبوعي',
+        monthly: 'التقرير الشهري',
+        yearly: 'التقرير السنوي'
     };
 
     return (
-        <div className="view-container">
+        <div className="view-container" dir="rtl">
             {/* Header section with tabs */}
-            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-10 gap-6">
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-brand-dark mb-2">التقارير المحاسبية</h1>
-                    <p className="text-xs md:text-sm text-gray-600">تحليل دقيق للإيرادات، المصروفات، وصافي الأرباح</p>
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 gap-6">
+                <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-brand-dark rounded-2xl flex items-center justify-center text-brand-accent shadow-xl shadow-brand-dark/20">
+                        <BarChart3 size={28} />
+                    </div>
+                    <div>
+                        <h1 className="text-3xl font-black text-brand-dark tracking-tight leading-tight">التقارير المالية</h1>
+                        <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mt-0.5">ENTERPRISE FINANCIAL INTELLIGENCE</p>
+                    </div>
                 </div>
 
-                <div className="flex bg-white p-1.5 rounded-2xl shadow-lg border border-brand-light/50 w-full xl:w-auto overflow-x-auto no-scrollbar">
-                    <div className="flex min-w-max gap-1">
-                        {(['daily', 'weekly', 'monthly', 'yearly'] as ReportPeriod[]).map((p) => (
-                            <button
-                                key={p}
-                                onClick={() => setPeriod(p)}
-                                className={`px-4 md:px-8 py-2 md:py-2.5 rounded-xl font-bold transition-all text-[10px] md:text-sm ${period === p
-                                    ? 'bg-brand-primary text-white shadow-md scale-[1.02]'
-                                    : 'text-gray-400 hover:text-brand-primary hover:bg-brand-light/20'
-                                    }`}
-                            >
-                                {periodLabels[p]}
-                            </button>
-                        ))}
-                    </div>
+                <div className="bg-white p-1.5 rounded-2xl shadow-xl shadow-gray-200/50 border border-white flex gap-1 overflow-x-auto w-full lg:w-auto">
+                    {(['daily', 'weekly', 'monthly', 'yearly'] as ReportPeriod[]).map((p) => (
+                        <button
+                            key={p}
+                            onClick={() => setPeriod(p)}
+                            className={`flex-1 lg:flex-none px-6 py-3 rounded-[1rem] font-black text-xs transition-all duration-300 whitespace-nowrap
+                                ${period === p
+                                    ? 'bg-brand-dark text-brand-accent shadow-lg shadow-brand-dark/20 scale-[1.02] -translate-y-0.5'
+                                    : 'text-gray-400 hover:text-brand-primary hover:bg-gray-50'
+                                }`}
+                        >
+                            {periodLabels[p]}
+                        </button>
+                    ))}
                 </div>
             </div>
 
-            {/* Main Accounting Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-10">
+            {/* Premium Accounting Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-10">
                 {/* Revenue Card */}
-                <div className="bg-white p-6 rounded-[2.5rem] border border-green-100 shadow-xl shadow-green-500/5 relative overflow-hidden group hover:border-green-200 transition-all">
-                    <div className="absolute top-0 left-0 w-20 h-20 bg-green-50 rounded-br-[3rem] flex items-center justify-center -ml-4 -mt-4 transition-transform group-hover:scale-110">
-                        <TrendingUp size={22} className="text-green-600 -translate-x-1 -translate-y-1" />
+                <div className="bg-white rounded-[2.5rem] p-7 border border-emerald-100 shadow-[0_20px_50px_-15px_rgba(16,185,129,0.15)] relative overflow-hidden group hover:-translate-y-2 transition-all duration-500 flex flex-col justify-between">
+                    <div className="absolute -right-6 -top-6 w-32 h-32 bg-emerald-50 rounded-full blur-3xl opacity-60 group-hover:bg-emerald-100 transition-colors" />
+                    <div className="relative z-10 flex justify-between items-start mb-6">
+                        <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-[1.2rem] flex items-center justify-center shadow-lg shadow-emerald-500/10 group-hover:scale-110 transition-transform">
+                            <TrendingUp size={24} />
+                        </div>
+                        <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-600 font-bold text-[10px] px-3 py-1.5 rounded-full border border-emerald-100">
+                            <ArrowUpRight size={14} /> إجمالي الدخل
+                        </div>
                     </div>
                     <div className="relative z-10">
-                        <span className="text-gray-400 text-xs font-bold mb-2 block">إجمالي الإيرادات</span>
-                        <h3 className="text-2xl font-black text-brand-dark tracking-tight">{formatCurrency(currentStats.revenue, settings.currency)}</h3>
-                        <div className="flex items-center gap-1.5 mt-3 text-green-600 font-bold text-[10px] bg-green-50 w-fit px-2 py-1 rounded-full">
-                            <ArrowUpRight size={12} />
-                            <span>نمو مستمر</span>
-                        </div>
+                        <h3 className="text-3xl font-black text-brand-dark tracking-tighter mb-1">{formatCurrency(currentStats.revenue, settings.currency)}</h3>
+                        <p className="text-[11px] font-bold text-gray-400">الإيرادات الإجمالية للفترة المحددة</p>
                     </div>
                 </div>
 
                 {/* Supplier Expenses Card */}
-                <div className="bg-white p-6 rounded-[2.5rem] border border-red-100 shadow-xl shadow-red-500/5 relative overflow-hidden group hover:border-red-200 transition-all">
-                    <div className="absolute top-0 left-0 w-20 h-20 bg-red-50 rounded-br-[3rem] flex items-center justify-center -ml-4 -mt-4 transition-transform group-hover:scale-110">
-                        <ShoppingBag size={22} className="text-red-600 -translate-x-1 -translate-y-1" />
+                <div className="bg-white rounded-[2.5rem] p-7 border border-rose-100 shadow-[0_20px_50px_-15px_rgba(244,63,94,0.1)] relative overflow-hidden group hover:-translate-y-2 transition-all duration-500 flex flex-col justify-between">
+                    <div className="absolute -right-6 -top-6 w-32 h-32 bg-rose-50 rounded-full blur-3xl opacity-60 group-hover:bg-rose-100 transition-colors" />
+                    <div className="relative z-10 flex justify-between items-start mb-6">
+                        <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-[1.2rem] flex items-center justify-center shadow-lg shadow-rose-500/10 group-hover:scale-110 transition-transform">
+                            <ShoppingBag size={24} />
+                        </div>
+                        <div className="flex items-center gap-1.5 bg-rose-50 text-rose-600 font-bold text-[10px] px-3 py-1.5 rounded-full border border-rose-100">
+                            <ArrowDownRight size={14} /> صادر الموردين
+                        </div>
                     </div>
                     <div className="relative z-10">
-                        <span className="text-gray-400 text-xs font-bold mb-2 block">مصاريف الموردين</span>
-                        <h3 className="text-2xl font-black text-red-600 tracking-tight">{formatCurrency(currentStats.supplierExpenses, settings.currency)}</h3>
-                        <div className="flex items-center gap-1.5 mt-3 text-red-500 font-bold text-[10px] bg-red-50 w-fit px-2 py-1 rounded-full">
-                            <ArrowDownRight size={12} />
-                            <span>من قسم الموردين</span>
-                        </div>
+                        <h3 className="text-3xl font-black text-brand-dark tracking-tighter mb-1">{formatCurrency(currentStats.supplierExpenses, settings.currency)}</h3>
+                        <p className="text-[11px] font-bold text-gray-400">إجمالي مدفوعات البضائع والاستهلاك</p>
                     </div>
                 </div>
 
                 {/* Salary Expenses Card */}
-                <div className="bg-white p-6 rounded-[2.5rem] border border-orange-100 shadow-xl shadow-orange-500/5 relative overflow-hidden group hover:border-orange-200 transition-all">
-                    <div className="absolute top-0 left-0 w-20 h-20 bg-orange-50 rounded-br-[3rem] flex items-center justify-center -ml-4 -mt-4 transition-transform group-hover:scale-110">
-                        <Users size={22} className="text-orange-600 -translate-x-1 -translate-y-1" />
+                <div className="bg-white rounded-[2.5rem] p-7 border border-orange-100 shadow-[0_20px_50px_-15px_rgba(249,115,22,0.1)] relative overflow-hidden group hover:-translate-y-2 transition-all duration-500 flex flex-col justify-between">
+                    <div className="absolute -right-6 -top-6 w-32 h-32 bg-orange-50 rounded-full blur-3xl opacity-60 group-hover:bg-orange-100 transition-colors" />
+                    <div className="relative z-10 flex justify-between items-start mb-6">
+                        <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-[1.2rem] flex items-center justify-center shadow-lg shadow-orange-500/10 group-hover:scale-110 transition-transform">
+                            <Users size={24} />
+                        </div>
+                        <div className="flex items-center gap-1.5 bg-orange-50 text-orange-600 font-bold text-[10px] px-3 py-1.5 rounded-full border border-orange-100">
+                            <Wallet size={14} /> صادر الرواتب
+                        </div>
                     </div>
                     <div className="relative z-10">
-                        <span className="text-gray-400 text-xs font-bold mb-2 block">مصاريف الرواتب</span>
-                        <h3 className="text-2xl font-black text-orange-600 tracking-tight">{formatCurrency(currentStats.salaryExpense, settings.currency)}</h3>
-                        <div className="flex items-center gap-1.5 mt-3 text-orange-500 font-bold text-[10px] bg-orange-50 w-fit px-2 py-1 rounded-full">
-                            <Wallet size={12} />
-                            <span>إدارة الموظفين</span>
-                        </div>
+                        <h3 className="text-3xl font-black text-brand-dark tracking-tighter mb-1">{formatCurrency(currentStats.salaryExpense, settings.currency)}</h3>
+                        <p className="text-[11px] font-bold text-gray-400">حصة الرواتب المقررة للاقتطاع</p>
                     </div>
                 </div>
 
-                {/* Net Profit Card */}
-                <div className="bg-gradient-to-br from-brand-dark to-brand-primary p-6 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
-                    <div className="absolute -top-6 -left-6 w-24 h-24 bg-white/10 rounded-br-[3rem] transition-transform group-hover:scale-110"></div>
-                    <div className="relative z-10">
-                        <span className="text-brand-light/60 text-xs font-bold mb-2 block">صافي الربح</span>
-                        <h3 className="text-2xl font-black text-white tracking-tight">{formatCurrency(currentStats.netProfit, settings.currency)}</h3>
-                        <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 text-brand-light rounded-full text-[10px] font-black border border-white/5">
-                            <Sparkles size={12} />
-                            <span>الأرباح الصافية</span>
+                {/* Net Profit Card - Premium Glassmorphism */}
+                <div className="bg-gradient-to-br from-brand-dark to-[#1A2E25] rounded-[2.5rem] p-7 border border-white/10 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] relative overflow-hidden group hover:-translate-y-2 transition-all duration-500 flex flex-col justify-between">
+                    <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-brand-accent/20 via-transparent to-transparent opacity-80" />
+
+                    <div className="relative z-10 flex justify-between items-start mb-6">
+                        <div className="w-12 h-12 bg-brand-accent text-brand-dark rounded-[1.2rem] flex items-center justify-center shadow-[0_0_20px_rgba(248,150,30,0.4)] group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+                            <Sparkles size={24} />
                         </div>
+                        <div className="flex items-center gap-1.5 bg-white/10 text-white font-bold text-[10px] px-3 py-1.5 rounded-full border border-white/20 backdrop-blur-md">
+                            <ShieldCheck size={14} /> صافي الأرباح
+                        </div>
+                    </div>
+                    <div className="relative z-10">
+                        <h3 className="text-4xl font-black text-white tracking-tighter mb-1 relative inline-block">
+                            {formatCurrency(currentStats.netProfit, settings.currency)}
+                            <div className="absolute -bottom-2 right-0 left-0 h-1 bg-gradient-to-r from-brand-accent to-transparent rounded-full" />
+                        </h3>
+                        <p className="text-[11px] font-bold text-white/50 mt-3 pt-1">الربح الصافي بعد خصم كافة التكاليف والمصروفات</p>
                     </div>
                 </div>
             </div>
 
-            {/* Detailed Preview Section */}
-            <div className="bg-white rounded-[3.5rem] shadow-2xl border border-brand-light/30 overflow-hidden relative mb-20">
-                <div className="p-6 md:p-8 border-b border-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50/30 backdrop-blur-sm gap-6">
-                    <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-brand-dark rounded-2xl flex items-center justify-center text-brand-accent shadow-lg shadow-brand-dark/10">
-                            <FileText size={20} className="md:w-6 md:h-6" />
+            {/* Rendered Document Preview Section */}
+            <div className="bg-[#E4E6EB] p-4 sm:p-8 rounded-[3rem] shadow-[inset_0_4px_20px_rgba(0,0,0,0.05)] border border-gray-200 mb-20 relative">
+
+                {/* PDF Export Floating Bar */}
+                <div className="sticky top-24 z-30 mb-8 bg-white/80 backdrop-blur-xl p-4 rounded-[2rem] shadow-xl border border-white flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center border border-blue-100">
+                            <FileText size={20} />
                         </div>
                         <div>
-                            <h2 className="text-lg md:text-xl font-black text-brand-dark">الكشف المحاسبي الموحد</h2>
-                            <p className="text-[9px] md:text-[10px] text-gray-400 font-bold tracking-widest uppercase">Unified Accounting Disclosure | {periodLabels[period]}</p>
+                            <h2 className="font-black text-brand-dark">معاينة الوثيقة المحاسبية</h2>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Document Preview & Export</p>
                         </div>
                     </div>
-
                     <button
                         onClick={handleExportPDF}
                         disabled={isGenerating}
-                        className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-brand-accent hover:bg-orange-600 text-white font-black rounded-2xl transition-all shadow-xl shadow-brand-accent/20 disabled:opacity-50 group active:scale-95 text-sm"
+                        className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-3 bg-brand-primary hover:bg-brand-secondary text-white font-black rounded-xl transition-all shadow-lg active:scale-95 text-sm disabled:opacity-70 disabled:cursor-not-allowed group"
                     >
-                        {isGenerating ? <RefreshCw size={18} className="animate-spin" /> : <Download size={18} className="group-hover:translate-y-0.5 transition-transform" />}
-                        <span>تصدير التقرير المالي</span>
+                        {isGenerating ? <RefreshCw size={18} className="animate-spin" /> : <Download size={18} className="group-hover:-translate-y-0.5 transition-transform" />}
+                        <span>{isGenerating ? 'جاري التحضير...' : 'تصدير كمستند PDF'}</span>
                     </button>
                 </div>
 
-                <div className="overflow-x-auto no-scrollbar">
-                    <div ref={reportRef} className="p-8 md:p-16 bg-white min-w-[700px] xl:min-w-0" dir="rtl">
-                        <div className="flex justify-between items-start border-b-8 border-brand-dark pb-10 mb-12">
-                            <div className="text-right">
-                                <h1 className="text-5xl font-black text-brand-dark mb-3">{settings.storeName}</h1>
-                                <div className="flex items-center gap-2 text-brand-accent">
-                                    <Sparkles size={20} />
-                                    <p className="text-xl font-bold uppercase tracking-[0.2em]">تقرير الأداء المالي والربحية</p>
+                {/* The Actual "Paper" Output */}
+                <div className="overflow-x-auto no-scrollbar pb-10 flex justify-center">
+                    <div
+                        ref={reportRef}
+                        className="bg-white shadow-[0_20px_60px_rgba(0,0,0,0.1)] w-[210mm] min-h-[297mm] p-12 relative overflow-hidden"
+                        dir="rtl"
+                    >
+                        {/* Premium Watermark */}
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.03] pointer-events-none select-none z-0 text-brand-primary">
+                            <ShieldCheck size={400} />
+                        </div>
+
+                        {/* Header Border Aesthetic */}
+                        <div className="absolute top-0 right-0 left-0 h-3 bg-gradient-to-l from-brand-primary via-brand-dark to-brand-accent"></div>
+
+                        <div className="relative z-10">
+                            {/* Document Header Line */}
+                            <div className="flex justify-between items-start border-b-2 border-gray-100 pb-8 mb-10">
+                                <div>
+                                    <h1 className="text-4xl font-black text-brand-dark tracking-tighter mb-2">{settings.storeName}</h1>
+                                    <div className="inline-flex items-center gap-2 bg-brand-primary/5 text-brand-primary px-3 py-1 rounded-full border border-brand-primary/10">
+                                        <CheckCircle2 size={14} />
+                                        <p className="text-[10px] font-black uppercase tracking-widest">وثيقة تقرير أداء مالي معتمدة</p>
+                                    </div>
+                                </div>
+                                <div className="text-left flex flex-col items-end">
+                                    <div className="bg-gray-50 px-4 py-2 rounded-xl mb-2 text-center border border-gray-100">
+                                        <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mb-1">تاريخ الإصدار</p>
+                                        <p className="text-lg font-black text-brand-dark leading-none">{new Date().toLocaleDateString('ar-EG')}</p>
+                                    </div>
+                                    <p className="text-[10px] font-bold text-gray-400 tracking-widest mt-1">Ref: REP-{Math.floor(Date.now() / 1000).toString(16).toUpperCase()}</p>
                                 </div>
                             </div>
-                            <div className="text-left">
-                                <p className="text-gray-400 font-black text-sm mb-1 uppercase tracking-widest">تاريخ الإصدار</p>
-                                <p className="text-2xl font-black text-brand-dark">{new Date().toLocaleDateString('ar-IQ')}</p>
-                            </div>
-                        </div>
 
-                        <div className="grid grid-cols-3 gap-8 mb-16 text-right">
-                            <div className="bg-gray-50 p-8 rounded-[2.5rem] border border-gray-100">
-                                <p className="text-xs text-brand-primary font-black uppercase mb-3">إجمالي المدخول</p>
-                                <p className="text-4xl font-black text-brand-dark">{formatCurrency(currentStats.revenue, settings.currency)}</p>
+                            {/* Period Title */}
+                            <div className="flex items-center justify-between bg-brand-dark text-white rounded-2xl px-6 py-4 mb-10 shadow-lg">
+                                <h3 className="text-xl font-black tracking-tight">الملخص المالي ({periodLabels[period]})</h3>
+                                <div className="flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full border border-white/5 font-bold text-xs opacity-90">
+                                    <Calendar size={14} className="text-brand-accent" />
+                                    حتى تاريخ {new Date().toLocaleDateString('ar-EG')}
+                                </div>
                             </div>
-                            <div className="bg-gray-50 p-8 rounded-[2.5rem] border border-gray-100">
-                                <p className="text-xs text-red-500 font-black uppercase mb-3">إجمالي المصاريف</p>
-                                <p className="text-4xl font-black text-red-600">{formatCurrency(currentStats.totalExpenses, settings.currency)}</p>
+
+                            {/* KPI Board Grid */}
+                            <div className="grid grid-cols-3 gap-6 mb-12">
+                                <div className="border border-gray-100 p-6 rounded-2xl relative overflow-hidden bg-gray-50">
+                                    <div className="w-1 absolute right-0 top-0 bottom-0 bg-emerald-500 rounded-r-lg"></div>
+                                    <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2 flex items-center gap-1">
+                                        <TrendingUp size={12} className="text-emerald-500" /> إجمالي الإيرادات
+                                    </p>
+                                    <p className="text-2xl font-black text-brand-dark">{formatCurrency(currentStats.revenue, settings.currency)}</p>
+                                </div>
+                                <div className="border border-gray-100 p-6 rounded-2xl relative overflow-hidden bg-gray-50">
+                                    <div className="w-1 absolute right-0 top-0 bottom-0 bg-rose-500 rounded-r-lg"></div>
+                                    <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2 flex items-center gap-1">
+                                        <ShoppingBag size={12} className="text-rose-500" /> إجمالي المصروفات
+                                    </p>
+                                    <p className="text-2xl font-black text-rose-600">{formatCurrency(currentStats.totalExpenses, settings.currency)}</p>
+                                </div>
+                                <div className="border border-brand-primary/20 p-6 rounded-2xl relative overflow-hidden bg-brand-primary/5">
+                                    <div className="w-1.5 absolute right-0 top-0 bottom-0 bg-brand-primary rounded-r-lg shadow-[0_0_10px_rgba(45,106,79,0.5)]"></div>
+                                    <p className="text-[10px] text-brand-primary font-black uppercase tracking-widest mb-2 flex items-center gap-1">
+                                        <ShieldCheck size={12} /> الصافي الربحي
+                                    </p>
+                                    <p className="text-3xl font-black text-brand-dark">{formatCurrency(currentStats.netProfit, settings.currency)}</p>
+                                </div>
                             </div>
-                            <div className="bg-brand-dark p-8 rounded-[2.5rem] shadow-xl shadow-brand-dark/20">
-                                <p className="text-xs text-brand-light font-black uppercase mb-3">الفائض الربحي</p>
-                                <p className="text-4xl font-black text-brand-accent">{formatCurrency(currentStats.netProfit, settings.currency)}</p>
-                            </div>
-                        </div>
 
-                        <div className="space-y-10">
-                            <div>
-                                <h3 className="text-2xl font-black text-brand-dark mb-6 flex items-center gap-3">
-                                    <div className="w-2 h-8 bg-brand-primary rounded-full"></div>
-                                    تحليل بنود المصروفات
-                                </h3>
-                                <div className="grid grid-cols-2 gap-10">
-                                    <div className="p-8 rounded-3xl border-2 border-dashed border-gray-100">
-                                        <div className="flex justify-between items-center mb-6">
-                                            <span className="font-black text-gray-500">مشتريات الموردين</span>
-                                            <span className="px-4 py-2 bg-red-50 text-red-600 rounded-xl text-xs font-black">قطاع التوريد</span>
-                                        </div>
-                                        <p className="text-3xl font-black text-brand-dark">{formatCurrency(currentStats.supplierExpenses, settings.currency)}</p>
-                                        <p className="text-[10px] text-gray-400 mt-4 font-bold leading-relaxed">تشمل هذه القيمة كافة المبالغ المدفوعة لموردي البن والحليب والمواد التكميلية خلال الفترة المختارة.</p>
-                                    </div>
-                                    <div className="p-8 rounded-3xl border-2 border-dashed border-gray-100">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <span className="font-black text-gray-500">رواتب وأجور الموظفين</span>
-                                            <span className="px-4 py-2 bg-orange-50 text-orange-600 rounded-xl text-xs font-black">الموارد البشرية</span>
-                                        </div>
+                            <div className="space-y-10">
+                                {/* Expenses Section */}
+                                <div>
+                                    <h3 className="text-base font-black text-brand-dark mb-4 pb-2 border-b-2 border-gray-100 flex items-center gap-2">
+                                        <PieChart size={18} className="text-brand-primary" /> تفصل النفقات والمصروفات
+                                    </h3>
 
-                                        {/* إجمالي الفترة */}
-                                        <p className="text-3xl font-black text-brand-dark mb-1">{formatCurrency(currentStats.salaryExpense, settings.currency)}</p>
-                                        <p className="text-[10px] text-orange-500 font-black uppercase tracking-widest mb-5">
-                                            {period === 'daily' ? 'إجمالي رواتب اليوم  (الشهري ÷ 30)' :
-                                                period === 'weekly' ? 'إجمالي رواتب الأسبوع  (الشهري ÷ 30 × 7)' :
-                                                    period === 'monthly' ? 'إجمالي الرواتب الشهرية' :
-                                                        'إجمالي رواتب الموسم  (الشهري × 4)'}
-                                        </p>
-
-                                        {/* تفصيل لكل موظف */}
-                                        {currentStats.salaryBreakdown && currentStats.salaryBreakdown.length > 0 && (
-                                            <div className="border-t border-gray-100 pt-4 space-y-2">
-                                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">كشف راتب كل موظف</p>
-                                                {currentStats.salaryBreakdown.map((emp, i) => (
-                                                    <div key={i} className="flex justify-between items-center py-2.5 px-3 rounded-xl hover:bg-orange-50/50 transition-colors border-b border-dashed border-gray-50 last:border-0">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center font-black text-xs shrink-0">
-                                                                {emp.name.charAt(0)}
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-sm font-black text-brand-dark leading-none">{emp.name}</p>
-                                                                <p className="text-[10px] text-gray-400 font-bold mt-0.5">
-                                                                    شهري: {formatCurrency(emp.monthly, settings.currency)}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <p className="font-black text-sm text-brand-dark">{formatCurrency(emp.period, settings.currency)}</p>
-                                                            <p className="text-[10px] text-orange-500 font-bold">
-                                                                {period === 'daily' ? 'اليوم' :
-                                                                    period === 'weekly' ? 'الأسبوع' :
-                                                                        period === 'monthly' ? 'الشهر' :
-                                                                            'الموسم'}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                                <div className="flex justify-between items-center pt-3 mt-1 border-t border-orange-100">
-                                                    <div>
-                                                        <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest block">إجمالي الرواتب الشهرية</span>
-                                                        <span className="text-[9px] text-gray-400 font-bold">القاعدة المرجعية للحساب</span>
-                                                    </div>
-                                                    <span className="font-black text-orange-600 text-lg">{formatCurrency(currentStats.totalMonthlySalaries, settings.currency)}</span>
+                                    <div className="grid grid-cols-2 gap-8">
+                                        {/* Suppliers Profile */}
+                                        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                                            <div className="flex justify-between items-center mb-6">
+                                                <span className="font-black text-xs text-gray-600 bg-gray-50 px-3 py-1 rounded-full">القطاع: التوريد والمخزون</span>
+                                                <div className="w-8 h-8 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center">
+                                                    <ShoppingBag size={14} />
                                                 </div>
                                             </div>
-                                        )}
+                                            <p className="text-2xl font-black text-brand-dark mb-2">{formatCurrency(currentStats.supplierExpenses, settings.currency)}</p>
+                                            <div className="border-t border-dashed border-gray-100 pt-3 mt-3">
+                                                <p className="text-[9px] text-gray-400 font-bold leading-relaxed text-justify">
+                                                    يمثل هذا المبلغ كافة تكاليف الاستهلاك وتوريد البضائع الخام بناءً على مطالبات الموردين لهذه الفترة.
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Salaries Profile */}
+                                        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <span className="font-black text-xs text-gray-600 bg-gray-50 px-3 py-1 rounded-full">القطاع: الموارد البشرية</span>
+                                                <div className="w-8 h-8 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center">
+                                                    <Users size={14} />
+                                                </div>
+                                            </div>
+
+                                            <p className="text-2xl font-black text-brand-dark mb-4">{formatCurrency(currentStats.salaryExpense, settings.currency)}</p>
+
+                                            {currentStats.salaryBreakdown && currentStats.salaryBreakdown.length > 0 && (
+                                                <div className="bg-gray-50/80 rounded-xl p-4 text-xs font-bold text-gray-600 space-y-3 border border-gray-100">
+                                                    <p className="text-[8px] font-black uppercase tracking-widest text-brand-primary">كشف الرواتب المفصل - المقدر لـ {periodLabels[period]}</p>
+                                                    {currentStats.salaryBreakdown.map((emp, i) => (
+                                                        <div key={i} className="flex justify-between items-center border-b border-gray-200 border-dashed pb-2 last:border-0 last:pb-0">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-4 h-4 bg-white border border-gray-200 rounded text-[8px] font-black text-brand-dark flex flex-col justify-center items-center">
+                                                                    {emp.name.charAt(0)}
+                                                                </div>
+                                                                <span className="text-[11px]">{emp.name}</span>
+                                                            </div>
+                                                            <span className="font-black text-brand-dark text-[11px]">{formatCurrency(emp.period, settings.currency)}</span>
+                                                        </div>
+                                                    ))}
+                                                    <div className="pt-2 mt-2 border-t border-gray-300 flex justify-between items-center text-brand-dark">
+                                                        <span className="font-black text-[9px] uppercase tracking-widest">المرجع الشهري الشامل للمؤسسة</span>
+                                                        <span className="font-black text-xs">{formatCurrency(currentStats.totalMonthlySalaries, settings.currency)}</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Operational Performance */}
+                                <div>
+                                    <h3 className="text-base font-black text-brand-dark mb-4 pb-2 border-b-2 border-gray-100 flex items-center gap-2">
+                                        <TrendingUp size={18} className="text-brand-primary" /> مؤشرات البيع والتسويق
+                                    </h3>
+
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="bg-brand-primary/5 border border-brand-primary/10 rounded-2xl p-5 flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm text-brand-accent border border-brand-primary/20 shrink-0">
+                                                <Package size={24} />
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mb-1">المنتج الأكثر مبيعاً</p>
+                                                <p className="text-lg font-black text-brand-dark mb-0.5">{currentStats.topItem}</p>
+                                                <p className="text-[10px] font-black text-brand-primary bg-white px-2 py-0.5 rounded-md inline-block shadow-sm">
+                                                    إلتقاط {currentStats.topItemCount} طلبية
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-brand-primary/5 border border-brand-primary/10 rounded-2xl p-5 flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm text-emerald-500 border border-brand-primary/20 shrink-0">
+                                                <DollarSign size={24} />
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mb-1">متوسط إيراد المعاملة (AOV)</p>
+                                                <p className="text-lg font-black text-brand-dark mb-0.5">{formatCurrency(currentStats.avgOrderValue, settings.currency)}</p>
+                                                <p className="text-[10px] font-black text-emerald-600 bg-white px-2 py-0.5 rounded-md inline-block shadow-sm">
+                                                    إجمالي {currentStats.orderCount} معاملة
+                                                </p>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div>
-                                <h3 className="text-2xl font-black text-brand-dark mb-6 flex items-center gap-3">
-                                    <div className="w-2 h-8 bg-brand-primary rounded-full"></div>
-                                    مؤشرات الأداء والبيع
-                                </h3>
-                                <div className="bg-gray-50 p-10 rounded-[3rem] border border-gray-100 flex justify-between items-center">
-                                    <div className="flex flex-col gap-2">
-                                        <span className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">المنتج النجم (Star Product)</span>
-                                        <p className="text-2xl font-black text-brand-dark">{currentStats.topItem}</p>
-                                        <span className="text-xs text-brand-primary font-black">بإجمالي مبيعات: {currentStats.topItemCount} قطعة</span>
+                            {/* Footer Signatures */}
+                            <div className="mt-20 pt-10 border-t-2 border-gray-100 pb-10">
+                                <div className="flex justify-between px-16 text-center">
+                                    <div className="w-48">
+                                        <p className="text-[10px] font-black text-brand-dark mb-10">إعداد النظام المحاسبي الآلي</p>
+                                        <div className="border-t border-gray-300 pt-2 border-dashed">
+                                            <p className="text-[8px] text-gray-400 font-bold uppercase tracking-widest">مصادقة الخوادم الإلكترونية</p>
+                                        </div>
                                     </div>
-                                    <div className="w-px h-20 bg-gray-200"></div>
-                                    <div className="flex flex-col gap-2">
-                                        <span className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">متوسط قيمة العملية (AOV)</span>
-                                        <p className="text-2xl font-black text-brand-dark">{formatCurrency(currentStats.avgOrderValue, settings.currency)}</p>
-                                        <span className="text-xs text-brand-primary font-black">عبر {currentStats.orderCount} معاملة ناجحة</span>
+
+                                    <div className="w-48">
+                                        <p className="text-[10px] font-black text-brand-dark mb-10">اعتماد ومراجعة الإدارة</p>
+                                        <div className="border-t border-gray-800 pt-2">
+                                            <p className="text-[8px] text-brand-dark font-bold uppercase tracking-widest">التوقيع أو الختم المعتمد</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="mt-20 pt-10 border-t border-gray-100 flex justify-between items-center opacity-40">
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em]">© Al Afia Business Intelligence - Confidential Financial Report</p>
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em]">Generated Securely via Golden POS Cloud</p>
+                            {/* Strict Footer */}
+                            <div className="absolute bottom-0 inset-x-0 h-10 bg-brand-dark flex justify-between items-center px-10">
+                                <p className="text-[7px] text-white/50 uppercase tracking-[0.2em]">Automated Financial Export • Golden POS Analytics</p>
+                                <p className="text-[7px] text-white/50 uppercase tracking-[0.2em] font-sans">CONFIDENTIAL & INTERNAL USE ONLY</p>
+                            </div>
                         </div>
                     </div>
                 </div>

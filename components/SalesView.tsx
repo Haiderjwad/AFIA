@@ -22,6 +22,7 @@ interface SalesViewProps {
     onEditOrder?: (id: string) => void;
     onMoveTable?: (id: string, newTable: string) => void;
     onMoveOrderItem?: (sourceTransactionId: string, itemId: string, targetTable: string) => void;
+    onRemoveOrderItem?: (transactionId: string, itemId: string) => void;
     isEditing?: boolean;
     onToggleReceiptPanel?: () => void;
     cartCount?: number;
@@ -131,7 +132,7 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
     products, addToCart, settings, readyOrders, transactions,
     currentUser, onCompleteOrder, onCancelOrder, onToggleReceiptPanel, cartCount,
     selectedTableNumber, onSelectTable, tableGuestCounts, onGuestCountChange,
-    onEditOrder, isEditing, onMoveTable, onMoveOrderItem
+    onEditOrder, isEditing, onMoveTable, onMoveOrderItem, onRemoveOrderItem
 }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -146,8 +147,10 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
     // Order Detail Modal — clicked from activity log
     const [selectedOrderDetail, setSelectedOrderDetail] = useState<import('../types').Transaction | null>(null);
     // Item transfer state
+    const [tableMoveConfirm, setTableMoveConfirm] = useState<{ isOpen: boolean, orderId: string, fromTable: string, toTable: string } | null>(null);
     const [itemTransferTarget, setItemTransferTarget] = useState<{ itemId: string; itemName: string; orderId: string } | null>(null);
     const [itemTransferConfirm, setItemTransferConfirm] = useState<{ itemId: string; itemName: string; orderId: string; toTable: string } | null>(null);
+    const [itemRemoveConfirm, setItemRemoveConfirm] = useState<{ orderId: string, itemId: string, itemName: string } | null>(null);
 
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [notifiedReadyIds, setNotifiedReadyIds] = useState<Set<string>>(new Set());
@@ -642,9 +645,9 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
             {/* Modern Sidebar Activity Menu */}
             {
                 showActivityLog && (
-                    <div className="fixed inset-y-0 right-0 lg:right-28 left-0 z-[1000] flex justify-start animate-in fade-in duration-300">
+                    <div className="fixed top-20 bottom-0 right-0 lg:right-28 left-0 z-[1000] flex justify-start animate-in fade-in duration-300">
                         <div className="absolute inset-0 bg-brand-dark/60 backdrop-blur-[2px]" onClick={() => setShowActivityLog(false)} />
-                        <div className="relative w-full max-w-lg bg-white h-full shadow-[0_0_100px_rgba(0,0,0,0.3)] flex flex-col animate-in slide-in-from-right duration-500">
+                        <div className="relative w-full max-w-lg bg-white h-full shadow-[0_0_100px_rgba(0,0,0,0.3)] flex flex-col animate-in slide-in-from-right duration-500 rounded-tl-3xl lg:rounded-none overflow-hidden">
                             <div className="p-10 bg-brand-dark text-white relative">
                                 <div className="flex items-center gap-5">
                                     <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center text-brand-accent">
@@ -748,42 +751,50 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
 
                                                                     {/* Inline Move Table Dropdown */}
                                                                     {movingOrderId === order.id && (
-                                                                        <div className="absolute top-full right-0 mt-4 bg-white rounded-3xl shadow-4xl border border-gray-100 p-6 z-[700] w-72 animate-in zoom-in-95 slide-in-from-top-2 duration-300">
-                                                                            <div className="flex items-center justify-between mb-4 px-2">
-                                                                                <p className="text-[10px] font-black text-brand-dark uppercase tracking-widest">اختر الطاولة الجديدة</p>
-                                                                                <button onClick={() => setMovingOrderId(null)} className="text-gray-300 hover:text-rose-500 transition-colors"><X size={16} /></button>
-                                                                            </div>
-                                                                            <div className="grid grid-cols-4 gap-3 max-h-48 overflow-y-auto no-scrollbar">
-                                                                                {Array.from({ length: settings.tablesCount || 24 }, (_, i) => String(i + 1)).map(num => (
+                                                                        <>
+                                                                            {/* Transparent Overlay for outside click closing */}
+                                                                            <div className="fixed inset-0 z-[690]" onClick={(e) => { e.stopPropagation(); setMovingOrderId(null); }} />
+
+                                                                            <div
+                                                                                className="absolute top-full right-0 mt-4 bg-white rounded-3xl shadow-4xl border border-gray-100 p-6 z-[700] w-72 animate-in zoom-in-95 slide-in-from-top-2 duration-300"
+                                                                                onClick={(e) => e.stopPropagation()}
+                                                                            >
+                                                                                <div className="flex items-center justify-between mb-4 px-2">
+                                                                                    <p className="text-[10px] font-black text-brand-dark uppercase tracking-widest">اختر الطاولة الجديدة</p>
+                                                                                    <button onClick={() => setMovingOrderId(null)} className="text-gray-300 hover:text-rose-500 transition-colors"><X size={16} /></button>
+                                                                                </div>
+                                                                                <div className="grid grid-cols-4 gap-3 max-h-48 overflow-y-auto no-scrollbar">
+                                                                                    {Array.from({ length: settings.tablesCount || 24 }, (_, i) => String(i + 1)).map(num => (
+                                                                                        <button
+                                                                                            key={num}
+                                                                                            onClick={() => {
+                                                                                                const fromTable = order.tableNumber || 'Takeaway';
+                                                                                                onMoveTable?.(order.id, num);
+                                                                                                setMovingOrderId(null);
+                                                                                                setMoveSuccess({ isOpen: true, from: fromTable, to: num });
+                                                                                                setTimeout(() => setMoveSuccess(null), 3000);
+                                                                                            }}
+                                                                                            disabled={num === order.tableNumber}
+                                                                                            className={`h-11 rounded-xl flex items-center justify-center font-black text-xs transition-all ${num === order.tableNumber ? 'bg-gray-50 text-gray-200 cursor-not-allowed' : 'bg-brand-primary/5 text-brand-primary hover:bg-brand-primary hover:text-white active:scale-95 shadow-sm'}`}
+                                                                                        >
+                                                                                            {num}
+                                                                                        </button>
+                                                                                    ))}
                                                                                     <button
-                                                                                        key={num}
                                                                                         onClick={() => {
                                                                                             const fromTable = order.tableNumber || 'Takeaway';
-                                                                                            onMoveTable?.(order.id, num);
+                                                                                            onMoveTable?.(order.id, 'Takeaway');
                                                                                             setMovingOrderId(null);
-                                                                                            setMoveSuccess({ isOpen: true, from: fromTable, to: num });
+                                                                                            setMoveSuccess({ isOpen: true, from: fromTable, to: 'Takeaway' });
                                                                                             setTimeout(() => setMoveSuccess(null), 3000);
                                                                                         }}
-                                                                                        disabled={num === order.tableNumber}
-                                                                                        className={`h-11 rounded-xl flex items-center justify-center font-black text-xs transition-all ${num === order.tableNumber ? 'bg-gray-50 text-gray-200 cursor-not-allowed' : 'bg-brand-primary/5 text-brand-primary hover:bg-brand-primary hover:text-white active:scale-95 shadow-sm'}`}
+                                                                                        className="col-span-4 h-11 rounded-xl bg-brand-accent/10 text-brand-accent font-black text-xs hover:bg-brand-accent hover:text-white transition-all flex items-center justify-center gap-2"
                                                                                     >
-                                                                                        {num}
+                                                                                        <ShoppingCart size={14} /> تحويل لسفري
                                                                                     </button>
-                                                                                ))}
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        const fromTable = order.tableNumber || 'Takeaway';
-                                                                                        onMoveTable?.(order.id, 'Takeaway');
-                                                                                        setMovingOrderId(null);
-                                                                                        setMoveSuccess({ isOpen: true, from: fromTable, to: 'Takeaway' });
-                                                                                        setTimeout(() => setMoveSuccess(null), 3000);
-                                                                                    }}
-                                                                                    className="col-span-4 h-11 rounded-xl bg-brand-accent/10 text-brand-accent font-black text-xs hover:bg-brand-accent hover:text-white transition-all flex items-center justify-center gap-2"
-                                                                                >
-                                                                                    <ShoppingCart size={14} /> تحويل لسفري
-                                                                                </button>
+                                                                                </div>
                                                                             </div>
-                                                                        </div>
+                                                                        </>
                                                                     )}
                                                                 </div>
                                                                 <div className="flex items-center gap-2">
@@ -883,7 +894,7 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
             {/* ═══════════════════════════════════════════════════════════
                 ORDER DETAIL MODAL — Full Item Breakdown
             ═══════════════════════════════════════════════════════════ */}
-            {selectedOrderDetail && !itemTransferTarget && !itemTransferConfirm && (
+            {selectedOrderDetail && !itemTransferTarget && !itemTransferConfirm && !itemRemoveConfirm && (
                 <div className="fixed inset-0 z-[1500] flex items-center justify-center p-4 bg-brand-dark/60 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setSelectedOrderDetail(null)}>
                     <div
                         className="bg-white w-full max-w-md rounded-[2.5rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.35)] overflow-hidden flex flex-col animate-in zoom-in-95 slide-in-from-bottom-4 duration-500 max-h-[85vh]"
@@ -954,21 +965,39 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                                             <span className="text-brand-accent font-black text-[11px]">{formatCurrency(item.price * item.quantity, settings.currency)}</span>
                                         </div>
                                     </div>
-                                    {/* Transfer Arrow Button */}
-                                    <button
-                                        onClick={e => {
-                                            e.stopPropagation();
-                                            setItemTransferTarget({
-                                                itemId: item.id,
-                                                itemName: item.name,
-                                                orderId: selectedOrderDetail.id
-                                            });
-                                        }}
-                                        className="w-10 h-10 rounded-2xl bg-brand-primary/10 text-brand-primary hover:bg-brand-primary hover:text-white transition-all flex items-center justify-center shrink-0 shadow-sm active:scale-90"
-                                        title={`نقل ${item.name} إلى طاولة أخرى`}
-                                    >
-                                        <ArrowRight size={18} />
-                                    </button>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        {/* Transfer Arrow Button */}
+                                        <button
+                                            onClick={e => {
+                                                e.stopPropagation();
+                                                setItemTransferTarget({
+                                                    itemId: item.id,
+                                                    itemName: item.name,
+                                                    orderId: selectedOrderDetail.id
+                                                });
+                                            }}
+                                            className="w-10 h-10 rounded-2xl bg-brand-primary/10 text-brand-primary hover:bg-brand-primary hover:text-white transition-all flex items-center justify-center shadow-sm active:scale-90"
+                                            title={`نقل ${item.name} إلى طاولة أخرى`}
+                                        >
+                                            <ArrowRight size={18} />
+                                        </button>
+
+                                        {/* Remove Item Button */}
+                                        <button
+                                            onClick={e => {
+                                                e.stopPropagation();
+                                                setItemRemoveConfirm({
+                                                    itemId: item.id,
+                                                    itemName: item.name,
+                                                    orderId: selectedOrderDetail.id
+                                                });
+                                            }}
+                                            className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center shadow-sm active:scale-90"
+                                            title={`حذف ${item.name} من الطلب`}
+                                        >
+                                            <X size={18} />
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -1176,6 +1205,48 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                                     تراجع
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* ═══════════════════════════════════════════════════════════
+                 ITEM REMOVAL CONFIRMATION MODAL
+            ═══════════════════════════════════════════════════════════ */}
+            {itemRemoveConfirm && (
+                <div className="fixed inset-0 z-[1700] flex items-center justify-center p-4 bg-brand-dark/80 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.5)] overflow-hidden animate-in zoom-in-95 duration-400 p-8 text-center border-2 border-rose-100" dir="rtl">
+                        <div className="w-20 h-20 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(244,63,94,0.3)]">
+                            <Trash2 size={32} />
+                        </div>
+                        <h3 className="text-2xl font-black text-brand-dark mb-2">تأكيد حذف العنصر</h3>
+                        <p className="text-sm font-bold text-gray-500 mb-8 leading-relaxed">
+                            هل أنت متأكد من رغبتك في إزالة <span className="text-rose-500 px-1">{itemRemoveConfirm.itemName}</span> من هذا الطلب؟ لا يمكن التراجع عن هذا الإجراء وسيتم إرجاع كميته للمخزون.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={async () => {
+                                    if (onRemoveOrderItem) {
+                                        await onRemoveOrderItem(itemRemoveConfirm.orderId, itemRemoveConfirm.itemId);
+                                    }
+
+                                    // If this item was the last item in the order, we should close the order details overlay since it's cancelled
+                                    const currentOrder = transactions.find(t => t.id === itemRemoveConfirm.orderId);
+                                    if (currentOrder && currentOrder.items.length <= 1) {
+                                        setSelectedOrderDetail(null);
+                                    }
+
+                                    setItemRemoveConfirm(null);
+                                }}
+                                className="flex-1 py-4 bg-rose-500 hover:bg-rose-600 text-white font-black rounded-2xl transition-all shadow-lg active:scale-95"
+                            >
+                                تأكيد الحذف
+                            </button>
+                            <button
+                                onClick={() => setItemRemoveConfirm(null)}
+                                className="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-brand-dark font-black rounded-2xl transition-all active:scale-95"
+                            >
+                                إلغاء
+                            </button>
                         </div>
                     </div>
                 </div>
