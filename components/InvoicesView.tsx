@@ -1066,7 +1066,10 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
             setManualCart([]);
             setIsManualModalOpen(false);
             soundService.playSuccess();
-            handlePrint(newTrans);
+
+            if (autoPrint) {
+                handlePrint(newTrans);
+            }
 
             setStatusModal({
                 isOpen: true,
@@ -1194,31 +1197,31 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
                     <div className="flex bg-white p-1 rounded-3xl shadow-sm border border-brand-primary/10 overflow-hidden">
                         <button
                             onClick={() => setActiveTab('pending')}
-                            className={`flex-1 sm:flex-none px-4 md:px-8 py-3 rounded-2xl font-black transition-all flex items-center justify-center gap-2 text-xs md:text-sm ${activeTab === 'pending' ? 'bg-brand-primary text-white shadow-xl shadow-brand-primary/20' : 'text-brand-dark/40 hover:bg-brand-light/30'}`}
+                            className={`flex-1 sm:flex-none px-4 md:px-8 py-3 rounded-2xl font-black transition-all flex items-center justify-center gap-2 text-xs md:text-sm border-2 ${activeTab === 'pending' ? 'bg-brand-primary border-brand-primary text-white shadow-xl shadow-brand-primary/20' : 'bg-transparent border-transparent text-gray-500 hover:text-brand-primary hover:bg-brand-light/30 dark:text-gray-400 dark:hover:text-white dark:hover:bg-slate-700/50'}`}
                         >
                             <ListFilter size={18} /> العالقة
                             {transactions.filter(t => !t.isTableClosed && t.status !== 'cancelled' && t.status !== 'refunded').length > 0 && (
-                                <span className="bg-brand-accent px-2 py-0.5 rounded-full text-[10px] animate-bounce">
+                                <span className="bg-brand-accent px-2 py-0.5 rounded-full text-[10px] animate-bounce text-white">
                                     {transactions.filter(t => !t.isTableClosed && t.status !== 'cancelled' && t.status !== 'refunded').length}
                                 </span>
                             )}
                         </button>
                         <button
                             onClick={() => setActiveTab('all')}
-                            className={`flex-1 sm:flex-none px-4 md:px-8 py-3 rounded-2xl font-black transition-all text-xs md:text-sm ${activeTab === 'all' ? 'bg-brand-primary text-white shadow-xl shadow-brand-primary/20' : 'text-brand-dark/40 hover:bg-brand-light/30'}`}
+                            className={`flex-1 sm:flex-none px-4 md:px-8 py-3 rounded-2xl font-black transition-all flex items-center justify-center gap-2 text-xs md:text-sm border-2 ${activeTab === 'all' ? 'bg-brand-primary border-brand-primary text-white shadow-xl shadow-brand-primary/20' : 'bg-transparent border-transparent text-gray-500 hover:text-brand-primary hover:bg-brand-light/30 dark:text-gray-400 dark:hover:text-white dark:hover:bg-slate-700/50'}`}
                         >
-                            الكل
+                            الكل (الأرشيف)
                         </button>
                     </div>
 
                     <div
                         onClick={() => setAutoPrint(!autoPrint)}
-                        className="flex items-center justify-center gap-3 bg-white px-6 py-3 rounded-2xl border border-brand-primary/10 cursor-pointer hover:bg-brand-light/5 transition-all shadow-sm"
+                        className={`flex items-center justify-center gap-3 px-6 py-3 rounded-2xl border cursor-pointer transition-all shadow-sm ${autoPrint ? 'bg-green-50 dark:bg-green-500/10 border-green-200 dark:border-green-500/30' : 'bg-white dark:bg-slate-800 border-brand-primary/10 hover:bg-brand-light/5 dark:hover:bg-slate-700/50'}`}
                     >
-                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all border-2 shrink-0 ${autoPrint ? 'bg-brand-primary border-transparent' : 'bg-transparent border-gray-200'}`}>
-                            {autoPrint && <Check size={14} className="text-white" />}
+                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all border-2 shrink-0 ${autoPrint ? 'bg-green-500 border-green-500 shadow-md shadow-green-500/40 rotate-0' : 'bg-transparent border-gray-300 dark:border-gray-500 rotate-0 hover:rotate-12'}`}>
+                            {autoPrint && <Check size={14} className="text-white scale-100 animate-in zoom-in duration-300" />}
                         </div>
-                        <span className="text-[10px] md:text-xs font-black text-brand-dark whitespace-nowrap">طباعة فورية</span>
+                        <span className={`text-[10px] md:text-xs font-black whitespace-nowrap ${autoPrint ? 'text-green-700 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>الطباعة التلقائية</span>
                     </div>
                 </div>
             </div>
@@ -1238,9 +1241,10 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
             {/* Transactions Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
                 {displayTransactions.length === 0 ? (
-                    <div className="col-span-full flex flex-col items-center justify-center py-24 text-gray-400 bg-white/50 rounded-[3rem] border-2 border-dashed border-gold-100">
-                        <Coffee size={80} className="mb-4 opacity-10" />
-                        <p className="font-bold text-xl">لا توجد سجلات مطابقة لهذا البحث</p>
+                    <div className="col-span-full flex flex-col items-center justify-center py-24 text-gray-400 dark:text-gray-300 bg-white/50 dark:bg-slate-800/50 rounded-[3rem] border-2 border-dashed border-brand-primary/20 dark:border-slate-600/50">
+                        <Coffee size={80} className="mb-4 opacity-20 text-brand-primary dark:text-brand-secondary" />
+                        <p className="font-black text-xl text-brand-dark dark:text-white mb-2">لا توجد سجلات مطابقة في هذا القسم</p>
+                        <p className="font-bold text-sm text-gray-400 dark:text-gray-500">جرب تعديل خيارات التصفية أو إدخال كلمة بحث أخرى</p>
                     </div>
                 ) : (
                     displayTransactions.map((transaction) => (
@@ -1284,7 +1288,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
                                 </button>
                             )}
 
-                            <div className="flex justify-between items-start mb-8">
+                            <div className="flex justify-between items-start mb-8 pl-12 relative z-10">
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
@@ -1342,29 +1346,29 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
 
                             <div className="space-y-6 flex-1">
                                 <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-                                    <div className="flex items-center gap-2 text-gray-500 text-[13px] font-bold bg-gray-50/50 p-2 rounded-xl border border-gray-100/30">
-                                        <Calendar size={14} className="text-brand-primary" />
+                                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300 text-[13px] font-bold bg-gray-50/50 dark:bg-slate-700/30 p-2 rounded-xl border border-gray-100/30 dark:border-slate-600/30">
+                                        <Calendar size={14} className="text-brand-primary dark:text-brand-secondary" />
                                         {new Date(transaction.date).toLocaleDateString('ar-EG')}
                                     </div>
-                                    <div className="flex items-center gap-2 text-gray-500 text-[13px] font-bold bg-gray-50/50 p-2 rounded-xl border border-gray-100/30">
-                                        <Clock size={14} className="text-brand-primary" />
+                                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300 text-[13px] font-bold bg-gray-50/50 dark:bg-slate-700/30 p-2 rounded-xl border border-gray-100/30 dark:border-slate-600/30">
+                                        <Clock size={14} className="text-brand-primary dark:text-brand-secondary" />
                                         {new Date(transaction.date).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
                                     </div>
-                                    <div className="flex items-center gap-2 text-gray-400 text-[11px] font-black col-span-2 px-1">
-                                        <FileText size={14} className="text-brand-primary/40" />
+                                    <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-[11px] font-black col-span-2 px-1">
+                                        <FileText size={14} className="text-brand-primary/40 dark:text-brand-secondary/40" />
                                         <span>رقم الفاتورة: #{transaction.id.slice(-12)}</span>
                                     </div>
                                 </div>
 
-                                <div className="bg-gray-50/50 rounded-[2rem] p-5 space-y-3 border border-gray-100/50">
+                                <div className="bg-gray-50/50 dark:bg-slate-700/20 rounded-[2rem] p-5 space-y-3 border border-gray-100/50 dark:border-slate-600/30">
                                     {transaction.items.slice(0, 2).map((item, idx) => (
                                         <div key={idx} className="flex justify-between items-center text-sm">
-                                            <span className="text-brand-dark font-black flex items-center gap-2">
-                                                <div className="w-1.5 h-1.5 bg-brand-primary rounded-full"></div>
+                                            <span className="text-brand-dark dark:text-white font-black flex items-center gap-2">
+                                                <div className="w-1.5 h-1.5 bg-brand-primary dark:bg-brand-secondary rounded-full"></div>
                                                 {item.name}
-                                                <span className="text-gray-400 text-xs font-bold">x{item.quantity}</span>
+                                                <span className="text-gray-500 dark:text-gray-400 text-xs font-bold">x{item.quantity}</span>
                                             </span>
-                                            <span className="text-gray-500 font-bold">{(item.price * item.quantity).toFixed(2)}</span>
+                                            <span className="text-gray-600 dark:text-gray-300 font-bold">{(item.price * item.quantity).toFixed(2)}</span>
                                         </div>
                                     ))}
                                     {transaction.items.length > 2 && (
@@ -1374,10 +1378,10 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
                                     )}
                                 </div>
 
-                                <div className="flex items-end justify-between pt-4 border-t border-gray-50">
+                                <div className="flex items-end justify-between pt-4 border-t border-gray-50 dark:border-slate-700/50">
                                     <div className="flex flex-col">
-                                        <span className="text-gray-400 text-[10px] font-black uppercase tracking-tighter">الإجمالي الكلي</span>
-                                        <span className={`font-black text-2xl leading-none ${transaction.isManual ? 'text-red-600' : 'text-brand-dark'}`}>
+                                        <span className="text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-tighter">الإجمالي الكلي</span>
+                                        <span className={`font-black text-2xl leading-none ${transaction.isManual ? 'text-red-600 dark:text-red-400' : 'text-brand-dark dark:text-white'}`}>
                                             {formatCurrency(transaction.total, settings?.currency || CURRENCY)}
                                         </span>
                                     </div>
@@ -2006,19 +2010,19 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
                                         )}
                                     </div>
 
-                                    <div className="p-10 border-t border-brand-primary/5 bg-gray-50/50">
-                                        <div className="space-y-4 mb-8">
-                                            <div className="flex justify-between text-xs font-bold text-gray-400 uppercase">
-                                                <span>Subtotal</span>
+                                    <div className="p-10 border-t border-brand-primary/5 bg-gray-50/50 dark:bg-slate-800/80">
+                                        <div className="space-y-4 mb-8 text-left">
+                                            <div className="flex justify-between text-xs font-black text-gray-500 dark:text-gray-300 uppercase">
+                                                <span>المجموع الفرعي</span>
                                                 <span>{formatCurrency(manualCart.reduce((acc, i) => acc + (i.price * i.quantity), 0), settings?.currency || CURRENCY)}</span>
                                             </div>
-                                            <div className="flex justify-between text-xs font-bold text-gray-400 uppercase border-b border-dashed border-gray-200 pb-4">
-                                                <span>Tax Flow</span>
+                                            <div className="flex justify-between text-xs font-black text-gray-500 dark:text-gray-300 uppercase border-b border-dashed border-gray-200 dark:border-slate-600 pb-4">
+                                                <span>الضريبة المضافة</span>
                                                 <span>{formatCurrency((manualCart.reduce((acc, i) => acc + (i.price * i.quantity), 0)) * (settings?.taxRate || 1) / 100, settings?.currency || CURRENCY)}</span>
                                             </div>
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-brand-dark/40 font-black uppercase text-xs">Total Amount</span>
-                                                <span className="text-4xl font-black text-brand-dark">
+                                            <div className="flex justify-between items-center bg-white dark:bg-slate-900/50 p-4 rounded-2xl border border-gray-100 dark:border-slate-700">
+                                                <span className="text-gray-500 dark:text-gray-300 font-black uppercase text-xs">الإجمالي النهائي</span>
+                                                <span className="text-4xl font-black text-brand-dark dark:text-white">
                                                     {formatCurrency(manualCart.reduce((acc, i) => acc + (i.price * i.quantity), 0) * (1 + (settings?.taxRate || 0) / 100), settings?.currency || CURRENCY)}
                                                 </span>
                                             </div>
@@ -2065,7 +2069,8 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
                                         setPaymentStep(1);
                                         setSelectedMethod(null);
                                     }}
-                                    className="p-3 bg-white/50 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-2xl transition-all shadow-sm"
+                                    className="p-3 bg-red-50 dark:bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-2xl transition-all duration-300 shadow-sm hover:shadow-red-500/30 hover:rotate-90 active:scale-95"
+                                    title="إغلاق"
                                 >
                                     <X size={20} />
                                 </button>
@@ -2079,27 +2084,27 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
                                             <div className="grid grid-cols-3 gap-4">
                                                 <button
                                                     onClick={() => { setSelectedMethod('cash'); setPaymentStep(2); }}
-                                                    className="flex flex-col items-center gap-3 p-6 rounded-[2.5rem] bg-gray-50 border-2 border-transparent hover:border-green-500 hover:bg-green-50 text-brand-dark transition-all group active:scale-95"
+                                                    className="flex flex-col items-center gap-3 p-6 rounded-[2.5rem] bg-gray-50 dark:bg-slate-700/50 border-2 border-transparent hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-500/10 text-brand-dark dark:text-white transition-all group active:scale-95"
                                                 >
-                                                    <div className="p-4 bg-white rounded-2xl shadow-sm text-green-600 group-hover:scale-110 transition-all">
+                                                    <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm text-green-600 dark:text-green-400 group-hover:scale-110 group-hover:bg-green-500 group-hover:text-white transition-all">
                                                         <Banknote size={32} />
                                                     </div>
                                                     <span className="font-black text-xs">نقد</span>
                                                 </button>
                                                 <button
                                                     onClick={() => { setSelectedMethod('card'); setPaymentStep(2); }}
-                                                    className="flex flex-col items-center gap-3 p-6 rounded-[2.5rem] bg-gray-50 border-2 border-transparent hover:border-blue-500 hover:bg-blue-50 text-brand-dark transition-all group active:scale-95"
+                                                    className="flex flex-col items-center gap-3 p-6 rounded-[2.5rem] bg-gray-50 dark:bg-slate-700/50 border-2 border-transparent hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 text-brand-dark dark:text-white transition-all group active:scale-95"
                                                 >
-                                                    <div className="p-4 bg-white rounded-2xl shadow-sm text-blue-600 group-hover:scale-110 transition-all">
+                                                    <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm text-blue-600 dark:text-blue-400 group-hover:scale-110 group-hover:bg-blue-500 group-hover:text-white transition-all">
                                                         <CreditCard size={32} />
                                                     </div>
                                                     <span className="font-black text-xs">بطاقة</span>
                                                 </button>
                                                 <button
                                                     onClick={() => { setSelectedMethod('online'); setPaymentStep(2); }}
-                                                    className="flex flex-col items-center gap-3 p-6 rounded-[2.5rem] bg-gray-50 border-2 border-transparent hover:border-purple-500 hover:bg-purple-50 text-brand-dark transition-all group active:scale-95"
+                                                    className="flex flex-col items-center gap-3 p-6 rounded-[2.5rem] bg-gray-50 dark:bg-slate-700/50 border-2 border-transparent hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-500/10 text-brand-dark dark:text-white transition-all group active:scale-95"
                                                 >
-                                                    <div className="p-4 bg-white rounded-2xl shadow-sm text-purple-600 group-hover:scale-110 transition-all">
+                                                    <div className="p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm text-purple-600 dark:text-purple-400 group-hover:scale-110 group-hover:bg-purple-500 group-hover:text-white transition-all">
                                                         <Wifi size={32} />
                                                     </div>
                                                     <span className="font-black text-xs">إلكتروني</span>
@@ -2122,21 +2127,22 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
                                         <div className="flex gap-4">
                                             <button
                                                 onClick={handleComplete}
-                                                className="flex-[2] py-5 rounded-[2rem] bg-brand-primary text-white font-black text-lg hover:bg-brand-secondary transition-all shadow-2xl shadow-brand-primary/30 flex items-center justify-center gap-3 active:scale-95"
+                                                className="flex-[2] py-5 rounded-[2rem] bg-green-600 text-white font-black text-lg hover:bg-green-500 hover:-translate-y-1 transition-all shadow-2xl shadow-green-600/30 flex items-center justify-center gap-3 active:scale-95"
                                             >
-                                                <CheckCircle size={24} /> تم استلام المبلغ
+                                                <CheckCircle size={24} /> استلام الطلب وتأكيد الدفع
                                             </button>
                                             <button
                                                 onClick={() => setPaymentStep(1)}
-                                                className="flex-1 py-5 rounded-[2rem] bg-gray-100 text-gray-400 font-black text-sm hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+                                                className="flex-1 py-5 rounded-[2rem] bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-300 font-black text-sm hover:text-brand-dark dark:hover:text-white hover:bg-gray-200 dark:hover:bg-slate-600 hover:-translate-y-1 transition-all flex items-center justify-center gap-2 active:scale-95 shadow-sm"
                                             >
                                                 <ChevronLeft size={18} /> تراجع
                                             </button>
                                         </div>
 
                                         {autoPrint && (
-                                            <div className="flex items-center justify-center gap-2 text-[10px] text-gray-400 font-bold uppercase tracking-widest animate-pulse">
-                                                <Printer size={12} /> سيتم إجراء الطباعة فور الحفظ
+                                            <div className="flex items-center justify-center gap-2 bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 px-4 py-2.5 rounded-full text-xs font-black uppercase tracking-widest border border-green-200 dark:border-green-500/30 animate-pulse shadow-sm">
+                                                <CheckCircle size={14} className="text-green-500" />
+                                                سيتم إجراء الطباعة تلقائياً فور التحصيل
                                             </div>
                                         )}
                                     </div>
@@ -2184,14 +2190,14 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
                                             }
                                         }}
                                         disabled={isProcessing}
-                                        className={`flex-[2] py-4 px-8 rounded-2xl font-black text-white shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2 ${confirmModal.type === 'cancel' ? 'bg-rose-500 shadow-rose-200 hover:bg-rose-600' : 'bg-brand-dark shadow-brand-dark/20 hover:bg-black'}`}
+                                        className={`flex-[2] py-4 px-8 rounded-2xl font-black text-white shadow-xl hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-2 ${confirmModal.type === 'cancel' ? 'bg-rose-500 shadow-rose-500/30 hover:bg-rose-600' : 'bg-brand-dark shadow-brand-dark/30 hover:bg-black'}`}
                                     >
                                         {isProcessing ? <Clock size={18} className="animate-spin" /> : <Check size={18} />}
                                         تأكيد العملية
                                     </button>
                                     <button
                                         onClick={() => setConfirmModal(null)}
-                                        className="flex-1 py-4 rounded-2xl bg-gray-50 text-gray-400 font-black hover:bg-gray-100 transition-all active:scale-95"
+                                        className="flex-1 py-4 rounded-2xl bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-300 font-black hover:text-brand-dark dark:hover:text-white hover:bg-gray-200 dark:hover:bg-slate-600 hover:-translate-y-1 transition-all active:scale-95 shadow-sm"
                                     >
                                         تراجع
                                     </button>

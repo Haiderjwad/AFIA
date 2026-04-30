@@ -9,7 +9,166 @@
     body {
         @apply font-sans;
     }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       DARK MODE — Enterprise Grade  (Linear / Figma / Notion-inspired)
+       Palette:
+         Base (canvas)   : #0F1117  — deepest charcoal
+         Surface (cards) : #161B22  — elevated charcoal
+         Overlay (modals): #1E2433  — highest elevation
+         Border          : #2D3448  — subtle separation
+         Text primary    : #E8EAEE  — soft white, easy on eyes
+         Text secondary  : #8B9BC0  — muted blue-grey
+         Green glow      : #40C980  — vivid brand green accent
+    ═══════════════════════════════════════════════════════════════════ */
+    :root {
+        --dm-base: #0F1117;
+        --dm-surface: #161B22;
+        --dm-overlay: #1E2433;
+        --dm-border: #2D3448;
+        --dm-muted: #252B3B;
+        --dm-text-1: #E8EAEE;
+        --dm-text-2: #8B9BC0;
+        --dm-text-3: #525D77;
+        --dm-green-glow: #40C980;
+        --dm-green-soft: #1E2E26;
+        --dm-amber: #FBBF24;
+        --dm-red: #F87171;
+    }
+
+    .dark {
+        color-scheme: dark;
+    }
+
+    /* ─── Page-level Background ─────────────────────────────────────── */
+    .dark,
+    .dark body {
+        background-color: var(--dm-base) !important;
+        color: var(--dm-text-1) !important;
+    }
+
+    /* ─── Cards & Panels (everything that was bg-white) ────────────── */
+    .dark .bg-white,
+    .dark .bg-white\/70,
+    .dark .bg-white\/80,
+    .dark .bg-white\/30,
+    .dark .bg-white\/20,
+    .dark .bg-white\/10 {
+        background-color: var(--dm-surface) !important;
+        border-color: var(--dm-border) !important;
+    }
+
+    /* ─── App canvas areas (bg-cream, bg-gray-50) ──────────────────── */
+    .dark .bg-brand-cream,
+    .dark .bg-gray-50,
+    .dark .bg-slate-50 {
+        background-color: var(--dm-base) !important;
+    }
+
+    /* ─── view-container (main scrollable area) ─────────────────────── */
+    .dark .view-container {
+        background-color: var(--dm-base) !important;
+    }
+
+    /* ─── Subtle fills (brand-light tints, green-50, orange-50 etc.) ── */
+    .dark .bg-brand-light\/10,
+    .dark .bg-brand-light\/20,
+    .dark .bg-brand-light\/30,
+    .dark .bg-brand-primary\/5,
+    .dark .bg-brand-primary\/10,
+    .dark .bg-green-50,
+    .dark .bg-amber-50,
+    .dark .bg-orange-50 {
+        background-color: var(--dm-muted) !important;
+    }
+
+    /* ─── Borders ───────────────────────────────────────────────────── */
+    .dark .border-brand-primary\/5,
+    .dark .border-brand-primary\/10,
+    .dark .border-brand-primary\/20,
+    .dark .border-gray-50,
+    .dark .border-gray-100,
+    .dark .border-gray-200 {
+        border-color: var(--dm-border) !important;
+    }
+
+    /* ─── Text overrides ────────────────────────────────────────────── */
+    .dark .text-brand-dark,
+    .dark .text-coffee-900,
+    .dark .text-gray-900,
+    .dark .text-gray-800 {
+        color: var(--dm-text-1) !important;
+    }
+
+    .dark .text-gray-400,
+    .dark .text-gray-500,
+    .dark .text-gray-600,
+    .dark .text-brand-secondary {
+        color: var(--dm-text-2) !important;
+    }
+
+    /* Brand green stays vibrant — only brighten slightly */
+    .dark .text-brand-primary {
+        color: var(--dm-green-glow) !important;
+    }
+
+    /* ─── Hover / interactive states ────────────────────────────────── */
+    .dark .hover\:bg-gray-50:hover,
+    .dark .hover\:bg-brand-light\/10:hover,
+    .dark .hover\:bg-brand-light\/20:hover {
+        background-color: var(--dm-muted) !important;
+    }
+
+    /* ─── Inputs & Textareas ────────────────────────────────────────── */
+    .dark input,
+    .dark textarea,
+    .dark select {
+        background-color: var(--dm-overlay) !important;
+        border-color: var(--dm-border) !important;
+        color: var(--dm-text-1) !important;
+    }
+
+    .dark input::placeholder,
+    .dark textarea::placeholder {
+        color: var(--dm-text-3) !important;
+    }
+
+    /* ─── Sidebar (deep midnight in dark mode) ──────────────────────── */
+    .dark .bg-brand-primary {
+        background-color: var(--dm-surface) !important;
+    }
+
+    /* Active sidebar item highlight in dark mode */
+    .dark .bg-brand-cream {
+        background-color: var(--dm-overlay) !important;
+    }
+
+    /* ─── Elevated modals / overlays ───────────────────────────────── */
+    .dark .modal-overlay {
+        background-color: var(--dm-overlay) !important;
+        border-color: var(--dm-border) !important;
+    }
+
+    /* ─── Scrollbar skin for dark mode ─────────────────────────────── */
+    .dark ::-webkit-scrollbar-track {
+        background: var(--dm-base);
+    }
+
+    .dark ::-webkit-scrollbar-thumb {
+        background-color: var(--dm-border);
+        border-radius: 8px;
+    }
+
+    .dark ::-webkit-scrollbar-thumb:hover {
+        background-color: #3d4d68;
+    }
+
+    /* ─── Focus rings ───────────────────────────────────────────────── */
+    .dark *:focus-visible {
+        outline-color: var(--dm-green-glow) !important;
+    }
 }
+
 
 @layer utilities {
     .no-scrollbar::-webkit-scrollbar {
@@ -107,7 +266,7 @@
 
 /* Premium Layout Utilities */
 .view-container {
-    @apply flex-1 p-4 md:p-8 overflow-y-auto bg-brand-cream pb-20 relative;
+    @apply flex-1 p-4 md:p-8 overflow-y-auto bg-brand-cream dark:bg-slate-900 pb-20 relative duration-500 transition-colors;
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
     animation: fadeInOnly 0.5s ease-out forwards;

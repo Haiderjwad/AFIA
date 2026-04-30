@@ -79,7 +79,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, setActiveItem, user, sett
                   onClick={() => handleItemClick(item.id)}
                   className={`flex flex-col items-center justify-center gap-2 p-4 rounded-[2rem] transition-all duration-500 group relative w-full max-w-[80px] min-h-[80px]
                     ${isActive
-                      ? 'bg-brand-cream text-brand-primary shadow-2xl scale-110'
+                      ? 'bg-brand-cream dark:bg-slate-800 text-brand-primary dark:text-brand-secondary shadow-2xl scale-110'
                       : 'text-white/60 hover:text-white hover:bg-white/10'
                     }`}
                 >

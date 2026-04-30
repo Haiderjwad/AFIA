@@ -116,11 +116,11 @@ const Dashboard: React.FC<DashboardProps> = ({
       {/* Analytics Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-0" dir="rtl">
         {/* Line Chart */}
-        <div className="bg-white/70 backdrop-blur-md p-8 rounded-[3rem] shadow-xl border border-brand-primary/5 relative overflow-hidden group hover:shadow-2xl transition-all duration-500">
+        <div className="bg-white/70 dark:bg-slate-800/80 backdrop-blur-md p-8 rounded-[3rem] shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-brand-primary/5 dark:border-white/5 relative overflow-hidden group hover:shadow-2xl transition-all duration-500">
           <div className="flex justify-between items-center mb-8 relative z-10">
-            <h3 className="font-black text-2xl text-brand-dark">توجهات المبيعات اليومي</h3>
+            <h3 className="font-black text-2xl text-brand-dark dark:text-white">توجهات المبيعات اليومي</h3>
             <div className="flex gap-2">
-              <button className="text-[10px] uppercase tracking-widest font-black px-6 py-2.5 rounded-xl text-brand-primary bg-brand-primary/5 hover:bg-brand-primary hover:text-white transition-all shadow-sm">تحميل التقرير الكامل</button>
+              <button className="text-[10px] uppercase tracking-widest font-black px-6 py-2.5 rounded-xl text-brand-primary dark:text-brand-secondary bg-brand-primary/5 dark:bg-white/5 hover:bg-brand-primary hover:text-white transition-all shadow-sm">تحميل التقرير الكامل</button>
             </div>
           </div>
           <div className="h-72 w-full relative z-10 overflow-hidden">
@@ -148,12 +148,12 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         {/* Bar Chart */}
-        <div className="bg-white/70 backdrop-blur-md p-8 rounded-[3rem] shadow-xl border border-brand-primary/5">
+        <div className="bg-white/70 dark:bg-slate-800/80 backdrop-blur-md p-8 rounded-[3rem] shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-brand-primary/5 dark:border-white/5">
           <div className="flex justify-between items-center mb-8">
-            <h3 className="font-black text-2xl text-brand-dark">أداء الموظفين</h3>
+            <h3 className="font-black text-2xl text-brand-dark dark:text-white">أداء الموظفين</h3>
             <button
               onClick={() => onNavigate('performance')}
-              className="text-[10px] uppercase tracking-widest font-black px-6 py-2.5 rounded-xl text-brand-accent bg-brand-accent/5 hover:bg-brand-accent hover:text-white transition-all shadow-sm"
+              className="text-[10px] uppercase tracking-widest font-black px-6 py-2.5 rounded-xl text-brand-accent bg-brand-accent/5 dark:bg-white/5 hover:bg-brand-accent hover:text-white transition-all shadow-sm"
             >
               كشف التفاصيل
             </button>
