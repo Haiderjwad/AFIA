@@ -236,17 +236,17 @@ const InventoryView: React.FC<InventoryViewProps> = ({
 
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 gap-6 transition-all relative z-10">
         <div>
-          <h1 className="text-2xl md:text-4xl font-black text-brand-dark mb-2 tracking-tighter flex items-center gap-3">
-            <div className="w-2 h-10 bg-brand-primary rounded-full"></div>
+          <h1 className="text-2xl md:text-4xl font-black text-brand-dark dark:text-white mb-2 tracking-tighter flex items-center gap-3">
+            <div className="w-2 h-10 bg-brand-primary dark:bg-brand-secondary rounded-full"></div>
             حوكمة الأصول والمخزون
           </h1>
-          <p className="text-brand-dark/40 font-bold text-xs md:text-sm">نظام تتبع المنتجات الرقمية والمخزون السحابي</p>
+          <p className="text-gray-500 dark:text-gray-300 font-black text-xs md:text-sm tracking-wide">نظام تتبع المنتجات الرقمية والمخزون السحابي</p>
         </div>
         <div className="flex flex-wrap gap-4 w-full lg:w-auto">
           {canManage && (
             <button
               onClick={openAddModal}
-              className="w-full lg:w-auto bg-brand-primary hover:bg-brand-secondary text-white px-10 py-3.5 rounded-[1.8rem] transition-all shadow-2xl shadow-brand-primary/20 flex items-center justify-center gap-3 font-black active:scale-95"
+              className="w-full lg:w-auto bg-green-600 hover:bg-green-500 text-white px-10 py-3.5 rounded-[1.8rem] transition-all duration-300 shadow-2xl shadow-green-600/30 hover:shadow-green-500/40 hover:-translate-y-1 flex items-center justify-center gap-3 font-black active:scale-95"
             >
               <Plus size={20} />
               إدراج أصل جديد
@@ -372,18 +372,18 @@ const InventoryView: React.FC<InventoryViewProps> = ({
       {/* Add/Edit Product Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[9999] bg-brand-dark/80 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-4xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col max-h-[90vh] relative border border-white/20">
-            <div className="px-10 py-8 border-b border-brand-primary/5 flex justify-between items-center bg-brand-light/20 shrink-0 relative overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[2.5rem] shadow-4xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col max-h-[90vh] relative border border-white/20 dark:border-slate-700">
+            <div className="px-10 py-8 border-b border-brand-primary/5 dark:border-slate-700 flex justify-between items-center bg-brand-light/20 dark:bg-slate-800 shrink-0 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-brand-primary/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
               <div className="relative">
-                <h2 className="text-2xl font-black text-brand-dark">
+                <h2 className="text-2xl font-black text-brand-dark dark:text-white">
                   {editingId ? 'تحديث بيانات المنتج' : 'إضافة منتج للسحابة'}
                 </h2>
                 <p className="text-[10px] text-brand-secondary font-black uppercase tracking-widest mt-1">Inventory Asset Intelligence</p>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="w-12 h-12 flex items-center justify-center bg-white hover:bg-red-500 hover:text-white rounded-2xl transition-all shadow-sm text-brand-dark/20 relative z-10"
+                className="w-12 h-12 flex items-center justify-center bg-red-50 dark:bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white dark:hover:bg-red-500 dark:hover:text-white rounded-2xl transition-all duration-300 shadow-sm hover:shadow-red-500/30 hover:rotate-90 active:scale-95 relative z-10"
               >
                 <X size={24} />
               </button>
@@ -391,29 +391,29 @@ const InventoryView: React.FC<InventoryViewProps> = ({
 
             <form onSubmit={handleSubmit} className="p-10 space-y-6 overflow-y-auto premium-scrollbar">
               <div className="space-y-3">
-                <label className="text-xs font-black text-brand-dark/40 uppercase tracking-tighter flex items-center gap-2">
-                  <Coffee size={14} className="text-brand-primary" /> الاسم التجاري للمنتج
+                <label className="text-xs font-black text-gray-500 dark:text-gray-300 uppercase tracking-tighter flex items-center gap-2">
+                  <Coffee size={14} className="text-brand-primary dark:text-brand-secondary" /> الاسم التجاري للمنتج
                 </label>
                 <input
                   type="text"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 outline-none transition-all font-bold text-brand-dark"
+                  className="w-full px-6 py-4 rounded-2xl bg-gray-50 dark:bg-slate-800 border-2 border-transparent focus:border-brand-primary focus:bg-white dark:focus:bg-slate-700/50 focus:ring-4 focus:ring-brand-primary/5 outline-none transition-all font-bold text-brand-dark dark:text-white"
                   placeholder="مثال: إسبريسو دوبل"
                 />
               </div>
 
               <div className="space-y-3">
-                <label className="text-xs font-black text-brand-dark/40 uppercase tracking-tighter flex items-center gap-2">
-                  <Tag size={14} className="text-brand-primary" /> تصنيف القائمة
+                <label className="text-xs font-black text-gray-500 dark:text-gray-300 uppercase tracking-tighter flex items-center gap-2">
+                  <Tag size={14} className="text-brand-primary dark:text-brand-secondary" /> تصنيف القائمة
                 </label>
                 <div className="relative">
                   <select
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     required
-                    className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 outline-none transition-all font-bold text-brand-dark appearance-none"
+                    className="w-full px-6 py-4 rounded-2xl bg-gray-50 dark:bg-slate-800 border-2 border-transparent focus:border-brand-primary focus:bg-white dark:focus:bg-slate-700/50 focus:ring-4 focus:ring-brand-primary/5 outline-none transition-all font-bold text-brand-dark dark:text-white appearance-none"
                   >
                     <option value="">اختر التصنيف المناسب</option>
                     <option value="Coffee">☕ قهوة (Coffee)</option>
@@ -431,8 +431,8 @@ const InventoryView: React.FC<InventoryViewProps> = ({
 
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-3">
-                  <label className="text-xs font-black text-brand-dark/40 uppercase tracking-tighter flex items-center gap-2">
-                    <DollarSign size={14} className="text-brand-primary" /> سعر البيع
+                  <label className="text-xs font-black text-gray-500 dark:text-gray-300 uppercase tracking-tighter flex items-center gap-2">
+                    <DollarSign size={14} className="text-brand-primary dark:text-brand-secondary" /> سعر البيع
                   </label>
                   <div className="relative">
                     <input
@@ -441,7 +441,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({
                       required
                       value={formData.price}
                       onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                      className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 outline-none transition-all font-bold text-brand-dark pr-12"
+                      className="w-full px-6 py-4 rounded-2xl bg-gray-50 dark:bg-slate-800 border-2 border-transparent focus:border-brand-primary focus:bg-white dark:focus:bg-slate-700/50 focus:ring-4 focus:ring-brand-primary/5 outline-none transition-all font-bold text-brand-dark dark:text-white pr-12"
                       placeholder="0.00"
                     />
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 text-brand-primary/30 font-black text-xs">{settings.currency}</div>
@@ -449,8 +449,8 @@ const InventoryView: React.FC<InventoryViewProps> = ({
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-xs font-black text-brand-dark/40 uppercase tracking-tighter flex items-center gap-2">
-                    <Layers size={14} className="text-brand-primary" /> رصيد المخزن
+                  <label className="text-xs font-black text-gray-500 dark:text-gray-300 uppercase tracking-tighter flex items-center gap-2">
+                    <Layers size={14} className="text-brand-primary dark:text-brand-secondary" /> رصيد المخزن
                   </label>
                   <input
                     type="number"
@@ -458,20 +458,20 @@ const InventoryView: React.FC<InventoryViewProps> = ({
                     required
                     value={formData.stock}
                     onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                    className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 outline-none transition-all font-bold text-brand-dark"
+                    className="w-full px-6 py-4 rounded-2xl bg-gray-50 dark:bg-slate-800 border-2 border-transparent focus:border-brand-primary focus:bg-white dark:focus:bg-slate-700/50 focus:ring-4 focus:ring-brand-primary/5 outline-none transition-all font-bold text-brand-dark dark:text-white"
                     placeholder="0"
                   />
                 </div>
               </div>
 
               <div className="space-y-3">
-                <label className="text-xs font-black text-brand-dark/40 uppercase tracking-tighter flex items-center gap-2">
-                  <FileText size={14} className="text-brand-primary" /> تفاصيل إضافية
+                <label className="text-xs font-black text-gray-500 dark:text-gray-300 uppercase tracking-tighter flex items-center gap-2">
+                  <FileText size={14} className="text-brand-primary dark:text-brand-secondary" /> تفاصيل إضافية
                 </label>
                 <textarea
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-6 py-4 rounded-2xl bg-gray-50 border-2 border-transparent focus:border-brand-primary focus:bg-white focus:ring-4 focus:ring-brand-primary/5 outline-none transition-all font-bold text-brand-dark resize-none h-24 no-scrollbar shadow-inner"
+                  className="w-full px-6 py-4 rounded-2xl bg-gray-50 dark:bg-slate-800 border-2 border-transparent focus:border-brand-primary focus:bg-white dark:focus:bg-slate-700/50 focus:ring-4 focus:ring-brand-primary/5 outline-none transition-all font-bold text-brand-dark dark:text-white resize-none h-24 no-scrollbar shadow-inner"
                   placeholder="أضف وصفاً تسويقياً أو ملاحظات للمطبخ..."
                 />
               </div>
@@ -479,7 +479,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({
               <div className="pt-6 flex gap-4">
                 <button
                   type="submit"
-                  className="flex-[2] py-5 rounded-[1.5rem] text-white font-black text-lg hover:bg-brand-secondary transition-all shadow-xl shadow-brand-primary/20 bg-brand-primary flex items-center justify-center gap-2 group"
+                  className="flex-[2] py-5 rounded-[1.5rem] bg-green-600 hover:bg-green-500 text-white font-black text-lg shadow-xl shadow-green-600/30 hover:shadow-green-500/40 hover:-translate-y-1 active:scale-95 transition-all duration-300 flex items-center justify-center gap-2 group"
                 >
                   <Check size={24} className="group-hover:scale-125 transition-transform" />
                   {editingId ? 'تأكيد التعديلات' : 'إدراج المنتج للسحابة'}
@@ -487,7 +487,7 @@ const InventoryView: React.FC<InventoryViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-5 rounded-[1.5rem] bg-gray-50 border-2 border-gray-100 font-black text-gray-400 hover:text-brand-dark hover:bg-white hover:border-brand-primary/10 transition-all"
+                  className="flex-1 py-5 rounded-[1.5rem] bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-300 font-black hover:text-brand-dark dark:hover:text-white hover:bg-gray-200 dark:hover:bg-slate-600 hover:-translate-y-1 transition-all duration-300 active:scale-95 shadow-sm border-2 border-transparent"
                 >
                   تراجع
                 </button>

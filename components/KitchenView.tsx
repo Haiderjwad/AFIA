@@ -155,8 +155,8 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, user, lowStockThres
                         <ChefHat size={32} />
                     </div>
                     <div>
-                        <h1 className="text-3xl font-black text-brand-dark mb-1">مركز إدارة المطبخ</h1>
-                        <p className="text-brand-dark/40 font-bold text-sm">التحكم في الطلبات المباشرة</p>
+                        <h1 className="text-3xl font-black text-brand-dark dark:text-white mb-1">مركز إدارة المطبخ</h1>
+                        <p className="text-gray-500 dark:text-gray-300 font-black text-sm">التحكم في الطلبات المباشرة</p>
                     </div>
                 </div>
 
@@ -233,7 +233,7 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, user, lowStockThres
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center gap-2 mt-1">
-                                                    <div className="text-brand-dark/30 text-xs font-black">{new Date(order.date).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</div>
+                                                    <div className="text-gray-500 dark:text-gray-300 text-xs font-black bg-gray-100 dark:bg-slate-700 px-3 py-1 rounded-xl">{new Date(order.date).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</div>
                                                     {order.isUpdated && (
                                                         <span className="bg-brand-accent text-white text-[8px] font-black px-2 py-0.5 rounded-full animate-pulse uppercase tracking-wider">مُحدث تم دمج طلب جديد</span>
                                                     )}
@@ -258,11 +258,11 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, user, lowStockThres
                                             </div>
                                         )}
 
-                                        <div className="bg-gray-50/50 p-4 rounded-3xl border border-gray-100 space-y-3 mb-6">
+                                        <div className="bg-gray-50/50 dark:bg-slate-700/30 p-4 rounded-3xl border border-gray-100 dark:border-slate-600/40 space-y-3 mb-6">
                                             {order.items.map((item, idx) => (
                                                 <div key={idx} className="flex justify-between items-center text-sm">
-                                                    <span className="bg-brand-dark text-white w-7 h-7 rounded-lg flex items-center justify-center font-bold">{item.quantity}</span>
-                                                    <span className="text-brand-dark font-bold">{item.name}</span>
+                                                    <span className="bg-brand-dark dark:bg-slate-600 text-white w-7 h-7 rounded-lg flex items-center justify-center font-bold">{item.quantity}</span>
+                                                    <span className="text-brand-dark dark:text-white font-black">{item.name}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -322,11 +322,11 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, user, lowStockThres
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-20">
                     {orders.filter(o => o.status === 'cancelled').length > 0 ? (
                         orders.filter(o => o.status === 'cancelled').map(order => (
-                            <div key={order.id} className="bg-white rounded-[2.5rem] p-6 shadow-md border-r-8 border-red-500 opacity-80 grayscale-[0.5] transition-all hover:grayscale-0">
+                            <div key={order.id} className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-6 shadow-md border-r-8 border-red-500 opacity-80 grayscale-[0.2] dark:opacity-90 dark:grayscale-0 transition-all hover:grayscale-0 hover:opacity-100">
                                 <div className="flex justify-between items-start mb-6">
                                     <div className="text-right">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-black text-brand-dark text-3xl">
+                                            <span className="font-black text-brand-dark dark:text-white text-3xl">
                                                 {order.tableNumber === 'Takeaway' ? 'طلب سفري 🛍️' :
                                                     order.tableNumber ? `طاولة ${order.tableNumber}` :
                                                         `#${order.id.slice(-4)}`}
@@ -339,16 +339,16 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, user, lowStockThres
                                     </div>
                                 </div>
 
-                                <div className="bg-gray-50/50 p-4 rounded-3xl border border-gray-100 space-y-3 mb-6">
+                                <div className="bg-red-50/50 dark:bg-slate-700/30 p-4 rounded-3xl border border-red-100 dark:border-red-500/20 space-y-3 mb-6">
                                     {order.items.map((item, idx) => (
                                         <div key={idx} className="flex justify-between items-center text-sm">
-                                            <span className="bg-gray-400 text-white w-7 h-7 rounded-lg flex items-center justify-center font-bold px-4">{item.quantity}</span>
-                                            <span className="text-gray-500 font-bold line-through">{item.name}</span>
+                                            <span className="bg-gray-400 dark:bg-slate-600 text-white w-7 h-7 rounded-lg flex items-center justify-center font-bold px-4">{item.quantity}</span>
+                                            <span className="text-gray-600 dark:text-gray-300 font-black line-through">{item.name}</span>
                                         </div>
                                     ))}
                                 </div>
 
-                                <div className="text-xs text-gray-400 font-bold text-center italic">
+                                <div className="text-xs text-gray-500 dark:text-gray-400 font-black text-center italic">
                                     {order.notes || 'تم إلغاء الطلب من قبل النظام'}
                                 </div>
                             </div>

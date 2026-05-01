@@ -32,6 +32,8 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
   const [formData, setFormData] = useState<Partial<Supplier>>({});
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [supplierInfoModal, setSupplierInfoModal] = useState<Supplier | null>(null);
+  const [printIndividualModal, setPrintIndividualModal] = useState<Supplier | null>(null);
   const [statusModal, setStatusModal] = useState<{ isOpen: boolean, type: 'success' | 'error' | 'loading', title: string, message: string }>({
     isOpen: false,
     type: 'loading',
@@ -118,6 +120,140 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
 
   const totalExpenses = suppliers.reduce((acc, s) => acc + s.totalPaid, 0);
   const filteredExpenses = filteredSuppliers.reduce((acc, s) => acc + s.totalPaid, 0);
+
+  const generateIndividualReport = async (supplier: Supplier) => {
+    setIsExporting(true);
+    setStatusModal({
+      isOpen: true,
+      type: 'loading',
+      title: 'جاري إعداد الكشف الفردي للمورد',
+      message: 'نقوم الآن بمعالجة وتجهيز الكشف المخصص لهذا المورد...'
+    });
+
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      const tempContainer = document.createElement('div');
+      tempContainer.style.position = 'fixed';
+      tempContainer.style.left = '-5000px';
+      tempContainer.style.top = '0';
+      tempContainer.style.width = '210mm';
+      tempContainer.style.backgroundColor = 'white';
+      tempContainer.dir = 'rtl';
+      document.body.appendChild(tempContainer);
+
+      tempContainer.innerHTML = `
+        <div style="width: 210mm; padding: 15mm; font-family: 'Cairo', sans-serif; display: flex; flex-direction: column; box-sizing: border-box; background-color: white; position: relative;">
+          <!-- Header -->
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 4px solid #1B4332; padding-bottom: 20px; margin-bottom: 30px;">
+            <div style="display: flex; align-items: center; gap: 20px;">
+              <div style="width: 80px; height: 80px; background-color: #1B4332; border-radius: 20px; display: flex; items-center; justify-content: center; padding: 10px;">
+                <img src="/branding/afia_logo.png" style="width: 100%; height: 100%; object-fit: contain; filter: brightness(0) invert(1);" />
+              </div>
+              <div>
+                <h1 style="margin: 0; color: #1B4332; font-size: 26pt; font-weight: 900;">${settings.storeName}</h1>
+                <p style="margin: 5px 0 0; color: #2D6A4F; font-weight: 800; font-size: 11pt; text-transform: uppercase;">كشف حساب مورد فردي</p>
+              </div>
+            </div>
+            <div style="text-align: left; background-color: #f8f9fa; padding: 15px 25px; border-radius: 20px; border: 1px solid #eee;">
+              <div style="font-weight: 900; color: #1B4332; font-size: 10pt; margin-bottom: 5px;">كشف رقم: #IND-${new Date().getTime().toString().slice(-6)}</div>
+              <div style="color: #666; font-size: 9pt; font-weight: 700;">التاريخ: ${new Date().toLocaleDateString('ar-IQ')}</div>
+            </div>
+          </div>
+
+          <!-- Supplier Details -->
+          <div style="background-color: #f8f9fa; border: 1px solid #eee; border-radius: 25px; padding: 30px; margin-bottom: 35px;">
+            <h2 style="margin: 0 0 20px 0; color: #1B4332; font-size: 18pt; font-weight: 900;">بيانات الجهة الموردة</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+              <div>
+                <div style="color: #666; font-size: 10pt; font-weight: 700; margin-bottom: 5px;">الاسم / الشركة</div>
+                <div style="color: #333; font-size: 14pt; font-weight: 900;">${supplier.name}</div>
+              </div>
+              <div>
+                <div style="color: #666; font-size: 10pt; font-weight: 700; margin-bottom: 5px;">التصنيف</div>
+                <div style="color: #333; font-size: 14pt; font-weight: 900;">${supplier.category}</div>
+              </div>
+              <div>
+                <div style="color: #666; font-size: 10pt; font-weight: 700; margin-bottom: 5px;">السلعة الرئيسية</div>
+                <div style="color: #333; font-size: 12pt; font-weight: 900;">${supplier.suppliedItem}</div>
+              </div>
+              <div>
+                <div style="color: #666; font-size: 10pt; font-weight: 700; margin-bottom: 5px;">رقم الهاتف</div>
+                <div style="color: #333; font-size: 12pt; font-weight: 900;">${supplier.phone}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Financial Summary -->
+          <h2 style="margin: 0 0 20px 0; color: #1B4332; font-size: 18pt; font-weight: 900;">الخلاصة المالية</h2>
+          <table style="width: 100%; border-collapse: separate; border-spacing: 0 10px; margin-bottom: 40px;">
+            <thead>
+              <tr style="background-color: #1B4332; color: white;">
+                <th style="padding: 20px 15px; text-align: right; border-radius: 0 15px 15px 0; font-size: 12pt;">سعر الوحدة</th>
+                <th style="padding: 20px 15px; text-align: right; font-size: 12pt;">وتيرة التوريد</th>
+                <th style="padding: 20px 15px; text-align: right; font-size: 12pt;">آخر معاملة</th>
+                <th style="padding: 20px 15px; text-align: right; border-radius: 15px 0 0 15px; font-size: 12pt;">إجمالي الاستحقاق</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="background-color: #fff; border: 1px solid #eee;">
+                <td style="padding: 22px 15px; border-bottom: 1.5px solid #f1f1f1; font-weight: 900; color: #1B4332; font-size: 14pt;">${formatCurrency(supplier.costPerUnit, settings.currency)}</td>
+                <td style="padding: 22px 15px; border-bottom: 1.5px solid #f1f1f1; font-weight: 700;">${supplier.frequency === 'daily' ? 'توريد يومي' : supplier.frequency === 'weekly' ? 'توريد أسبوعي' : supplier.frequency === 'monthly' ? 'توريد شهري' : 'توريد سنوي'}</td>
+                <td style="padding: 22px 15px; border-bottom: 1.5px solid #f1f1f1; color: #777; font-size: 12pt; font-weight: 700;">${supplier.lastSupplyDate}</td>
+                <td style="padding: 22px 15px; border-bottom: 1.5px solid #f1f1f1; font-weight: 900; color: #1B4332; font-size: 16pt;">${formatCurrency(supplier.totalPaid, settings.currency)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Footer Section -->
+          <div style="margin-top: auto; padding-top: 30px; border-top: 2px solid #1B4332;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+              <span style="color: #1B4332; font-weight: 900; font-size: 10pt;">نظام عافية - لإدارة المؤسسات</span>
+              <div style="color: #999; font-size: 8pt; font-weight: 700;">تم التوليد بواسطة: حوسبة عافية السحابية (Afia Cloud)</div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      const canvas = await html2canvas(tempContainer, {
+        scale: 3,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      pdf.addImage(imgData, 'JPEG', 0, 0, pageWidth, (canvas.height * pageWidth) / canvas.width);
+
+      document.body.removeChild(tempContainer);
+      pdf.save(`كشف_فردي_${supplier.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+
+      setStatusModal({
+        isOpen: true,
+        type: 'success',
+        title: 'اكتمل التصدير بنجاح',
+        message: 'تم توليد كشف المورد الفردي وحفظه على جهازك.'
+      });
+
+      setTimeout(() => setStatusModal(prev => ({ ...prev, isOpen: false })), 3000);
+
+    } catch (error) {
+      console.error("Single Report generation failed:", error);
+      setStatusModal({
+        isOpen: true,
+        type: 'error',
+        title: 'فشل تصدير الكشف',
+        message: 'حدث خطأ فني أثناء إعداد الكشف الفردي.'
+      });
+    } finally {
+      setIsExporting(false);
+      setPrintIndividualModal(null);
+    }
+  };
 
   const generateReport = async () => {
     setIsExporting(true);
@@ -323,9 +459,9 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
             <div className="w-8 h-8 md:w-10 md:h-10 bg-brand-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand-primary/20 shrink-0">
               <Truck size={20} className="md:w-[22px] md:h-[22px]" />
             </div>
-            <h1 className="text-2xl md:text-4xl font-black text-brand-dark">شركاء النجاح</h1>
+            <h1 className="text-2xl md:text-4xl font-black text-brand-dark dark:text-white">شركاء النجاح</h1>
           </div>
-          <p className="text-brand-dark/40 font-bold pr-1 text-xs md:text-sm">إدارة شاملة للموردين، التكاليف، وحركة التوريد</p>
+          <p className="text-gray-500 dark:text-gray-300 font-black pr-1 text-xs md:text-sm tracking-wide">إدارة شاملة للموردين، التكاليف، وحركة التوريد</p>
         </div>
 
         <div className="grid grid-cols-1 sm:flex items-center gap-4 w-full xl:w-auto">
@@ -339,7 +475,7 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
 
           <button
             onClick={() => handleOpenModal()}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-3 bg-brand-primary hover:bg-brand-dark text-white px-6 md:px-10 py-3 md:py-4 rounded-2xl font-black shadow-xl shadow-brand-primary/20 active:scale-95 transition-all group text-sm md:text-base"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-3 bg-emerald-500 hover:bg-emerald-600 text-white px-6 md:px-10 py-3 md:py-4 rounded-2xl font-black shadow-xl shadow-emerald-500/30 hover:shadow-2xl hover:-translate-y-1 active:scale-95 transition-all group text-sm md:text-base relative overflow-hidden"
           >
             <Plus size={20} className="group-hover:rotate-90 transition-transform" /> إضافة مورد جديد
           </button>
@@ -367,27 +503,31 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
           </div>
         </div>
 
-        <div className="bg-white p-8 rounded-[3rem] shadow-xl border border-brand-primary/5 group">
+        <div className="bg-white dark:bg-brand-dark/80 p-8 rounded-[3rem] shadow-xl border border-brand-primary/5 dark:border-white/5 group backdrop-blur-md hover:shadow-2xl transition-all">
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-brand-dark/30 text-xs font-black uppercase tracking-widest block mb-2">عدد الشركاء المعتمدين</span>
-              <h3 className="text-4xl font-black text-brand-dark tracking-tighter">{suppliers.length}</h3>
-              <p className="text-brand-primary font-bold text-xs mt-2">علاقات توريد نشطة</p>
+              <div className="inline-block bg-brand-primary/10 dark:bg-brand-primary/20 px-3 py-1 rounded-full mb-3">
+                <span className="text-brand-primary dark:text-blue-300 text-xs font-black uppercase tracking-widest">الشركاء المعتمدين</span>
+              </div>
+              <h3 className="text-4xl font-black text-brand-dark dark:text-white tracking-tighter mb-2">{suppliers.length}</h3>
+              <p className="text-brand-primary dark:text-blue-300 font-bold text-xs">علاقات توريد نشطة</p>
             </div>
-            <div className="w-20 h-20 bg-brand-light/30 rounded-3xl flex items-center justify-center text-brand-primary">
+            <div className="w-20 h-20 bg-brand-light/50 dark:bg-brand-primary/20 rounded-3xl flex items-center justify-center text-brand-primary dark:text-blue-300 shadow-lg">
               <Users size={40} />
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-8 rounded-[3rem] shadow-xl border border-brand-primary/5 group">
+        <div className="bg-white dark:bg-brand-dark/80 p-8 rounded-[3rem] shadow-xl border border-brand-primary/5 dark:border-white/5 group backdrop-blur-md hover:shadow-2xl transition-all">
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-brand-dark/30 text-xs font-black uppercase tracking-widest block mb-2">مصاريف الفلتر المختار</span>
-              <h3 className="text-4xl font-black text-brand-primary tracking-tighter">{formatCurrency(filteredExpenses, settings.currency)}</h3>
-              <p className="text-orange-500 font-bold text-xs mt-2">بناءً على التصنيف الحالي</p>
+              <div className="inline-block bg-orange-500/15 dark:bg-orange-500/25 px-3 py-1 rounded-full mb-3">
+                <span className="text-orange-600 dark:text-orange-300 text-xs font-black uppercase tracking-widest">مصاريف المرشح</span>
+              </div>
+              <h3 className="text-4xl font-black text-orange-600 dark:text-orange-300 tracking-tighter mb-2">{formatCurrency(filteredExpenses, settings.currency)}</h3>
+              <p className="text-orange-500 dark:text-orange-400 font-bold text-xs">بناءً على التصنيف الحالي</p>
             </div>
-            <div className="w-20 h-20 bg-orange-50 rounded-3xl flex items-center justify-center text-orange-500">
+            <div className="w-20 h-20 bg-orange-100 dark:bg-orange-500/20 rounded-3xl flex items-center justify-center text-orange-600 dark:text-orange-300 shadow-lg">
               <TrendingUp size={40} />
             </div>
           </div>
@@ -395,7 +535,7 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
       </div>
 
       {/* Frequency Filter & Search */}
-      <div className="bg-white p-6 rounded-[3.5rem] shadow-xl border border-brand-primary/5 mb-10 flex flex-col lg:flex-row gap-6 items-center">
+      <div className="bg-white dark:bg-brand-dark/80 p-6 rounded-[3.5rem] shadow-xl border border-brand-primary/5 dark:border-white/5 mb-10 flex flex-col lg:flex-row gap-6 items-center backdrop-blur-md">
         <div className="relative flex-1 w-full">
           <Search className="absolute right-6 top-1/2 -translate-y-1/2 text-brand-primary/30" size={20} />
           <input
@@ -403,7 +543,7 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
             placeholder="البحث عن مورد، سلعة، أو شركة..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-brand-cream/30 border-2 border-brand-primary/5 rounded-3xl py-5 pr-14 pl-6 outline-none focus:border-brand-primary/20 transition-all font-black text-brand-dark"
+            className="w-full bg-brand-cream/30 dark:bg-white/5 border-2 border-brand-primary/5 dark:border-transparent rounded-3xl py-5 pr-14 pl-6 outline-none focus:border-brand-primary/50 transition-all font-black text-brand-dark dark:text-white"
           />
         </div>
         <div className="flex gap-2 w-full lg:w-auto overflow-x-auto pb-2 lg:pb-0 no-scrollbar">
@@ -411,7 +551,7 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
             <button
               key={freq}
               onClick={() => setActiveFrequency(freq)}
-              className={`px-8 py-5 rounded-[1.8rem] font-black whitespace-nowrap transition-all flex items-center gap-2 ${activeFrequency === freq ? 'bg-brand-primary text-white shadow-xl shadow-brand-primary/20 scale-105' : 'bg-gray-50 text-brand-dark/40 hover:bg-brand-light/30'}`}
+              className={`px-8 py-5 rounded-[1.8rem] font-black whitespace-nowrap transition-all flex items-center gap-2 border-2 ${activeFrequency === freq ? 'bg-emerald-500 text-white shadow-xl shadow-emerald-500/20 scale-105 border-emerald-500' : 'bg-gray-50 dark:bg-brand-dark/40 text-brand-dark/60 dark:text-gray-300 border-transparent hover:bg-emerald-500/10 hover:text-emerald-500 hover:-translate-y-1 border'}`}
             >
               {freq === 'all' ? 'جميع الموردين' : freq === 'daily' ? 'موردين يوميين' : freq === 'weekly' ? 'موردين أسبوعيين' : freq === 'monthly' ? 'موردين شهريين' : 'موردين سنويين'}
             </button>
@@ -422,7 +562,7 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
       {/* Grid of Suppliers */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8 pb-20">
         {filteredSuppliers.map(supplier => (
-          <div key={supplier.id} className="bg-white rounded-[4rem] p-10 shadow-xl border border-transparent hover:border-brand-primary/20 hover:shadow-2xl transition-all group flex flex-col relative overflow-hidden">
+          <div key={supplier.id} className="bg-white dark:bg-brand-dark/80 rounded-[4rem] p-10 shadow-xl border border-transparent dark:border-white/5 hover:border-brand-primary/20 hover:shadow-2xl transition-all group flex flex-col relative overflow-hidden backdrop-blur-md">
             <div className={`absolute top-0 left-0 w-2 h-full ${supplier.frequency === 'daily' ? 'bg-green-500' : supplier.frequency === 'weekly' ? 'bg-blue-500' : supplier.frequency === 'monthly' ? 'bg-orange-500' : 'bg-brand-dark'}`}></div>
 
             <div className="flex justify-between items-start mb-8">
@@ -431,7 +571,7 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
                   <Truck size={36} />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black text-brand-dark tracking-tight">{supplier.name}</h3>
+                  <h3 className="text-2xl font-black text-brand-dark dark:text-white tracking-tight">{supplier.name}</h3>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="px-3 py-1 bg-brand-primary/10 text-brand-primary text-[10px] font-black rounded-full">
                       {supplier.category}
@@ -443,25 +583,25 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
                 </div>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => handleOpenModal(supplier)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-gray-400 hover:text-brand-primary transition-all">
+                <button onClick={() => handleOpenModal(supplier)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-blue-50 text-blue-500 dark:bg-blue-500/10 dark:text-blue-400 hover:bg-blue-500 hover:text-white hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-500/30 active:scale-90 transition-all">
                   <Edit3 size={18} />
                 </button>
-                <button onClick={() => handleDeleteClick(supplier.id)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-gray-400 hover:text-red-500 transition-all">
+                <button onClick={() => handleDeleteClick(supplier.id)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400 hover:bg-red-500 hover:text-white hover:-translate-y-1 hover:shadow-lg hover:shadow-red-500/30 active:scale-90 transition-all">
                   <Trash2 size={18} />
                 </button>
               </div>
             </div>
 
             <div className="space-y-4 mb-8 flex-1">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-2xl">
                 <span className="text-gray-400 font-bold text-xs">السلعة الموردة:</span>
-                <span className="font-black text-brand-dark">{supplier.suppliedItem}</span>
+                <span className="font-black text-brand-dark dark:text-gray-100">{supplier.suppliedItem}</span>
               </div>
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-2xl">
                 <span className="text-gray-400 font-bold text-xs">آخر تاريخ توريد:</span>
-                <span className="font-black text-brand-dark">{supplier.lastSupplyDate}</span>
+                <span className="font-black text-brand-dark dark:text-gray-100">{supplier.lastSupplyDate}</span>
               </div>
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-2xl">
                 <span className="text-gray-400 font-bold text-xs">سعر الوحدة:</span>
                 <span className="font-black text-brand-primary">{formatCurrency(supplier.costPerUnit, settings.currency)}</span>
               </div>
@@ -477,12 +617,12 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
               </div>
             </div>
 
-            <div className="mt-8 pt-8 border-t border-dashed border-gray-100 flex gap-4">
-              <a href={`tel:${supplier.phone}`} className="flex-1 flex items-center justify-center gap-2 py-4 bg-green-50 text-green-600 rounded-2xl font-black hover:bg-green-600 hover:text-white transition-all">
-                <Phone size={18} /> اتصل بالمورد
-              </a>
-              <button onClick={() => generateReport()} className="w-14 h-14 flex items-center justify-center bg-gray-50 text-gray-400 rounded-2xl hover:bg-brand-primary hover:text-white transition-all">
-                <FileText size={20} />
+            <div className="mt-8 pt-8 border-t border-dashed border-gray-100 dark:border-white/10 flex gap-4">
+              <button onClick={() => setSupplierInfoModal(supplier)} className="flex-1 flex items-center justify-center gap-2 py-4 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 rounded-2xl font-black hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 dark:hover:text-white hover:-translate-y-1 hover:shadow-lg hover:shadow-emerald-500/20 active:scale-95 transition-all">
+                <Phone size={18} /> معلومات المورد
+              </button>
+              <button onClick={() => setPrintIndividualModal(supplier)} className="w-14 h-14 flex items-center justify-center bg-orange-50 text-orange-500 dark:bg-orange-500/10 dark:text-orange-400 rounded-2xl hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white hover:-translate-y-1 hover:shadow-lg hover:shadow-orange-500/20 active:scale-90 transition-all group">
+                <FileText size={20} className="group-hover:scale-110 transition-transform" />
               </button>
             </div>
           </div>
@@ -490,19 +630,19 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
       </div>
 
       {filteredSuppliers.length === 0 && (
-        <div className="flex flex-col items-center justify-center p-32 text-center bg-white rounded-[4rem] border-2 border-dashed border-gold-100">
+        <div className="flex flex-col items-center justify-center p-32 text-center bg-white dark:bg-brand-dark/50 rounded-[4rem] border-2 border-dashed border-gold-100 dark:border-white/10">
           <div className="w-40 h-40 bg-brand-light/20 rounded-full flex items-center justify-center text-brand-primary/20 mb-8 animate-pulse">
             <Truck size={80} />
           </div>
-          <h3 className="text-3xl font-black text-brand-dark mb-4">لا يوجد موردين بهذا الاسم</h3>
-          <p className="text-brand-dark/40 font-bold max-w-md">يرجى التأكد من كتابة الاسم بشكل صحيح أو تغيير تصنيف البحث المختار</p>
+          <h3 className="text-3xl font-black text-brand-dark dark:text-white mb-4">لا يوجد موردين بهذا الاسم</h3>
+          <p className="text-gray-500 dark:text-gray-300 font-black max-w-md">يرجى التأكد من كتابة الاسم بشكل صحيح أو تغيير تصنيف البحث المختار</p>
         </div>
       )}
 
       {/* Add / Edit Modal */}
       {isModalOpen && (
         <div className="fixed top-20 right-0 lg:right-28 left-0 bottom-0 z-[80] bg-brand-dark/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-2xl rounded-[4rem] shadow-4xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-500">
+          <div className="bg-white dark:bg-brand-dark dark:border dark:border-white/10 w-full max-w-2xl rounded-[4rem] shadow-4xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-500">
             <div className="p-10 bg-brand-primary text-white flex justify-between items-center relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
               <div className="flex items-center gap-6 relative z-10">
@@ -516,7 +656,7 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="w-14 h-14 flex items-center justify-center bg-white/10 hover:bg-red-500 hover:text-white rounded-2xl transition-all border border-white/10"
+                className="w-14 h-14 flex items-center justify-center bg-red-500/10 text-red-500 hover:bg-red-600 hover:text-white rounded-2xl transition-all border border-transparent hover:border-red-500 hover:-translate-y-1 active:scale-90 shadow-lg group"
               >
                 <X size={28} />
               </button>
@@ -525,21 +665,21 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
             <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-12 space-y-8 no-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-3">
-                  <label className="text-brand-dark/60 text-xs font-black uppercase mr-2 tracking-widest">اسم المورد / الشركة</label>
+                  <label className="text-brand-dark dark:text-gray-200 text-sm font-black uppercase mr-2 tracking-widest mb-1 block">اسم المورد / الشركة</label>
                   <input
                     required
                     value={formData.name || ''}
                     onChange={e => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full py-4 px-6 bg-gray-50 border border-transparent focus:border-brand-primary focus:bg-white rounded-[1.5rem] outline-none transition-all font-black text-brand-dark"
+                    className="w-full py-4 px-6 bg-gray-50 dark:bg-brand-dark/50 dark:border-white/10 dark:text-white dark:focus:border-brand-primary border border-transparent focus:border-brand-primary focus:bg-white rounded-[1.5rem] outline-none transition-all font-black text-brand-dark"
                     placeholder="أدخل الاسم الرباعي أو اسم الشركة..."
                   />
                 </div>
                 <div className="space-y-3">
-                  <label className="text-brand-dark/60 text-xs font-black uppercase mr-2 tracking-widest">تصنيف التوريد</label>
+                  <label className="text-brand-dark dark:text-gray-200 text-sm font-black uppercase mr-2 tracking-widest mb-1 block">تصنيف التوريد</label>
                   <select
                     value={formData.category || 'قهوة'}
                     onChange={e => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full py-4 px-6 bg-gray-50 border border-transparent focus:border-brand-primary focus:bg-white rounded-[1.5rem] outline-none transition-all font-black text-brand-dark appearance-none"
+                    className="w-full py-4 px-6 bg-gray-50 dark:bg-brand-dark/50 dark:border-white/10 dark:text-white dark:focus:border-brand-primary border border-transparent focus:border-brand-primary focus:bg-white rounded-[1.5rem] outline-none transition-all font-black text-brand-dark appearance-none"
                   >
                     <option value="قهوة">قهوة وبن</option>
                     <option value="البان">ألبان ومشتقاتها</option>
@@ -550,68 +690,70 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
                   </select>
                 </div>
                 <div className="space-y-3">
-                  <label className="text-brand-dark/60 text-xs font-black uppercase mr-2 tracking-widest">رقم الهاتف</label>
+                  <label className="text-brand-dark dark:text-gray-200 text-sm font-black uppercase mr-2 tracking-widest mb-1 block">رقم الهاتف</label>
                   <input
                     required
                     value={formData.phone || ''}
                     onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full py-4 px-6 bg-gray-50 border border-transparent focus:border-brand-primary focus:bg-white rounded-[1.5rem] outline-none transition-all font-black text-brand-dark"
+                    className="w-full py-4 px-6 bg-gray-50 dark:bg-brand-dark/50 dark:border-white/10 dark:text-white dark:focus:border-brand-primary border border-transparent focus:border-brand-primary focus:bg-white rounded-[1.5rem] outline-none transition-all font-black text-brand-dark"
                     placeholder="07XXXXXXXXXX"
                   />
                 </div>
                 <div className="space-y-3">
-                  <label className="text-brand-dark/60 text-xs font-black uppercase mr-2 tracking-widest">البريد الإلكتروني</label>
+                  <label className="text-brand-dark dark:text-gray-200 text-sm font-black uppercase mr-2 tracking-widest mb-1 block">البريد الإلكتروني</label>
                   <input
+                    name="supplier_email_input"
+                    autoComplete="off"
                     value={formData.email || ''}
                     onChange={e => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full py-4 px-6 bg-gray-50 border border-transparent focus:border-brand-primary focus:bg-white rounded-[1.5rem] outline-none transition-all font-black text-brand-dark"
+                    className="w-full py-4 px-6 bg-gray-50 dark:bg-brand-dark/50 dark:border-white/10 dark:text-white dark:focus:border-brand-primary border border-transparent focus:border-brand-primary focus:bg-white rounded-[1.5rem] outline-none transition-all font-black text-brand-dark"
                     placeholder="example@mail.com"
                   />
                 </div>
                 <div className="space-y-3">
-                  <label className="text-brand-dark/60 text-xs font-black uppercase mr-2 tracking-widest">السلعة الرئيسية</label>
+                  <label className="text-brand-dark dark:text-gray-200 text-sm font-black uppercase mr-2 tracking-widest mb-1 block">السلعة الرئيسية</label>
                   <input
                     required
                     value={formData.suppliedItem || ''}
                     onChange={e => setFormData({ ...formData, suppliedItem: e.target.value })}
-                    className="w-full py-4 px-6 bg-gray-50 border border-transparent focus:border-brand-primary focus:bg-white rounded-[1.5rem] outline-none transition-all font-black text-brand-dark"
+                    className="w-full py-4 px-6 bg-gray-50 dark:bg-brand-dark/50 dark:border-white/10 dark:text-white dark:focus:border-brand-primary border border-transparent focus:border-brand-primary focus:bg-white rounded-[1.5rem] outline-none transition-all font-black text-brand-dark"
                     placeholder="مثال: حبيبات بن كولومبي"
                   />
                 </div>
                 <div className="space-y-3">
-                  <label className="text-brand-dark/60 text-xs font-black uppercase mr-2 tracking-widest">سعر الوحدة ({settings.currency})</label>
+                  <label className="text-brand-dark dark:text-gray-200 text-sm font-black uppercase mr-2 tracking-widest mb-1 block">سعر الوحدة ({settings.currency})</label>
                   <input
                     required
                     type="number"
                     value={formData.costPerUnit || 0}
                     onChange={e => setFormData({ ...formData, costPerUnit: Number(e.target.value) })}
-                    className="w-full py-4 px-6 bg-gray-50 border border-transparent focus:border-brand-primary focus:bg-white rounded-[1.5rem] outline-none transition-all font-black text-brand-dark"
+                    className="w-full py-4 px-6 bg-gray-50 dark:bg-brand-dark/50 dark:border-white/10 dark:text-white dark:focus:border-brand-primary border border-transparent focus:border-brand-primary focus:bg-white rounded-[1.5rem] outline-none transition-all font-black text-brand-dark"
                   />
                 </div>
                 <div className="space-y-3">
-                  <label className="text-brand-dark/60 text-xs font-black uppercase mr-2 tracking-widest">إجمالي المسحوبات ({settings.currency})</label>
+                  <label className="text-brand-dark dark:text-gray-200 text-sm font-black uppercase mr-2 tracking-widest mb-1 block">إجمالي المسحوبات ({settings.currency})</label>
                   <input
                     type="number"
                     value={formData.totalPaid || 0}
                     onChange={e => setFormData({ ...formData, totalPaid: Number(e.target.value) })}
-                    className="w-full py-4 px-6 bg-gray-50 border border-transparent focus:border-brand-primary focus:bg-white rounded-[1.5rem] outline-none transition-all font-black text-brand-dark"
+                    className="w-full py-4 px-6 bg-gray-50 dark:bg-brand-dark/50 dark:border-white/10 dark:text-white dark:focus:border-brand-primary border border-transparent focus:border-brand-primary focus:bg-white rounded-[1.5rem] outline-none transition-all font-black text-brand-dark"
                   />
                 </div>
                 <div className="space-y-3">
-                  <label className="text-brand-dark/60 text-xs font-black uppercase mr-2 tracking-widest">تاريخ آخر توريد</label>
+                  <label className="text-brand-dark dark:text-gray-200 text-sm font-black uppercase mr-2 tracking-widest mb-1 block">تاريخ آخر توريد</label>
                   <input
                     type="date"
                     value={formData.lastSupplyDate || ''}
                     onChange={e => setFormData({ ...formData, lastSupplyDate: e.target.value })}
-                    className="w-full py-4 px-6 bg-gray-50 border border-transparent focus:border-brand-primary focus:bg-white rounded-[1.5rem] outline-none transition-all font-black text-brand-dark"
+                    className="w-full py-4 px-6 bg-gray-50 dark:bg-brand-dark/50 dark:border-white/10 dark:text-white dark:focus:border-brand-primary border border-transparent focus:border-brand-primary focus:bg-white rounded-[1.5rem] outline-none transition-all font-black text-brand-dark"
                   />
                 </div>
                 <div className="space-y-3">
-                  <label className="text-brand-dark/60 text-xs font-black uppercase mr-2 tracking-widest">وتيرة التوريد</label>
+                  <label className="text-brand-dark dark:text-gray-200 text-sm font-black uppercase mr-2 tracking-widest mb-1 block">وتيرة التوريد</label>
                   <select
                     value={formData.frequency || 'monthly'}
                     onChange={e => setFormData({ ...formData, frequency: e.target.value as any })}
-                    className="w-full py-4 px-6 bg-gray-50 border border-transparent focus:border-brand-primary focus:bg-white rounded-[1.5rem] outline-none transition-all font-black text-brand-dark appearance-none"
+                    className="w-full py-4 px-6 bg-gray-50 dark:bg-brand-dark/50 dark:border-white/10 dark:text-white dark:focus:border-brand-primary border border-transparent focus:border-brand-primary focus:bg-white rounded-[1.5rem] outline-none transition-all font-black text-brand-dark appearance-none"
                   >
                     <option value="daily">توريد يومي</option>
                     <option value="weekly">توريد أسبوعي</option>
@@ -624,19 +766,112 @@ const SuppliersView: React.FC<SuppliersViewProps> = ({ suppliers, settings }) =>
               <div className="pt-10 flex gap-4">
                 <button
                   type="submit"
-                  className="flex-[2] py-6 rounded-[2.2rem] bg-brand-primary text-white font-black shadow-2xl shadow-brand-primary/20 hover:bg-brand-dark transition-all active:scale-95 flex items-center justify-center gap-3"
+                  className="flex-[2] py-6 rounded-[2.2rem] bg-emerald-500 text-white font-black shadow-xl shadow-emerald-500/20 hover:bg-emerald-600 hover:shadow-2xl hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-3 relative overflow-hidden group"
                 >
                   <Check size={24} /> {editingSupplier ? 'حفظ التعديلات' : 'تأكيد الإضافة'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-6 rounded-[2.2rem] bg-gray-50 text-brand-dark/40 font-black hover:bg-gray-100 transition-all active:scale-95 border-2 border-transparent"
+                  className="flex-1 py-6 rounded-[2.2rem] bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 font-black hover:bg-gray-200 dark:hover:bg-white/10 hover:-translate-y-1 hover:shadow-lg transition-all active:scale-95 border border-transparent hover:border-gray-300 dark:hover:border-white/10"
                 >
                   إلغاء التوريد
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+
+      {/* Supplier Info Modal */}
+      {supplierInfoModal && (
+        <div className="fixed top-20 right-0 lg:right-28 left-0 bottom-0 z-[80] bg-brand-dark/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-brand-dark dark:border-white/10 w-full max-w-lg rounded-[3.5rem] shadow-4xl overflow-hidden animate-in zoom-in-95 duration-500 relative border border-white/20">
+            <div className="p-10 flex flex-col items-center text-center relative z-10">
+              <div className="w-24 h-24 bg-emerald-50 dark:bg-emerald-500/10 rounded-[2.5rem] flex items-center justify-center mb-6 relative">
+                <div className="absolute inset-0 bg-emerald-500/20 rounded-[2.5rem] animate-ping opacity-20"></div>
+                <Users size={48} className="text-emerald-500" />
+              </div>
+              <h2 className="text-3xl font-black text-brand-dark dark:text-white mb-2">{supplierInfoModal.name}</h2>
+              <span className="px-4 py-1.5 bg-brand-primary/10 text-brand-primary dark:text-brand-accent text-xs font-black rounded-full mb-8">
+                {supplierInfoModal.category}
+              </span>
+
+              <div className="w-full space-y-4 text-right mb-10">
+                <div className="bg-gray-50 dark:bg-white/5 p-5 rounded-2xl flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white dark:bg-white/10 rounded-xl flex items-center justify-center text-brand-primary"><Phone size={20} /></div>
+                  <div>
+                    <p className="text-gray-400 dark:text-gray-500 text-xs font-bold mb-1">رقم الهاتف</p>
+                    <p className="text-brand-dark dark:text-white font-black text-lg" dir="ltr">{supplierInfoModal.phone}</p>
+                  </div>
+                </div>
+                {supplierInfoModal.email && (
+                  <div className="bg-gray-50 dark:bg-white/5 p-5 rounded-2xl flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white dark:bg-white/10 rounded-xl flex items-center justify-center text-brand-primary"><Mail size={20} /></div>
+                    <div>
+                      <p className="text-gray-400 dark:text-gray-500 text-xs font-bold mb-1">البريد الإلكتروني</p>
+                      <p className="text-brand-dark dark:text-white font-black text-lg" dir="ltr">{supplierInfoModal.email}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={() => setSupplierInfoModal(null)}
+                className="w-full py-5 px-6 bg-brand-primary hover:bg-brand-dark text-white rounded-[1.8rem] font-black transition-all active:scale-95 shadow-xl shadow-brand-primary/20 flex items-center justify-center gap-2"
+              >
+                إغلاق النافذة
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print Individual Modal Confirmation */}
+      {printIndividualModal && (
+        <div className="fixed top-20 right-0 lg:right-28 left-0 bottom-0 z-[150] bg-brand-dark/40 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300" dir="rtl">
+          <div className="bg-white dark:bg-brand-dark shadow-4xl overflow-hidden animate-in zoom-in-95 duration-500 relative border border-white/20 dark:border-white/10 w-full max-w-md rounded-[3.5rem]">
+
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-orange-500/10 rounded-full blur-3xl"></div>
+            <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-brand-primary/10 rounded-full blur-3xl"></div>
+
+            <div className="p-10 flex flex-col items-center text-center relative z-10">
+              <div className="w-24 h-24 bg-orange-50 dark:bg-orange-500/10 rounded-[2.5rem] flex items-center justify-center mb-8 relative border border-white/5">
+                <div className="absolute inset-0 bg-orange-500/20 rounded-[2.5rem] animate-ping opacity-20"></div>
+                <FileText size={48} className="text-orange-500" />
+              </div>
+
+              <h2 className="text-3xl font-black text-brand-dark dark:text-white mb-4 leading-tight">تصدير كشف فردي</h2>
+
+              <div className="bg-gray-50 dark:bg-white/5 w-full rounded-2xl p-6 mb-10 border border-gray-100 dark:border-white/10 shadow-inner">
+                <p className="text-gray-700 dark:text-gray-200 text-[15px] font-extrabold leading-relaxed text-center">
+                  هل تريد بالتأكيد تصدير كشف حساب والتفاصيل المالية للمورد <span className="text-brand-primary">({printIndividualModal.name})</span> في ملف PDF مستقل؟
+                </p>
+              </div>
+
+              <div className="flex gap-4 w-full">
+                <button
+                  onClick={() => generateIndividualReport(printIndividualModal)}
+                  className="flex-[2] py-5 bg-orange-500 text-white rounded-[1.8rem] font-black transition-all hover:bg-orange-600 active:scale-95 shadow-xl shadow-orange-500/20 hover:-translate-y-1 hover:shadow-2xl flex items-center justify-center gap-2 group"
+                >
+                  <FileText size={20} className="group-hover:scale-110 transition-transform" /> تصدير الكشف
+                </button>
+                <button
+                  onClick={() => setPrintIndividualModal(null)}
+                  className="flex-1 py-5 bg-gray-100 dark:bg-white/5 text-brand-dark dark:text-white rounded-[1.8rem] font-black transition-all hover:bg-gray-200 dark:hover:bg-white/10 active:scale-95 border border-transparent hover:-translate-y-1"
+                >
+                  تراجع
+                </button>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setPrintIndividualModal(null)}
+              className="absolute top-6 left-6 p-2 bg-gray-50 dark:bg-white/10 text-gray-400 dark:text-gray-300 hover:text-brand-dark dark:hover:text-white hover:bg-gray-200 dark:hover:bg-white/20 rounded-xl transition-all hover:scale-110 active:scale-90 z-20"
+            >
+              <X size={18} />
+            </button>
           </div>
         </div>
       )}

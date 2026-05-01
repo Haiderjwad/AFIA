@@ -14,29 +14,29 @@ const StatusModal: React.FC<StatusModalProps> = ({ isOpen, onClose, type, title,
 
     const colors = {
         success: {
-            bg: 'bg-green-50',
-            text: 'text-green-600',
+            bg: 'bg-green-50 dark:bg-green-500/10',
+            text: 'text-green-600 dark:text-green-400',
             icon: <CheckCircle2 size={48} className="text-green-500" />,
-            button: 'bg-green-600 shadow-green-600/20 hover:bg-green-700',
+            button: 'bg-green-600 shadow-green-600/20 hover:bg-green-700 hover:-translate-y-1',
             glow: 'bg-green-500/10'
         },
         error: {
-            bg: 'bg-red-50',
-            text: 'text-red-600',
+            bg: 'bg-red-50 dark:bg-red-500/10',
+            text: 'text-red-600 dark:text-red-400',
             icon: <AlertCircle size={48} className="text-red-500" />,
-            button: 'bg-red-600 shadow-red-600/20 hover:bg-red-700',
+            button: 'bg-red-600 shadow-red-600/20 hover:bg-red-700 hover:-translate-y-1',
             glow: 'bg-red-500/10'
         },
         warning: {
-            bg: 'bg-orange-50',
-            text: 'text-orange-600',
+            bg: 'bg-orange-50 dark:bg-orange-500/10',
+            text: 'text-orange-600 dark:text-orange-400',
             icon: <AlertCircle size={48} className="text-orange-500" />,
-            button: 'bg-orange-600 shadow-orange-600/20 hover:bg-orange-700',
+            button: 'bg-orange-600 shadow-orange-600/20 hover:bg-orange-700 hover:-translate-y-1',
             glow: 'bg-orange-500/10'
         },
         loading: {
-            bg: 'bg-brand-light/30',
-            text: 'text-brand-primary',
+            bg: 'bg-brand-light/30 dark:bg-brand-primary/10',
+            text: 'text-brand-primary dark:text-brand-light',
             icon: <RefreshCw size={48} className="text-brand-primary animate-spin" />,
             button: 'hidden',
             glow: 'bg-brand-primary/10'
@@ -46,48 +46,50 @@ const StatusModal: React.FC<StatusModalProps> = ({ isOpen, onClose, type, title,
     const config = colors[type];
 
     return (
-        <div className="fixed top-20 right-0 lg:right-28 left-0 bottom-0 z-[150] bg-brand-dark/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300" dir="rtl">
-            <div className="bg-white w-full max-w-sm rounded-[3.5rem] shadow-4xl overflow-hidden animate-in zoom-in-95 duration-500 relative border border-white/20">
+        <div className="fixed top-20 right-0 lg:right-28 left-0 bottom-0 z-[150] bg-brand-dark/40 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300" dir="rtl">
+            <div className="bg-white dark:bg-brand-dark shadow-4xl overflow-hidden animate-in zoom-in-95 duration-500 relative border border-white/20 dark:border-white/10 w-full max-w-sm rounded-[3.5rem]">
 
                 {/* Visual Elements */}
                 <div className={`absolute -top-24 -right-24 w-48 h-48 ${config.glow} rounded-full blur-3xl`}></div>
-                <div className={`absolute -bottom-24 -left-24 w-48 h-48 bg-brand-primary/10 rounded-full blur-3xl`}></div>
+                <div className={`absolute -bottom-24 -left-24 w-48 h-48 bg-brand-primary/10 dark:bg-brand-primary/5 rounded-full blur-3xl`}></div>
 
                 <div className="p-10 flex flex-col items-center text-center relative z-10">
                     {/* Icon Container */}
-                    <div className={`w-24 h-24 ${config.bg} rounded-[2.5rem] flex items-center justify-center mb-8 relative`}>
+                    <div className={`w-24 h-24 ${config.bg} rounded-[2.5rem] flex items-center justify-center mb-8 relative border border-white/5`}>
                         <div className={`absolute inset-0 ${config.bg} animate-ping opacity-20 rounded-[2.5rem]`}></div>
                         {config.icon}
                     </div>
 
-                    <div className="flex items-center gap-2 mb-3">
-                        <Sparkles size={16} className="text-brand-accent animate-pulse" />
-                        <h2 className={`text-2xl font-black text-brand-dark`}>{title}</h2>
-                        <Sparkles size={16} className="text-brand-accent animate-pulse" />
+                    <div className="flex items-center gap-2 mb-4">
+                        <Sparkles size={18} className="text-brand-accent animate-pulse" />
+                        <h2 className={`text-2xl font-black text-brand-dark dark:text-white`}>{title}</h2>
+                        <Sparkles size={18} className="text-brand-accent animate-pulse" />
                     </div>
 
-                    <p className="text-brand-dark/60 font-bold leading-relaxed mb-10 px-2 text-sm italic">
-                        {message}
-                    </p>
+                    <div className="bg-gray-50 dark:bg-white/5 w-full rounded-3xl p-5 mb-8 border border-gray-100 dark:border-white/10 shadow-inner">
+                        <p className="text-gray-700 dark:text-gray-200 font-extrabold leading-relaxed text-[15px] text-center">
+                            {message}
+                        </p>
+                    </div>
 
                     <button
                         onClick={onClose}
                         className={`w-full py-5 px-6 ${config.button} text-white rounded-[1.8rem] font-black transition-all active:scale-95 shadow-xl flex items-center justify-center gap-2`}
                     >
-                        فهمت ذلك
+                        {type === 'loading' ? 'جاري المعالجة...' : 'فهمت ذلك'}
                     </button>
                 </div>
 
                 {/* Top Close Button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-6 left-6 p-2 bg-gray-50 text-gray-400 hover:text-brand-dark rounded-xl transition-colors"
+                    className="absolute top-6 left-6 p-2 bg-gray-50 dark:bg-white/10 text-gray-400 dark:text-gray-300 hover:text-brand-dark dark:hover:text-white hover:bg-gray-200 dark:hover:bg-white/20 rounded-xl transition-all hover:scale-110 active:scale-90"
                 >
                     <X size={18} />
                 </button>
 
-                <div className="px-10 py-5 bg-gray-50 border-t border-gray-100 flex justify-center">
-                    <span className="text-[10px] text-gray-300 font-extrabold uppercase tracking-[0.2em]">{type === 'success' ? 'Operation Completed' : 'System Notification'}</span>
+                <div className="px-10 py-5 bg-gray-50 dark:bg-brand-dark border-t border-gray-100 dark:border-white/10 flex justify-center">
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 font-black uppercase tracking-[0.2em]">{type === 'success' ? 'Operation Completed' : 'System Notification'}</span>
                 </div>
             </div>
         </div>

@@ -378,16 +378,16 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
 
                         <div className="px-8 pb-8 flex gap-3">
                             <button
-                                onClick={() => setLongPressTable(null)}
-                                className="flex-1 py-3 rounded-2xl font-black text-brand-dark bg-gray-100 hover:bg-gray-200 transition-all"
-                            >
-                                إلغاء
-                            </button>
-                            <button
                                 onClick={handleSaveGuestCount}
-                                className="flex-1 py-3 rounded-2xl font-black text-white bg-gradient-to-r from-brand-primary to-brand-secondary hover:shadow-lg transition-all"
+                                className="flex-1 py-3.5 rounded-2xl font-black text-white bg-gradient-to-l from-brand-primary to-brand-secondary hover:from-brand-secondary hover:to-brand-primary hover:shadow-xl hover:shadow-brand-primary/30 hover:-translate-y-0.5 active:scale-95 transition-all duration-200"
                             >
                                 حفظ
+                            </button>
+                            <button
+                                onClick={() => setLongPressTable(null)}
+                                className="flex-1 py-3.5 rounded-2xl font-black text-gray-500 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 hover:text-gray-700 hover:-translate-y-0.5 active:scale-95 transition-all duration-200"
+                            >
+                                إلغاء
                             </button>
                         </div>
                     </div>
@@ -402,18 +402,18 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
             {/* ══════════════════════════════════════════════════════
                 MODERN TABLE MANAGEMENT DASHBOARD
             ══════════════════════════════════════════════════════ */}
-            <div className="mb-6 rounded-[3rem] overflow-hidden shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] bg-white border border-white transition-all duration-500">
+            <div className="mb-6 rounded-[3rem] overflow-hidden shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] bg-white dark:bg-slate-800 border border-white dark:border-slate-700 transition-all duration-500">
 
                 {/* Dashboard Control Bar */}
-                <div className="px-8 py-5 border-b border-gray-50 flex flex-col lg:flex-row items-center justify-between gap-6">
+                <div className="px-8 py-5 border-b border-gray-50 dark:border-slate-700 flex flex-col lg:flex-row items-center justify-between gap-6">
                     <div className="flex items-center gap-6">
                         <div className="flex items-center gap-4">
                             <div className="w-14 h-14 bg-brand-dark rounded-2xl flex items-center justify-center text-brand-accent shadow-xl shadow-brand-dark/20">
                                 <Monitor size={24} />
                             </div>
                             <div>
-                                <h2 className="text-xl font-black text-brand-dark leading-tight tracking-tight uppercase">خريطة الطاولات</h2>
-                                <p className="text-brand-dark/40 font-bold text-[10px] tracking-widest mt-0.5">INTERACTIVE TABLE GRID SYSTEM</p>
+                                <h2 className="text-xl font-black text-brand-dark dark:text-white leading-tight tracking-tight uppercase">خريطة الطاولات</h2>
+                                <p className="text-gray-500 dark:text-gray-300 font-black text-[10px] tracking-widest mt-0.5">INTERACTIVE TABLE GRID SYSTEM</p>
                             </div>
                         </div>
                         <div className="hidden md:flex gap-4">
@@ -439,10 +439,10 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                         <button
                             onClick={() => onSelectTable('Takeaway')}
                             className={`
-                                flex items-center gap-3 px-6 py-3.5 rounded-2xl font-black text-xs transition-all duration-300
+                                flex items-center gap-3 px-6 py-3.5 rounded-2xl font-black text-xs transition-all duration-300 active:scale-95
                                 ${selectedTableNumber === 'Takeaway'
-                                    ? 'bg-brand-accent text-white shadow-xl shadow-brand-accent/20 scale-105'
-                                    : 'bg-white border-2 border-brand-primary/5 text-brand-dark/40 hover:border-brand-accent hover:text-brand-accent hover:bg-brand-accent/5'
+                                    ? 'bg-brand-accent text-white shadow-xl shadow-brand-accent/30 scale-105 ring-2 ring-brand-accent/30'
+                                    : 'bg-gray-100 dark:bg-slate-700 border-2 border-brand-accent/20 text-brand-dark dark:text-gray-200 hover:border-brand-accent hover:text-brand-accent hover:bg-brand-accent/10 hover:shadow-lg hover:shadow-brand-accent/10'
                                 }
                             `}
                         >
@@ -461,10 +461,10 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
 
                 {/* The Interactive Grid Slider */}
                 {tablesOpen && (
-                    <div className="relative group/slider px-8 pb-10 bg-[#FAFBFF] animate-in slide-in-from-top-4 duration-700">
+                    <div className="relative group/slider px-8 pb-10 bg-[#FAFBFF] dark:bg-slate-900/60 animate-in slide-in-from-top-4 duration-700">
                         {/* Gradient Fades for Slider */}
-                        <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[#FAFBFF] to-transparent z-10 pointer-events-none opacity-0 group-hover/slider:opacity-100 transition-opacity" />
-                        <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-[#FAFBFF] to-transparent z-10 pointer-events-none opacity-0 group-hover/slider:opacity-100 transition-opacity" />
+                        <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[#FAFBFF] dark:from-slate-900 to-transparent z-10 pointer-events-none opacity-0 group-hover/slider:opacity-100 transition-opacity" />
+                        <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-[#FAFBFF] dark:from-slate-900 to-transparent z-10 pointer-events-none opacity-0 group-hover/slider:opacity-100 transition-opacity" />
 
                         {/* Control Buttons */}
                         <button
@@ -520,27 +520,36 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
             {/* ══════════════════════════════════════════════════════
                 PRODUCTS & CATEGORIES REFINED
             ══════════════════════════════════════════════════════ */}
+            {/* Activity Center Button — TOP SECTION */}
+            <div className="flex items-center justify-between mb-5">
+                <button
+                    onClick={() => setShowActivityLog(true)}
+                    className="group flex items-center gap-3 bg-gradient-to-l from-brand-accent to-orange-500 hover:from-orange-500 hover:to-brand-accent text-white px-6 py-3.5 rounded-2xl font-black text-sm shadow-xl shadow-brand-accent/30 hover:shadow-brand-accent/50 hover:-translate-y-0.5 active:scale-95 transition-all duration-300"
+                >
+                    <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                        <History size={16} />
+                    </div>
+                    مركز النشاط
+                    {(transactions.filter(t => t.salesPerson === currentUser?.name && ['pending', 'preparing'].includes(t.status)).length > 0) && (
+                        <span className="bg-white text-brand-accent text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow">
+                            {transactions.filter(t => t.salesPerson === currentUser?.name && ['pending', 'preparing'].includes(t.status)).length}
+                        </span>
+                    )}
+                </button>
+            </div>
+
             <div className="flex flex-col md:flex-row justify-between items-end mb-6 gap-6">
                 <div>
                     <div className="flex items-center gap-3 mb-1">
                         <div className="w-2 h-8 bg-brand-primary rounded-full shadow-[0_0_15px_rgba(45,106,79,0.3)]" />
-                        <h1 className="text-3xl font-black text-brand-dark tracking-tight">قائمة المبيعات</h1>
+                        <h1 className="text-3xl font-black text-brand-dark dark:text-white tracking-tight">قائمة المبيعات</h1>
                     </div>
-                    <p className="text-brand-dark/40 font-bold text-[10px] uppercase tracking-[0.2em] px-5">
+                    <p className="text-gray-500 dark:text-gray-300 font-black text-[10px] uppercase tracking-[0.2em] px-5">
                         {selectedTableNumber ? (selectedTableNumber === 'Takeaway' ? '🥡 طلب سفري عاجل' : `📍 خدمة نشطة لطاولة ${selectedTableNumber}`) : '📍 اختر طاولة لبدء الطلب'}
                     </p>
                 </div>
 
                 <div className="flex gap-3 w-full md:w-auto">
-                    <button
-                        onClick={() => setShowActivityLog(true)}
-                        className="bg-white h-14 px-6 rounded-2xl border border-white shadow-lg shadow-gray-200/50 font-black text-brand-dark flex items-center gap-3 hover:scale-105 transition-all text-xs active:scale-95"
-                    >
-                        <div className="w-8 h-8 rounded-xl bg-brand-primary/10 flex items-center justify-center text-brand-primary">
-                            <History size={16} />
-                        </div>
-                        نشاطي
-                    </button>
                     <div className="relative flex-1 md:w-96 group">
                         <Search size={18} className="absolute right-5 top-1/2 -translate-y-1/2 text-brand-primary/30 group-focus-within:text-brand-primary transition-colors" />
                         <input
@@ -839,24 +848,28 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                                                 .filter(t => t.salesPerson === currentUser?.name && t.status === 'completed' && new Date(t.date).toDateString() === new Date().toDateString())
                                                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                                                 .map(order => (
-                                                    <div key={order.id} className="bg-emerald-50/30 p-6 rounded-[2.5rem] border border-emerald-100/50 flex justify-between items-center group hover:bg-emerald-50 transition-all cursor-pointer">
+                                                    <div
+                                                        key={order.id}
+                                                        onClick={() => setSelectedOrderDetail(order)}
+                                                        className="bg-emerald-50/30 p-6 rounded-[2.5rem] border border-emerald-100/50 flex justify-between items-center group hover:bg-emerald-500 hover:border-emerald-500 hover:shadow-xl hover:shadow-emerald-500/20 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer active:scale-95"
+                                                    >
                                                         <div className="flex items-center gap-5">
-                                                            <div className="w-14 h-14 bg-emerald-500 text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-lg shadow-emerald-500/20">
+                                                            <div className="w-14 h-14 bg-emerald-500 group-hover:bg-white text-white group-hover:text-emerald-600 rounded-2xl flex items-center justify-center font-black text-xl shadow-lg shadow-emerald-500/20 transition-all">
                                                                 {order.tableNumber === 'Takeaway' ? 'SB' : order.tableNumber}
                                                             </div>
                                                             <div>
-                                                                <p className="font-black text-brand-dark text-lg">{order.tableNumber === 'Takeaway' ? 'طلب سفري منجز' : `طاولة ${order.tableNumber}`}</p>
-                                                                <div className="flex items-center gap-2 text-[10px] text-emerald-600 font-black uppercase">
+                                                                <p className="font-black text-brand-dark group-hover:text-white text-lg transition-colors">{order.tableNumber === 'Takeaway' ? 'طلب سفري منجز' : `طاولة ${order.tableNumber}`}</p>
+                                                                <div className="flex items-center gap-2 text-[10px] text-emerald-600 group-hover:text-emerald-100 font-black uppercase transition-colors">
                                                                     <CheckCircle size={12} />
                                                                     <span>تم التسليم بنجاح</span>
-                                                                    <span className="text-gray-300 mx-1">|</span>
-                                                                    <span className="text-gray-400">{new Date(order.date).toLocaleTimeString('ar-EG')}</span>
+                                                                    <span className="text-gray-300 group-hover:text-emerald-200 mx-1">|</span>
+                                                                    <span className="text-gray-400 group-hover:text-emerald-100">{new Date(order.date).toLocaleTimeString('ar-EG')}</span>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                         <div className="text-right">
-                                                            <p className="text-[10px] font-black text-gray-400 uppercase mb-1">القيمة</p>
-                                                            <p className="font-black text-emerald-600">{formatCurrency(order.total, settings.currency)}</p>
+                                                            <p className="text-[10px] font-black text-gray-400 group-hover:text-emerald-100 uppercase mb-1 transition-colors">القيمة</p>
+                                                            <p className="font-black text-emerald-600 group-hover:text-white transition-colors">{formatCurrency(order.total, settings.currency)}</p>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -1185,8 +1198,9 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                             </div>
                         </div>
                         <div className="p-8 text-center">
-                            <p className="text-brand-dark font-bold text-lg mb-8 leading-relaxed">
-                                هل أنت متأكد من رغبتك في إلغاء هذا الطلب؟ لا يمكن التراجع عن هذا الإجراء لاحقاً.
+                            <p className="text-brand-dark font-black text-base mb-8 leading-loose">
+                                هل أنت متأكد من رغبتك في <span className="text-brand-accent">إلغاء هذا الطلب</span>؟
+                                <br /><span className="text-gray-500 text-sm">لا يمكن التراجع عن هذا الإجراء لاحقاً.</span>
                             </p>
                             <div className="flex gap-4">
                                 <button

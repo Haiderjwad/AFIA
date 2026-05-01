@@ -294,8 +294,8 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                         <Users size={24} className="md:w-8 md:h-8" />
                     </div>
                     <div>
-                        <h1 className="text-xl md:text-3xl font-black text-brand-dark mb-1">حوكمة أداء الموظفين</h1>
-                        <p className="text-brand-dark/40 font-bold text-[10px] md:text-sm">تتبع الإنتاجية والمسؤولية لكل حساب</p>
+                        <h1 className="text-xl md:text-3xl font-black text-brand-dark dark:text-white mb-1">حوكمة أداء الموظفين</h1>
+                        <p className="text-gray-500 dark:text-gray-300 font-black text-[10px] md:text-sm tracking-wide">تتبع الإنتاجية والمسؤولية لكل حساب</p>
                     </div>
                 </div>
 

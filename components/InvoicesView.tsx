@@ -1171,8 +1171,8 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
             {/* Header Section */}
             <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-10 gap-6 transition-all relative z-10">
                 <div>
-                    <h1 className="text-2xl md:text-4xl font-black text-brand-dark mb-2">إدارة الفواتير المميزة</h1>
-                    <p className="text-brand-dark/40 font-bold text-xs md:text-base">نظام ذكي للتحصيل والطباعة المتعددة</p>
+                    <h1 className="text-2xl md:text-4xl font-black text-brand-dark dark:text-white mb-2">إدارة الفواتير المميزة</h1>
+                    <p className="text-gray-500 dark:text-gray-300 font-black text-xs md:text-base tracking-wide">نظام ذكي للتحصيل والطباعة المتعددة</p>
                 </div>
 
                 <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-4 w-full xl:w-auto">
