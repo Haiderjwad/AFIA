@@ -131,197 +131,37 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
         try {
             await new Promise(resolve => setTimeout(resolve, 500));
 
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pW = pdf.internal.pageSize.getWidth();
-            const pH = pdf.internal.pageSize.getHeight();
-            const margin = 18;
-            const contentW = pW - margin * 2;
-            let y = margin;
+            if (!reportRef.current) throw new Error("لم يتم العثور على عنصر التقرير");
 
-            const text = (str: string, x: number, yy: number, options?: any) => {
-                pdf.text(str, x, yy, options);
-            };
-
-            type RGB = [number, number, number];
-            const COL_DARK: RGB = [27, 50, 35];
-            const COL_GREEN: RGB = [45, 106, 79];
-            const COL_GOLD: RGB = [248, 150, 30];
-            const COL_GRAY: RGB = [120, 120, 120];
-            const COL_LIGHT: RGB = [245, 247, 244];
-
-            const sf = (c: RGB) => pdf.setFillColor(c[0], c[1], c[2]);
-            const sd = (c: RGB) => pdf.setDrawColor(c[0], c[1], c[2]);
-            const sc = (c: RGB) => pdf.setTextColor(c[0], c[1], c[2]);
-
-            // Header Banner
-            sf(COL_DARK);
-            pdf.rect(0, 0, pW, 30, 'F');
-
-            pdf.setTextColor(248, 150, 30);
-            pdf.setFont('helvetica', 'bold');
-            pdf.setFontSize(16);
-            text(settings.storeName, pW - margin, 12, { align: 'right' });
-
-            pdf.setTextColor(255, 255, 255);
-            pdf.setFontSize(8);
-            text('FINANCIAL INTELLIGENCE REPORT', margin, 12);
-
-            pdf.setTextColor(180, 180, 180);
-            pdf.setFontSize(7);
-            const rawPeriod = typeof period === 'string' ? period.toUpperCase() : 'REPORT';
-            text(`Period: ${rawPeriod}`, margin, 20);
-            text('Al Afia POS System', pW - margin, 20, { align: 'right' });
-
-            y = 40;
-
-            sc(COL_DARK);
-            pdf.setFontSize(14);
-            pdf.setFont('helvetica', 'bold');
-            text('Executive Financial Summary', margin, y);
-            y += 4;
-
-            sd(COL_GREEN);
-            pdf.setLineWidth(0.8);
-            pdf.line(margin, y, pW - margin, y);
-            y += 10;
-
-            // 4 main boxes
-            const boxW = (contentW - 9) / 4;
-            const boxes = [
-                { label: 'Gross Revenue', value: currentStats.totalRevenue, color: COL_GREEN },
-                { label: 'Total Payroll', value: currentStats.totalMonthlySalaries, color: [234, 88, 12] },
-                { label: 'Operational Cost', value: currentStats.totalExpenses, color: [37, 99, 235] },
-                { label: 'Net Profit', value: currentStats.netProfit, color: [22, 163, 74], solid: true }
-            ];
-
-            boxes.forEach((box, i) => {
-                const bx = margin + i * (boxW + 3);
-                if (box.solid) {
-                    sf(box.color as RGB);
-                    pdf.roundedRect(bx, y, boxW, 24, 3, 3, 'F');
-                    sc([255, 255, 255]);
-                } else {
-                    sf(COL_LIGHT);
-                    pdf.roundedRect(bx, y, boxW, 24, 3, 3, 'F');
-                    sd(box.color as RGB);
-                    pdf.setLineWidth(0.5);
-                    pdf.roundedRect(bx, y, boxW, 24, 3, 3, 'S');
-                    sc(box.color as RGB);
+            const canvas = await html2canvas(reportRef.current, {
+                scale: 3,
+                useCORS: true,
+                logging: false,
+                onclone: (clonedDoc) => {
+                    patchClonedSubtreeForHtml2Canvas(clonedDoc, {
+                        exportId: 'financial-report',
+                        fallbackColor: '#2D6A4F'
+                    });
                 }
-
-                pdf.setFontSize(12);
-                pdf.setFont('helvetica', 'bold');
-                text(String(formatCurrency(box.value, settings.currency)), bx + boxW / 2, y + 11, { align: 'center' });
-
-                pdf.setFontSize(7);
-                pdf.setFont('helvetica', 'normal');
-                if (!box.solid) sc(COL_GRAY);
-                text(box.label, bx + boxW / 2, y + 19, { align: 'center' });
             });
 
-            y += 35;
+            const imgData = canvas.toDataURL('image/jpeg', 1.0);
+            
+            const pdf = new jsPDF({
+                orientation: 'p',
+                unit: 'mm',
+                format: 'a4'
+            });
 
-            // Sales & Marketing KPIs Section
-            sc(COL_DARK);
-            pdf.setFontSize(12);
-            pdf.setFont('helvetica', 'bold');
-            text('Sales & Marketing KPIs', margin, y);
-            y += 4;
-            sd(COL_GRAY);
-            pdf.setLineWidth(0.3);
-            pdf.line(margin, y, pW - margin, y);
-            y += 8;
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const imgProps = pdf.getImageProperties(imgData);
+            const imgRatio = imgProps.width / imgProps.height;
+            const finalImgWidth = pdfWidth;
+            const finalImgHeight = pdfWidth / imgRatio;
 
-            sf([250, 250, 250]);
-            pdf.roundedRect(margin, y, contentW, 25, 4, 4, 'F');
+            pdf.addImage(imgData, 'JPEG', 0, 0, finalImgWidth, finalImgHeight);
 
-            sc(COL_GRAY);
-            pdf.setFontSize(7);
-            pdf.setFont('helvetica', 'normal');
-
-            // Left block
-            text('TOP SELLING ITEM', margin + 10, y + 8);
-            sc(COL_DARK);
-            pdf.setFontSize(11);
-            pdf.setFont('helvetica', 'bold');
-
-            // Render Arabic correctly by mapping or using English placeholder if jsPDF native doesn't support Arabic font
-            // We use standard jsPDF Helvetica. It might glitch on Arabic characters out-of-the-box,
-            // so we'll leave it to render natively assuming the system supports Latin mostly or handles Unicode fallback
-            text(String(currentStats.topItem || 'N/A'), margin + 10, y + 15);
-            sc(COL_GREEN);
-            pdf.setFontSize(8);
-            text(`${currentStats.topItemCount} units`, margin + 10, y + 21);
-
-            // Right block
-            sc(COL_GRAY);
-            pdf.setFontSize(7);
-            pdf.setFont('helvetica', 'normal');
-            text('AVERAGE ORDER VALUE (AOV)', margin + contentW / 2, y + 8);
-            sc(COL_DARK);
-            pdf.setFontSize(11);
-            pdf.setFont('helvetica', 'bold');
-            text(String(formatCurrency(currentStats.avgOrderValue, settings.currency)), margin + contentW / 2, y + 15);
-            sc(COL_GREEN);
-            pdf.setFontSize(8);
-            text(`${currentStats.orderCount} total transactions`, margin + contentW / 2, y + 21);
-
-            y += 35;
-
-            // Header for breakdown
-            sf(COL_DARK);
-            pdf.rect(margin, y, contentW, 10, 'F');
-
-            pdf.setTextColor(255, 255, 255);
-            pdf.setFontSize(7.5);
-            pdf.setFont('helvetica', 'bold');
-            text('Payroll Breakdown', margin + 5, y + 6.8);
-            text('Amount', pW - margin - 5, y + 6.8, { align: 'right' });
-
-            y += 10;
-
-            if (currentStats.salaryBreakdown && currentStats.salaryBreakdown.length > 0) {
-                currentStats.salaryBreakdown.forEach((emp, idx) => {
-                    if (y + 12 > pH - margin) {
-                        pdf.addPage();
-                        y = margin;
-                    }
-
-                    if (idx % 2 === 0) {
-                        sf(COL_LIGHT);
-                        pdf.rect(margin, y, contentW, 12, 'F');
-                    }
-
-                    pdf.setFontSize(8.5);
-                    pdf.setFont('helvetica', 'bold');
-                    sc(COL_DARK);
-
-                    // Display Employee Initial + ID if name is Arabic
-                    const dispName = emp.name;
-                    text(dispName, margin + 5, y + 7.8);
-
-                    text(String(formatCurrency(emp.period, settings.currency)), pW - margin - 5, y + 7.8, { align: 'right' });
-                    y += 12;
-                });
-            } else {
-                sf(COL_LIGHT);
-                pdf.rect(margin, y, contentW, 12, 'F');
-                pdf.setFontSize(8);
-                sc(COL_GRAY);
-                text('No records found for this period.', margin + contentW / 2, y + 7.8, { align: 'center' });
-                y += 12;
-            }
-
-            // Footer
-            sf(COL_DARK);
-            pdf.rect(0, pH - 14, pW, 14, 'F');
-            pdf.setTextColor(180, 180, 180);
-            pdf.setFontSize(7);
-            pdf.setFont('helvetica', 'normal');
-            text('© Al Afia Business Intelligence System — Confidential', margin, pH - 5);
-            text(`Generated: ${new Date().toLocaleString('en-GB')}`, pW - margin, pH - 5, { align: 'right' });
-
-            const fileName = `Financial_Report_${settings.storeName}_${new Date().toISOString().split('T')[0]}.pdf`;
+            const fileName = `Financial_Report_${settings.storeName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
             pdf.save(fileName);
 
             setStatusModal({
@@ -487,6 +327,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
                 <div className="overflow-x-auto no-scrollbar pb-10 flex justify-center">
                     <div
                         ref={reportRef}
+                        data-export-capture="financial-report"
                         className="bg-white shadow-[0_20px_60px_rgba(0,0,0,0.1)] w-[210mm] min-h-[297mm] p-12 relative overflow-hidden"
                         dir="rtl"
                     >

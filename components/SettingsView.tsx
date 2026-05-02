@@ -25,7 +25,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
   const [localSettings, setLocalSettings] = useState<AppSettings>(settings);
   const [isSaved, setIsSaved] = useState(false);
 
-  
+
   const [statusModal, setStatusModal] = useState<{
     isOpen: boolean;
     type: 'success' | 'error' | 'warning';
@@ -38,9 +38,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
     message: ''
   });
 
-  
 
-  
+
+
 
   // Sync active tab if initialTab prop changes
   useEffect(() => {
@@ -71,8 +71,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
     <div className="flex-1 p-8 overflow-y-auto animate-in fade-in slide-in-from-bottom-4 premium-scrollbar" dir="rtl">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-coffee-900 mb-2">إعدادات النظام</h1>
-          <p className="text-gray-500">تخصيص الخيارات الأساسية، المدفوعات، ومعلومات المتجر</p>
+          <h1 className="text-4xl font-black text-brand-dark mb-3 tracking-tight">إعدادات النظام</h1>
+          <p className="text-sm font-bold text-gray-400">تخصيص الخيارات الأساسية، المدفوعات، ومعلومات المتجر</p>
         </div>
         <button
           onClick={handleSave}
@@ -97,7 +97,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
         >
           وسائل الدفع
         </button>
-        
+
         <button
           onClick={() => setActiveTab('printing')}
           className={`pb-4 px-4 font-bold transition-all ${activeTab === 'printing' ? 'border-b-4 text-brand-dark border-brand-accent' : 'text-gray-400 hover:text-gray-600'}`}
@@ -113,13 +113,13 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
           <>
             <div className="bg-white rounded-3xl shadow-lg border border-gold-100 overflow-hidden">
               <div className="p-6 border-b border-gray-100 bg-gray-50">
-                <h3 className="font-bold text-lg text-coffee-900 flex items-center gap-2">
-                  <Settings size={20} /> معلومات المتجر
+                <h3 className="font-black text-xl text-brand-dark flex items-center gap-2">
+                  <Settings size={22} className="text-brand-primary" /> معلومات المتجر
                 </h3>
               </div>
               <div className="p-6 space-y-6">
                 <div className="space-y-4">
-                  <label className="text-sm font-bold text-gray-700">اسم المتجر</label>
+                  <label className="block text-sm font-black text-brand-dark mb-2">اسم المتجر</label>
                   <input
                     type="text"
                     value={localSettings.storeName}
@@ -129,7 +129,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                 </div>
 
                 <div className="space-y-4">
-                  <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                  <label className="flex items-center gap-2 text-sm font-black text-brand-dark mb-2">
                     <Image size={16} className="text-brand-primary" /> شعار المتجر (Brand Logo)
                   </label>
                   <div className="flex items-center gap-6 p-4 bg-gray-50 rounded-2xl border border-dashed border-brand-primary/20">
@@ -208,7 +208,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                 </div>
 
                 <div className="space-y-4">
-                  <label className="text-sm font-bold text-gray-700">عملة النظام</label>
+                  <label className="block text-sm font-black text-brand-dark mb-2">عملة النظام</label>
                   <div className="relative">
                     <select
                       value={localSettings.currency}
@@ -227,7 +227,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                 </div>
 
                 <div className="space-y-4">
-                  <label className="text-sm font-bold text-gray-700">نسبة الضريبة (%)</label>
+                  <label className="block text-sm font-black text-brand-dark mb-2">نسبة الضريبة (%)</label>
                   <input
                     type="number"
                     value={localSettings.taxRate}
@@ -237,7 +237,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                 </div>
 
                 <div className="space-y-4">
-                  <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                  <label className="flex items-center gap-2 text-sm font-black text-brand-dark mb-2">
                     <Hash size={16} className="text-brand-primary" /> عدد الطاولات في الصالة
                   </label>
                   <input
@@ -255,13 +255,13 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
 
             <div className="bg-white rounded-3xl shadow-lg border border-gold-100 overflow-hidden">
               <div className="p-6 border-b border-gray-100 bg-gray-50">
-                <h3 className="font-bold text-lg text-coffee-900 flex items-center gap-2">
-                  <Bell size={20} /> التنبيهات والأصوات
+                <h3 className="font-black text-xl text-brand-dark flex items-center gap-2">
+                  <Bell size={22} className="text-brand-primary" /> التنبيهات والأصوات
                 </h3>
               </div>
               <div className="p-6 space-y-6">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-coffee-900">تفعيل التنبيهات</span>
+                  <span className="font-black text-brand-dark">تفعيل التنبيهات</span>
                   <input
                     type="checkbox"
                     checked={localSettings.enableNotifications}
@@ -272,8 +272,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
 
                 <div className="flex items-center justify-between border-t border-gray-50 pt-4">
                   <div>
-                    <span className="font-medium text-coffee-900 block">أصوات النظام</span>
-                    <span className="text-[10px] text-gray-400">إصدار صوت نقر احترافي عند التفاعل</span>
+                    <span className="font-black text-brand-dark block mb-1">أصوات النظام</span>
+                    <span className="text-xs font-bold text-gray-400">إصدار صوت نقر احترافي عند التفاعل</span>
                   </div>
                   <input
                     type="checkbox"
@@ -285,7 +285,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
 
                 <div className="bg-orange-50 p-4 rounded-xl border border-orange-100">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-bold text-coffee-900">حد المخزون المنخفض</span>
+                    <span className="text-sm font-black text-brand-dark">حد المخزون المنخفض</span>
                     <input
                       type="number"
                       min="1"
@@ -306,8 +306,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
         {activeTab === 'payments' && (
           <div className="col-span-1 md:col-span-2 bg-white rounded-3xl shadow-lg border border-gold-100 overflow-hidden">
             <div className="p-6 border-b border-gray-100 bg-gray-50">
-              <h3 className="font-bold text-lg text-coffee-900 flex items-center gap-2">
-                <CreditCard size={20} /> خيارات الدفع المتاحة
+              <h3 className="font-black text-xl text-brand-dark flex items-center gap-2">
+                <CreditCard size={22} className="text-brand-primary" /> خيارات الدفع المتاحة
               </h3>
             </div>
             <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -316,7 +316,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                 className={`cursor-pointer border-2 rounded-2xl p-6 flex flex-col items-center gap-4 transition-all ${localSettings.paymentMethods.cash ? 'border-green-500 bg-green-50' : 'border-gray-200 grayscale'}`}
               >
                 <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-md text-3xl">💵</div>
-                <h4 className="font-bold text-xl text-coffee-900">نقد (Cash)</h4>
+                <h4 className="font-black text-xl text-brand-dark">نقد (Cash)</h4>
                 <span className={`px-3 py-1 rounded-full text-xs font-bold ${localSettings.paymentMethods.cash ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-500'}`}>
                   {localSettings.paymentMethods.cash ? 'مفعل' : 'معطل'}
                 </span>
@@ -327,7 +327,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                 className={`cursor-pointer border-2 rounded-2xl p-6 flex flex-col items-center gap-4 transition-all ${localSettings.paymentMethods.card ? 'border-blue-500 bg-blue-50' : 'border-gray-200 grayscale'}`}
               >
                 <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-md text-3xl">💳</div>
-                <h4 className="font-bold text-xl text-coffee-900">بطاقة (Card)</h4>
+                <h4 className="font-black text-xl text-brand-dark">بطاقة (Card)</h4>
                 <span className={`px-3 py-1 rounded-full text-xs font-bold ${localSettings.paymentMethods.card ? 'bg-blue-200 text-blue-800' : 'bg-gray-200 text-gray-500'}`}>
                   {localSettings.paymentMethods.card ? 'مفعل' : 'معطل'}
                 </span>
@@ -338,7 +338,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
                 className={`cursor-pointer border-2 rounded-2xl p-6 flex flex-col items-center gap-4 transition-all ${localSettings.paymentMethods.online ? 'border-purple-500 bg-purple-50' : 'border-gray-200 grayscale'}`}
               >
                 <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-md text-3xl">🌐</div>
-                <h4 className="font-bold text-xl text-coffee-900">دفع إلكتروني</h4>
+                <h4 className="font-black text-xl text-brand-dark">دفع إلكتروني</h4>
                 <span className={`px-3 py-1 rounded-full text-xs font-bold ${localSettings.paymentMethods.online ? 'bg-purple-200 text-purple-800' : 'bg-gray-200 text-gray-500'}`}>
                   {localSettings.paymentMethods.online ? 'مفعل' : 'معطل'}
                 </span>
@@ -476,7 +476,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
           </div>
         )}
 
-              </div>
+      </div>
       {/* Global Confirmation Modal */}
       {/* Status Notifications Modal */}
       <StatusModal

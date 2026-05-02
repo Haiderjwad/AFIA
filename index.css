@@ -96,7 +96,8 @@
     .dark .text-brand-dark,
     .dark .text-coffee-900,
     .dark .text-gray-900,
-    .dark .text-gray-800 {
+    .dark .text-gray-800,
+    .dark .text-gray-700 {
         color: var(--dm-text-1) !important;
     }
 
