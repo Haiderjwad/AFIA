@@ -12,7 +12,7 @@ import { formatCurrency } from '../utils/currencyUtils';
 interface SettingsViewProps {
   settings: AppSettings;
   onUpdateSettings: (newSettings: AppSettings) => void;
-  initialTab?: 'general' | 'payments' | 'employees' | 'printing';
+  initialTab?: 'general' | 'payments' | 'printing';
 }
 
 const CURRENCY_OPTIONS = [
@@ -21,29 +21,11 @@ const CURRENCY_OPTIONS = [
 ];
 
 const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings, initialTab = 'general' }) => {
-  const [activeTab, setActiveTab] = useState<'general' | 'payments' | 'employees' | 'printing'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'general' | 'payments' | 'printing'>(initialTab);
   const [localSettings, setLocalSettings] = useState<AppSettings>(settings);
   const [isSaved, setIsSaved] = useState(false);
 
-  // Employees State
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
-  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-  const [loadingEmployees, setLoadingEmployees] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-
-  // New Employee Form State
-  const [empForm, setEmpForm] = useState({
-    name: '',
-    email: '',
-    password: '',
-    role: 'sales' as UserRole,
-    employeeId: '',
-    permissions: [] as string[],
-    salary: ''
-  });
-
+  
   const [statusModal, setStatusModal] = useState<{
     isOpen: boolean;
     type: 'success' | 'error' | 'warning';
@@ -56,18 +38,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
     message: ''
   });
 
-  useEffect(() => {
-    if (activeTab === 'employees') {
-      fetchEmployees();
-    }
-  }, [activeTab]);
+  
 
-  const fetchEmployees = async () => {
-    setLoadingEmployees(true);
-    const data = await firestoreService.getEmployees();
-    setEmployees(data);
-    setLoadingEmployees(false);
-  };
+  
 
   // Sync active tab if initialTab prop changes
   useEffect(() => {
@@ -92,113 +65,6 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
         [method]: !prev.paymentMethods[method]
       }
     }));
-  };
-
-  const handleAddEmployee = async () => {
-    if (!empForm.email || !empForm.password || !empForm.name) {
-      setStatusModal({
-        isOpen: true,
-        type: 'error',
-        title: 'بيانات غير مكتملة',
-        message: 'يرجى ملء كافة البيانات الأساسية (الاسم، البريد، كلمة السر) للمتابعة في إنشاء حساب الموظف.'
-      });
-      return;
-    }
-
-    let secondaryApp;
-    try {
-      setLoadingEmployees(true);
-
-      secondaryApp = initializeApp(firebaseConfig, `SecondaryApp-${Date.now()}`);
-      const secondaryAuth = getAuth(secondaryApp);
-      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, empForm.email, empForm.password);
-      const uid = userCredential.user.uid;
-
-      const newEmployee: Employee = {
-        uid: uid,
-        name: empForm.name,
-        email: empForm.email,
-        role: empForm.role,
-        permissions: empForm.permissions.length > 0 ? empForm.permissions : [empForm.role],
-        employeeId: empForm.employeeId || `EMP-${Date.now().toString().slice(-4)}`,
-        joinedAt: new Date().toISOString(),
-        salary: parseFloat(empForm.salary) || 0
-      };
-
-      await firestoreService.addEmployee(newEmployee);
-
-      setEmpForm({ name: '', email: '', password: '', role: 'sales', employeeId: '', permissions: [], salary: '' });
-      setIsEmployeeModalOpen(false);
-      fetchEmployees();
-      setStatusModal({
-        isOpen: true,
-        type: 'success',
-        title: 'تم إنشاء الموظف',
-        message: 'تم إعداد حساب جديد وإرسال الصلاحيات للسحابة بنجاح.'
-      });
-    } catch (error: any) {
-      console.error("Error adding employee:", error);
-      setStatusModal({
-        isOpen: true,
-        type: 'error',
-        title: 'فشل الإنشاء',
-        message: `تأكد من اتصالك بالإنترنت وصحة البيانات: ${error.message}`
-      });
-    } finally {
-      if (secondaryApp) {
-        try {
-          await deleteApp(secondaryApp);
-        } catch (e) {
-          // This prevents noisy logs if the app was already cleaned up
-          console.debug("Secondary app cleanup:", e);
-        }
-      }
-      setLoadingEmployees(false);
-    }
-  };
-
-  const handleDeleteEmployee = async (id: string) => {
-    await firestoreService.deleteEmployee(id);
-    fetchEmployees();
-  };
-
-  const handleUpdateEmployee = async () => {
-    if (!editingEmployee) return;
-
-    try {
-      setLoadingEmployees(true);
-      // We update both the document with the original ID and the UID document if they differ
-      await firestoreService.updateEmployee(editingEmployee.uid || editingEmployee.employeeId, {
-        name: empForm.name,
-        email: empForm.email,
-        role: empForm.role,
-        employeeId: empForm.employeeId,
-        permissions: empForm.permissions,
-        salary: parseFloat(empForm.salary) || 0
-      });
-
-      setIsEmployeeModalOpen(false);
-      setEditingEmployee(null);
-      setEmpForm({ name: '', email: '', password: '', role: 'sales', employeeId: '', permissions: [], salary: '' });
-      fetchEmployees();
-
-      setStatusModal({
-        isOpen: true,
-        type: 'success',
-        title: 'تم تحديث البيانات',
-        message: 'تم حفظ كافة التعديلات على حساب الموظف في النظام بنجاح.'
-      });
-    } catch (error: any) {
-      console.error("Error updating employee:", error);
-      setStatusModal({
-        isOpen: true,
-        type: 'error',
-        title: 'فشل التحديث',
-        message: `حدث خطأ تقني: ${error.message}`
-      });
-    } finally {
-      setLoadingEmployees(false);
-    }
   };
 
   return (
@@ -231,12 +97,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
         >
           وسائل الدفع
         </button>
-        <button
-          onClick={() => setActiveTab('employees')}
-          className={`pb-4 px-4 font-bold transition-all ${activeTab === 'employees' ? 'border-b-4 text-brand-dark border-brand-accent' : 'text-gray-400 hover:text-gray-600'}`}
-        >
-          إدارة الموظفين
-        </button>
+        
         <button
           onClick={() => setActiveTab('printing')}
           className={`pb-4 px-4 font-bold transition-all ${activeTab === 'printing' ? 'border-b-4 text-brand-dark border-brand-accent' : 'text-gray-400 hover:text-gray-600'}`}
@@ -615,325 +476,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdateSettings,
           </div>
         )}
 
-        {/* Employees Management */}
-        {activeTab === 'employees' && (
-          <div className="col-span-1 md:col-span-2 space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-3xl border border-brand-primary/10 shadow-sm">
-              <div className="flex-1">
-                <h3 className="text-xl font-black text-brand-dark flex items-center gap-2">
-                  <Users size={24} className="text-brand-primary" /> كادر العمل الذكي
-                </h3>
-                <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Personnel Management Intelligence</p>
               </div>
-
-              <div className="flex items-center gap-4 w-full md:w-auto">
-                <div className="relative flex-1 md:w-64">
-                  <input
-                    type="text"
-                    placeholder="بحث عن موظف..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-brand-primary/5 rounded-xl focus:ring-2 focus:ring-brand-primary outline-none text-sm font-bold"
-                  />
-                  <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                </div>
-
-                <button
-                  onClick={() => {
-                    setEditingEmployee(null);
-                    setEmpForm({ name: '', email: '', password: '', role: 'sales', employeeId: '', permissions: [], salary: '' });
-                    setIsEmployeeModalOpen(true);
-                  }}
-                  className="flex items-center gap-2 bg-brand-primary text-white px-6 py-3 rounded-2xl font-black hover:bg-brand-secondary transition-all shadow-lg shadow-brand-primary/20 shrink-0"
-                >
-                  <UserPlus size={20} /> إضافة موظف
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-[2.5rem] shadow-xl border border-brand-primary/5 overflow-hidden">
-              <table className="w-full text-right">
-                <thead className="bg-brand-light/20 border-b border-brand-primary/10">
-                  <tr>
-                    <th className="px-8 py-5 text-sm font-black text-brand-dark uppercase tracking-tighter">الموظف</th>
-                    <th className="px-8 py-5 text-sm font-black text-brand-dark uppercase tracking-tighter">الدور الوظيفي</th>
-                    <th className="px-8 py-5 text-sm font-black text-brand-dark uppercase tracking-tighter text-center">كود التعريف</th>
-                    <th className="px-8 py-5 text-sm font-black text-brand-dark uppercase tracking-tighter text-center">الراتب</th>
-                    <th className="px-8 py-5 text-sm font-black text-brand-dark uppercase tracking-tighter text-left">التحكم</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {loadingEmployees ? (
-                    <tr>
-                      <td colSpan={4} className="py-20 text-center text-gray-400">جاري تحميل البيانات السحابية...</td>
-                    </tr>
-                  ) : employees.filter(e => e.name.toLowerCase().includes(searchTerm.toLowerCase()) || e.email.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="py-20 text-center text-gray-400 italic">
-                        {searchTerm ? 'لا توجد نتائج مطابقة للبحث' : 'لا يوجد موظفين مسجلين حالياً'}
-                      </td>
-                    </tr>
-                  ) : (
-                    employees
-                      .filter(e => e.name.toLowerCase().includes(searchTerm.toLowerCase()) || e.email.toLowerCase().includes(searchTerm.toLowerCase()))
-                      .map((emp) => (
-                        <tr key={emp.uid || emp.email || emp.employeeId} className="hover:bg-brand-light/5 transition-colors group">
-                          <td className="px-8 py-5">
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center font-black text-lg">
-                                {emp.name.charAt(0)}
-                              </div>
-                              <div>
-                                <p className="font-black text-brand-dark">{emp.name}</p>
-                                <p className="text-xs text-gray-400 font-bold">{emp.email}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-8 py-5">
-                            <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${emp.role.toLowerCase() === 'admin' ? 'bg-red-50 text-red-600' :
-                              emp.role.toLowerCase() === 'manager' ? 'bg-brand-accent/20 text-brand-accent' :
-                                'bg-brand-light/50 text-brand-primary'
-                              }`}>
-                              {['kitchen', 'cook', 'chef'].includes(emp.role.toLowerCase()) ? 'طباخ' :
-                                emp.role.toLowerCase() === 'admin' ? 'مدير النظام' :
-                                  emp.role.toLowerCase() === 'manager' ? 'المدير' :
-                                    emp.role.toLowerCase() === 'cashier' ? 'الكاشير' : 'المبيعات'}
-                            </span>
-                          </td>
-                          <td className="px-8 py-5 text-center font-bold text-brand-dark/40 text-sm">
-                            {emp.employeeId}
-                          </td>
-                          <td className="px-8 py-5 text-center font-bold text-green-600 text-sm">
-                            {formatCurrency(emp.salary || 0, settings.currency)}
-                          </td>
-                          <td className="px-8 py-5 text-left">
-                            <div className="flex items-center justify-end gap-2 opacity-100 transition-all">
-                              <button
-                                onClick={() => {
-                                  setEditingEmployee(emp);
-                                  setEmpForm({
-                                    name: emp.name || '',
-                                    email: emp.email || '',
-                                    role: emp.role || 'sales',
-                                    employeeId: emp.employeeId || '',
-                                    password: '',
-                                    permissions: Array.isArray(emp.permissions) ? emp.permissions : [],
-                                    salary: (emp.salary || 0).toString()
-                                  });
-                                  setIsEmployeeModalOpen(true);
-                                }}
-                                className="p-2.5 bg-brand-primary/10 text-brand-primary hover:bg-brand-primary hover:text-white rounded-xl transition-all duration-300 font-bold shadow-sm"
-                              >
-                                <Edit size={18} />
-                              </button>
-                              <button
-                                onClick={() => setItemToDelete(emp.uid || emp.employeeId)}
-                                className="p-2.5 bg-red-100/50 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all duration-300 font-bold shadow-sm"
-                              >
-                                <Trash2 size={18} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* Add/Edit Employee Modal */}
-        {isEmployeeModalOpen && (
-          <div className="fixed top-20 right-0 lg:right-28 left-0 bottom-0 z-[80] bg-brand-dark/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
-            <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-4xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-500">
-              <div className="p-8 bg-brand-dark text-white flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                  <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-sm shadow-xl">
-                    <UserPlus size={32} className="text-brand-accent" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-black">{editingEmployee ? 'تحديث بيانات الموظف' : 'تسجيل موظف جديد'}</h2>
-                    <p className="text-brand-accent/60 text-xs font-bold uppercase tracking-widest mt-1">Staff Access Intelligence</p>
-                  </div>
-                </div>
-                <button onClick={() => { setIsEmployeeModalOpen(false); setEditingEmployee(null); }} className="bg-white/10 hover:bg-red-500 hover:text-white p-3 rounded-full transition-all">
-                  <X size={24} />
-                </button>
-              </div>
-
-              <div className="p-10 space-y-6 max-h-[70vh] overflow-y-auto premium-scrollbar">
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-gray-400 uppercase flex items-center gap-2">
-                      <User size={14} /> اسم الموظف بالكامل
-                    </label>
-                    <input
-                      type="text"
-                      value={empForm.name}
-                      onChange={(e) => setEmpForm({ ...empForm, name: e.target.value })}
-                      className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-brand-primary/10 focus:ring-2 focus:ring-brand-primary outline-none font-bold text-brand-dark"
-                      placeholder="مثال: أحمد محمد"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-gray-400 uppercase flex items-center gap-2">
-                      <Hash size={14} /> الكود الوظيفي
-                    </label>
-                    <input
-                      type="text"
-                      value={empForm.employeeId}
-                      onChange={(e) => setEmpForm({ ...empForm, employeeId: e.target.value })}
-                      className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-brand-primary/10 focus:ring-2 focus:ring-brand-primary outline-none font-bold text-brand-dark"
-                      placeholder="مثال: EMP-101"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-gray-400 uppercase flex items-center gap-2">
-                    <Mail size={14} /> البريد الإلكتروني (لتسجيل الدخول)
-                  </label>
-                  <input
-                    type="email"
-                    value={empForm.email}
-                    onChange={(e) => setEmpForm({ ...empForm, email: e.target.value })}
-                    className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-brand-primary/10 focus:ring-2 focus:ring-brand-primary outline-none font-bold text-brand-dark"
-                    placeholder="name@company.com"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-gray-400 uppercase flex items-center gap-2">
-                      <Shield size={14} /> الدور الوظيفي
-                    </label>
-                    <select
-                      value={empForm.role}
-                      onChange={(e) => setEmpForm({ ...empForm, role: e.target.value as UserRole })}
-                      className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-brand-primary/10 focus:ring-2 focus:ring-brand-primary outline-none font-bold text-brand-dark appearance-none"
-                    >
-                      <option value="sales">المبيعات</option>
-                      <option value="cashier">الكاشير</option>
-                      <option value="kitchen">طباخ</option>
-                      <option value="manager">المدير</option>
-                      <option value="admin">مدير النظام</option>
-                    </select>
-                  </div>
-                  {!editingEmployee && (
-                    <div className="space-y-2">
-                      <label className="text-xs font-black text-gray-400 uppercase flex items-center gap-2">
-                        <Key size={14} /> كلمة السر الأولية
-                      </label>
-                      <input
-                        type="password"
-                        value={empForm.password}
-                        onChange={(e) => setEmpForm({ ...empForm, password: e.target.value })}
-                        className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-brand-primary/10 focus:ring-2 focus:ring-brand-primary outline-none font-bold text-brand-dark"
-                        placeholder="******"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-gray-400 uppercase flex items-center gap-2">
-                      <DollarSign size={14} /> الراتب الشهري ({settings.currency})
-                    </label>
-                    <input
-                      type="number"
-                      value={empForm.salary}
-                      onChange={(e) => setEmpForm({ ...empForm, salary: e.target.value })}
-                      className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-brand-primary/10 focus:ring-2 focus:ring-brand-primary outline-none font-bold text-brand-dark"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-
-                <div className="p-6 bg-brand-light/10 rounded-3xl border border-dashed border-brand-primary/20">
-                  <h4 className="text-sm font-black text-brand-dark mb-4 flex items-center gap-2">
-                    <ListChecks size={18} className="text-brand-primary" /> صلاحيات الوصول المخصصة
-                  </h4>
-                  <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { id: 'dashboard', label: 'الرئيسة', icon: '📊' },
-                      { id: 'sales', label: 'المبيعات', icon: '💰' },
-                      { id: 'kitchen', label: 'المطبخ', icon: '👨‍🍳' },
-                      { id: 'invoices', label: 'الفواتير', icon: '📄' },
-                      { id: 'inventory', label: 'المخزون', icon: '📦' },
-                      { id: 'suppliers', label: 'الموردين', icon: '🚚' },
-                      { id: 'digital_menu', label: 'المنيو الرقمي', icon: '📱' },
-                      { id: 'reports', label: 'التقارير', icon: '📈' },
-                      { id: 'settings', label: 'الإعدادات', icon: '⚙️' }
-                    ].map(perm => (
-                      <label
-                        key={perm.id}
-                        className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${Array.isArray(empForm.permissions) && empForm.permissions.includes(perm.id)
-                          ? 'bg-brand-primary/10 border-brand-primary/30 shadow-sm'
-                          : 'bg-white border-gray-100 hover:bg-gray-50'
-                          }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={Array.isArray(empForm.permissions) && empForm.permissions.includes(perm.id)}
-                          onChange={(e) => {
-                            const checked = e.target.checked;
-                            setEmpForm(prev => ({
-                              ...prev,
-                              permissions: checked
-                                ? [...(Array.isArray(prev.permissions) ? prev.permissions : []), perm.id]
-                                : (Array.isArray(prev.permissions) ? prev.permissions : []).filter(p => p !== perm.id)
-                            }));
-                          }}
-                          className="w-5 h-5 accent-brand-primary rounded-md"
-                        />
-                        <div className="flex flex-col">
-                          <span className="text-xs font-black text-brand-dark flex items-center gap-1">
-                            <span>{perm.icon}</span> {perm.label}
-                          </span>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-8 bg-gray-50 flex gap-4">
-                <button
-                  onClick={editingEmployee ? handleUpdateEmployee : handleAddEmployee}
-                  disabled={loadingEmployees}
-                  className="flex-1 bg-brand-primary text-white font-black py-5 rounded-[1.5rem] flex items-center justify-center gap-2 hover:bg-brand-secondary transition-all shadow-xl shadow-brand-primary/20 disabled:opacity-50"
-                >
-                  {loadingEmployees ? (
-                    <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    <>
-                      {editingEmployee ? <Save size={20} /> : <UserPlus size={20} />}
-                      {editingEmployee ? 'حفظ التعديلات' : 'إنشاء الموظف والحساب'}
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => { setIsEmployeeModalOpen(false); setEditingEmployee(null); }}
-                  className="px-8 bg-white text-gray-400 font-black py-5 rounded-[1.5rem] border-2 border-gray-100 hover:text-brand-dark transition-all"
-                >
-                  إلغاء
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
       {/* Global Confirmation Modal */}
-      <ConfirmDeleteModal
-        isOpen={!!itemToDelete}
-        onClose={() => setItemToDelete(null)}
-        onConfirm={() => itemToDelete && handleDeleteEmployee(itemToDelete)}
-        title="إنهاء صلاحيات الموظف؟"
-        description="هل أنت متأكد من رغبتك في حذف هذا الموظف من النظام؟ سيؤدي ذلك لإيقاف قدرته على تسجيل الدخول وإزالة كافة صلاحياته فوراً."
-      />
-
       {/* Status Notifications Modal */}
       <StatusModal
         isOpen={statusModal.isOpen}

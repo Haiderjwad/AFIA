@@ -1439,7 +1439,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
                                         setSelectedForPayment(transaction);
                                     }}
                                     className={`mt-6 w-full py-5 rounded-[1.5rem] text-white text-md font-black transition-all shadow-xl flex items-center justify-center gap-3 active:scale-[0.98] ${transaction.isManual
-                                        ? 'bg-red-600 hover:bg-red-700 shadow-red-200'
+                                        ? 'bg-red-600 hover:bg-red-700 shadow-red-200 dark:shadow-none'
                                         : 'bg-gradient-to-r from-brand-primary to-brand-secondary hover:from-brand-secondary hover:to-brand-primary shadow-brand-primary/20'
                                         }`}
                                 >
@@ -2127,7 +2127,7 @@ const InvoicesView: React.FC<InvoicesViewProps> = ({
                                         <div className="flex gap-4">
                                             <button
                                                 onClick={handleComplete}
-                                                className="flex-[2] py-5 rounded-[2rem] bg-green-600 text-white font-black text-lg hover:bg-green-500 hover:-translate-y-1 transition-all shadow-2xl shadow-green-600/30 flex items-center justify-center gap-3 active:scale-95"
+                                                className="flex-[2] py-5 rounded-[2rem] bg-green-600 text-white font-black text-lg hover:bg-green-500 hover:-translate-y-1 transition-all shadow-2xl shadow-green-600/30 dark:shadow-none flex items-center justify-center gap-3 active:scale-95"
                                             >
                                                 <CheckCircle size={24} /> استلام الطلب وتأكيد الدفع
                                             </button>

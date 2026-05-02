@@ -643,7 +643,7 @@ const App: React.FC = () => {
     const titles: any = {
       dashboard: 'الرئيسة', sales: 'المبيعات', kitchen: 'المطبخ', invoices: 'الفواتير',
       inventory: 'المخزون', digital_menu: 'المنيو الإلكتروني', suppliers: 'الموردين',
-      reports: 'التقارير المفصلة', settings: 'الإعدادات'
+      reports: 'التقارير المفصلة', performance: 'الموظفين', settings: 'الإعدادات'
     };
     return titles[activeTab] || 'نظام نقطة البيع';
   }, [activeTab]);

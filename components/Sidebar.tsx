@@ -21,7 +21,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, setActiveItem, user, sett
     { id: 'digital_menu', label: 'المنيو الإلكتروني', icon: QrCode, roles: ['admin', 'manager'] },
     { id: 'suppliers', label: 'الموردين', icon: Truck, roles: ['admin', 'manager', 'cashier'] },
     { id: 'reports', label: 'التقارير المفصلة', icon: FileText, roles: ['admin', 'manager', 'cashier'] },
-    { id: 'performance', label: 'أداء الموظفين', icon: Users, roles: ['admin', 'manager'] },
+    { id: 'performance', label: 'الموظفين', icon: Users, roles: ['admin', 'manager'] },
     { id: 'settings', label: 'الإعدادات', icon: Settings, roles: ['admin', 'manager'] },
   ];
 

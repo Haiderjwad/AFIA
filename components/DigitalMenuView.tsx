@@ -462,8 +462,8 @@ const DigitalMenuView: React.FC<DigitalMenuViewProps> = ({ products, storeName, 
                         <button
                             onClick={previewMode === 'mobile' ? handleSaveMenuConfig : exportProfessionalPDF}
                             disabled={isSaving || isExporting}
-                            className={`w-full py-6 rounded-[2rem] font-black text-lg flex items-center justify-center gap-4 transition-all active:scale-95 group shadow-3xl ${isSaving || isExporting ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
-                                previewMode === 'mobile' ? 'bg-brand-primary hover:bg-brand-primary/90 text-white shadow-brand-primary/20' : 'bg-brand-dark hover:bg-brand-primary text-white shadow-brand-dark/20'
+                            className={`w-full py-6 rounded-[2rem] font-black text-lg flex items-center justify-center gap-4 transition-all duration-300 active:scale-95 group shadow-3xl ${isSaving || isExporting ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
+                                previewMode === 'mobile' ? 'bg-gradient-to-r from-emerald-600 to-green-500 hover:from-green-500 hover:to-emerald-400 text-white shadow-[0_10px_30px_rgba(16,185,129,0.3)] hover:shadow-[0_20px_40px_rgba(16,185,129,0.4)] hover:-translate-y-1 ring-2 ring-emerald-500/20 ring-offset-2 ring-offset-white dark:ring-offset-brand-dark' : 'bg-brand-dark hover:bg-brand-primary text-white shadow-brand-dark/20'
                                 }`}
                         >
                             {previewMode === 'mobile' ? (

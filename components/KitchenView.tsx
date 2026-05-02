@@ -281,8 +281,8 @@ const KitchenView: React.FC<KitchenViewProps> = ({ isOnline, user, lowStockThres
                                                 onClick={() => updateStatus(order.id, status === 'pending' ? 'preparing' : 'ready')}
                                                 disabled={loadingOrderId === order.id}
                                                 className={`w-full py-4 rounded-2xl font-black text-white shadow-lg transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed ${status === 'pending'
-                                                    ? 'bg-gradient-to-l from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 shadow-orange-200'
-                                                    : 'bg-gradient-to-l from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-blue-200'
+                                                    ? 'bg-gradient-to-l from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 shadow-orange-200 dark:shadow-none'
+                                                    : 'bg-gradient-to-l from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-blue-200 dark:shadow-none'
                                                     }`}
                                             >
                                                 {loadingOrderId === order.id ? (

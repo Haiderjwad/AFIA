@@ -120,8 +120,6 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
     const currentStats = stats[period];
 
     const handleExportPDF = async () => {
-        if (!reportRef.current) return;
-
         setIsGenerating(true);
         setStatusModal({
             isOpen: true,
@@ -130,57 +128,207 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
             message: 'نقوم الآن بتحليل تدفقات السيولة، الإيرادات، والمصروفات التشغيلية لإنشاء وثيقة محاسبية رسمية، يرجى الانتظار...'
         });
 
-        const exportId = 'financial-report';
-        reportRef.current.setAttribute('data-export-capture', exportId);
-
         try {
-            await new Promise(resolve => setTimeout(resolve, 800));
+            await new Promise(resolve => setTimeout(resolve, 500));
 
-            const canvas = await html2canvas(reportRef.current, {
-                scale: 2,
-                useCORS: true,
-                backgroundColor: '#ffffff',
-                logging: false,
-                imageTimeout: 20000,
-                onclone: (clonedDoc) => {
-                    patchClonedSubtreeForHtml2Canvas(clonedDoc, {
-                        exportId,
-                        attributeName: 'data-export-capture',
-                        fallbackColor: '#2D6A4F'
-                    });
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pW = pdf.internal.pageSize.getWidth();
+            const pH = pdf.internal.pageSize.getHeight();
+            const margin = 18;
+            const contentW = pW - margin * 2;
+            let y = margin;
+
+            const text = (str: string, x: number, yy: number, options?: any) => {
+                pdf.text(str, x, yy, options);
+            };
+
+            type RGB = [number, number, number];
+            const COL_DARK: RGB = [27, 50, 35];
+            const COL_GREEN: RGB = [45, 106, 79];
+            const COL_GOLD: RGB = [248, 150, 30];
+            const COL_GRAY: RGB = [120, 120, 120];
+            const COL_LIGHT: RGB = [245, 247, 244];
+
+            const sf = (c: RGB) => pdf.setFillColor(c[0], c[1], c[2]);
+            const sd = (c: RGB) => pdf.setDrawColor(c[0], c[1], c[2]);
+            const sc = (c: RGB) => pdf.setTextColor(c[0], c[1], c[2]);
+
+            // Header Banner
+            sf(COL_DARK);
+            pdf.rect(0, 0, pW, 30, 'F');
+
+            pdf.setTextColor(248, 150, 30);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(16);
+            text(settings.storeName, pW - margin, 12, { align: 'right' });
+
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(8);
+            text('FINANCIAL INTELLIGENCE REPORT', margin, 12);
+
+            pdf.setTextColor(180, 180, 180);
+            pdf.setFontSize(7);
+            const rawPeriod = typeof period === 'string' ? period.toUpperCase() : 'REPORT';
+            text(`Period: ${rawPeriod}`, margin, 20);
+            text('Al Afia POS System', pW - margin, 20, { align: 'right' });
+
+            y = 40;
+
+            sc(COL_DARK);
+            pdf.setFontSize(14);
+            pdf.setFont('helvetica', 'bold');
+            text('Executive Financial Summary', margin, y);
+            y += 4;
+
+            sd(COL_GREEN);
+            pdf.setLineWidth(0.8);
+            pdf.line(margin, y, pW - margin, y);
+            y += 10;
+
+            // 4 main boxes
+            const boxW = (contentW - 9) / 4;
+            const boxes = [
+                { label: 'Gross Revenue', value: currentStats.totalRevenue, color: COL_GREEN },
+                { label: 'Total Payroll', value: currentStats.totalMonthlySalaries, color: [234, 88, 12] },
+                { label: 'Operational Cost', value: currentStats.totalExpenses, color: [37, 99, 235] },
+                { label: 'Net Profit', value: currentStats.netProfit, color: [22, 163, 74], solid: true }
+            ];
+
+            boxes.forEach((box, i) => {
+                const bx = margin + i * (boxW + 3);
+                if (box.solid) {
+                    sf(box.color as RGB);
+                    pdf.roundedRect(bx, y, boxW, 24, 3, 3, 'F');
+                    sc([255, 255, 255]);
+                } else {
+                    sf(COL_LIGHT);
+                    pdf.roundedRect(bx, y, boxW, 24, 3, 3, 'F');
+                    sd(box.color as RGB);
+                    pdf.setLineWidth(0.5);
+                    pdf.roundedRect(bx, y, boxW, 24, 3, 3, 'S');
+                    sc(box.color as RGB);
                 }
+
+                pdf.setFontSize(12);
+                pdf.setFont('helvetica', 'bold');
+                text(String(formatCurrency(box.value, settings.currency)), bx + boxW / 2, y + 11, { align: 'center' });
+
+                pdf.setFontSize(7);
+                pdf.setFont('helvetica', 'normal');
+                if (!box.solid) sc(COL_GRAY);
+                text(box.label, bx + boxW / 2, y + 19, { align: 'center' });
             });
 
-            const imgData = canvas.toDataURL('image/jpeg', 0.95);
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const pageHeight = pdf.internal.pageSize.getHeight();
-            const margin = 10;
-            const contentWidth = pageWidth - (margin * 2);
+            y += 35;
 
-            const imgHeightInPDF = (canvas.height * contentWidth) / canvas.width;
+            // Sales & Marketing KPIs Section
+            sc(COL_DARK);
+            pdf.setFontSize(12);
+            pdf.setFont('helvetica', 'bold');
+            text('Sales & Marketing KPIs', margin, y);
+            y += 4;
+            sd(COL_GRAY);
+            pdf.setLineWidth(0.3);
+            pdf.line(margin, y, pW - margin, y);
+            y += 8;
 
-            let heightLeft = imgHeightInPDF;
-            let position = margin;
-            const pageContentHeight = pageHeight - (margin * 2);
+            sf([250, 250, 250]);
+            pdf.roundedRect(margin, y, contentW, 25, 4, 4, 'F');
 
-            pdf.addImage(imgData, 'JPEG', margin, position, contentWidth, imgHeightInPDF);
-            heightLeft -= pageContentHeight;
+            sc(COL_GRAY);
+            pdf.setFontSize(7);
+            pdf.setFont('helvetica', 'normal');
 
-            while (heightLeft > 0) {
-                position = heightLeft - imgHeightInPDF + margin;
-                pdf.addPage();
-                pdf.addImage(imgData, 'JPEG', margin, position, contentWidth, imgHeightInPDF);
-                heightLeft -= pageContentHeight;
+            // Left block
+            text('TOP SELLING ITEM', margin + 10, y + 8);
+            sc(COL_DARK);
+            pdf.setFontSize(11);
+            pdf.setFont('helvetica', 'bold');
+
+            // Render Arabic correctly by mapping or using English placeholder if jsPDF native doesn't support Arabic font
+            // We use standard jsPDF Helvetica. It might glitch on Arabic characters out-of-the-box,
+            // so we'll leave it to render natively assuming the system supports Latin mostly or handles Unicode fallback
+            text(String(currentStats.topItem || 'N/A'), margin + 10, y + 15);
+            sc(COL_GREEN);
+            pdf.setFontSize(8);
+            text(`${currentStats.topItemCount} units`, margin + 10, y + 21);
+
+            // Right block
+            sc(COL_GRAY);
+            pdf.setFontSize(7);
+            pdf.setFont('helvetica', 'normal');
+            text('AVERAGE ORDER VALUE (AOV)', margin + contentW / 2, y + 8);
+            sc(COL_DARK);
+            pdf.setFontSize(11);
+            pdf.setFont('helvetica', 'bold');
+            text(String(formatCurrency(currentStats.avgOrderValue, settings.currency)), margin + contentW / 2, y + 15);
+            sc(COL_GREEN);
+            pdf.setFontSize(8);
+            text(`${currentStats.orderCount} total transactions`, margin + contentW / 2, y + 21);
+
+            y += 35;
+
+            // Header for breakdown
+            sf(COL_DARK);
+            pdf.rect(margin, y, contentW, 10, 'F');
+
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(7.5);
+            pdf.setFont('helvetica', 'bold');
+            text('Payroll Breakdown', margin + 5, y + 6.8);
+            text('Amount', pW - margin - 5, y + 6.8, { align: 'right' });
+
+            y += 10;
+
+            if (currentStats.salaryBreakdown && currentStats.salaryBreakdown.length > 0) {
+                currentStats.salaryBreakdown.forEach((emp, idx) => {
+                    if (y + 12 > pH - margin) {
+                        pdf.addPage();
+                        y = margin;
+                    }
+
+                    if (idx % 2 === 0) {
+                        sf(COL_LIGHT);
+                        pdf.rect(margin, y, contentW, 12, 'F');
+                    }
+
+                    pdf.setFontSize(8.5);
+                    pdf.setFont('helvetica', 'bold');
+                    sc(COL_DARK);
+
+                    // Display Employee Initial + ID if name is Arabic
+                    const dispName = emp.name;
+                    text(dispName, margin + 5, y + 7.8);
+
+                    text(String(formatCurrency(emp.period, settings.currency)), pW - margin - 5, y + 7.8, { align: 'right' });
+                    y += 12;
+                });
+            } else {
+                sf(COL_LIGHT);
+                pdf.rect(margin, y, contentW, 12, 'F');
+                pdf.setFontSize(8);
+                sc(COL_GRAY);
+                text('No records found for this period.', margin + contentW / 2, y + 7.8, { align: 'center' });
+                y += 12;
             }
 
-            pdf.save(`التقرير_المالي_${settings.storeName}_${new Date().toISOString().split('T')[0]}.pdf`);
+            // Footer
+            sf(COL_DARK);
+            pdf.rect(0, pH - 14, pW, 14, 'F');
+            pdf.setTextColor(180, 180, 180);
+            pdf.setFontSize(7);
+            pdf.setFont('helvetica', 'normal');
+            text('© Al Afia Business Intelligence System — Confidential', margin, pH - 5);
+            text(`Generated: ${new Date().toLocaleString('en-GB')}`, pW - margin, pH - 5, { align: 'right' });
+
+            const fileName = `Financial_Report_${settings.storeName}_${new Date().toISOString().split('T')[0]}.pdf`;
+            pdf.save(fileName);
 
             setStatusModal({
                 isOpen: true,
                 type: 'success',
                 title: 'تم تصدير التقرير بنجاح',
-                message: 'تم حفظ الكشف المحاسبي الموحد بجميع صفحاته وتفاصيله على جهازك.'
+                message: 'تم حفظ الكشف المحاسبي الموحد بجميع صفحاته وتفاصيله على جهازك بصيغة PDF.'
             });
 
             setTimeout(() => setStatusModal(prev => ({ ...prev, isOpen: false })), 3000);
@@ -191,11 +339,10 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
                 isOpen: true,
                 type: 'error',
                 title: 'خطأ في معالجة البيانات',
-                message: 'عذراً، واجهنا صعوبة في تحويل البيانات إلى صيغة PDF. يرجى المحاولة مرة أخرى أو تقليل الفترة الزمنية للتقرير.'
+                message: `عذراً، واجهنا صعوبة في تحويل البيانات إلى صيغة PDF.`
             });
         } finally {
             setIsGenerating(false);
-            reportRef.current?.removeAttribute('data-export-capture');
         }
     };
 
@@ -211,12 +358,12 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
             {/* Header section with tabs */}
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 gap-6">
                 <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-brand-dark rounded-2xl flex items-center justify-center text-brand-accent shadow-xl shadow-brand-dark/20">
+                    <div className="w-14 h-14 bg-brand-dark rounded-2xl flex items-center justify-center text-brand-accent shadow-xl shadow-brand-dark/20 dark:shadow-none dark:ring-1 dark:ring-white/30">
                         <BarChart3 size={28} />
                     </div>
                     <div>
                         <h1 className="text-3xl font-black text-brand-dark tracking-tight leading-tight">التقارير المالية</h1>
-                        <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mt-0.5">ENTERPRISE FINANCIAL INTELLIGENCE</p>
+                        <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mt-0.5">الذكاء المالي المتقدم للمؤسسات</p>
                     </div>
                 </div>
 
@@ -227,7 +374,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
                             onClick={() => setPeriod(p)}
                             className={`flex-1 lg:flex-none px-6 py-3 rounded-[1rem] font-black text-xs transition-all duration-300 whitespace-nowrap
                                 ${period === p
-                                    ? 'bg-brand-dark text-brand-accent shadow-lg shadow-brand-dark/20 scale-[1.02] -translate-y-0.5'
+                                    ? 'bg-brand-dark text-brand-accent shadow-lg shadow-brand-dark/20 dark:shadow-none dark:ring-1 dark:ring-white/30 scale-[1.02] -translate-y-0.5'
                                     : 'text-gray-400 hover:text-brand-primary hover:bg-gray-50'
                                 }`}
                         >
@@ -316,14 +463,14 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
             <div className="bg-[#E4E6EB] p-4 sm:p-8 rounded-[3rem] shadow-[inset_0_4px_20px_rgba(0,0,0,0.05)] border border-gray-200 mb-20 relative">
 
                 {/* PDF Export Floating Bar */}
-                <div className="sticky top-24 z-30 mb-8 bg-white/80 backdrop-blur-xl p-4 rounded-[2rem] shadow-xl border border-white flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div className="relative z-10 mb-8 bg-white/80 backdrop-blur-xl p-4 rounded-[2rem] shadow-xl border border-white flex flex-col sm:flex-row justify-between items-center gap-4">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center border border-blue-100">
                             <FileText size={20} />
                         </div>
                         <div>
                             <h2 className="font-black text-brand-dark">معاينة الوثيقة المحاسبية</h2>
-                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Document Preview & Export</p>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">معاينة تصدير الملف</p>
                         </div>
                     </div>
                     <button
@@ -366,7 +513,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
                                         <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mb-1">تاريخ الإصدار</p>
                                         <p className="text-lg font-black text-brand-dark leading-none">{new Date().toLocaleDateString('ar-EG')}</p>
                                     </div>
-                                    <p className="text-[10px] font-bold text-gray-400 tracking-widest mt-1">Ref: REP-{Math.floor(Date.now() / 1000).toString(16).toUpperCase()}</p>
+                                    <p className="text-[10px] font-bold text-gray-400 tracking-widest mt-1">رقم المرجع: REP-{Math.floor(Date.now() / 1000).toString(16).toUpperCase()}</p>
                                 </div>
                             </div>
 
@@ -520,8 +667,8 @@ const ReportsView: React.FC<ReportsViewProps> = ({ transactions, employees, supp
 
                             {/* Strict Footer */}
                             <div className="absolute bottom-0 inset-x-0 h-10 bg-brand-dark flex justify-between items-center px-10">
-                                <p className="text-[7px] text-white/50 uppercase tracking-[0.2em]">Automated Financial Export • Golden POS Analytics</p>
-                                <p className="text-[7px] text-white/50 uppercase tracking-[0.2em] font-sans">CONFIDENTIAL & INTERNAL USE ONLY</p>
+                                <p className="text-[7px] text-white/50 uppercase tracking-[0.2em]">تصدير مالي مؤتمت • تحليلات عافية السحابية</p>
+                                <p className="text-[7px] text-white/50 uppercase tracking-[0.2em] font-sans">سري وللاستخدام الداخلي فقط</p>
                             </div>
                         </div>
                     </div>

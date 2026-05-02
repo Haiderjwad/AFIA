@@ -557,7 +557,7 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                             placeholder="ابحث عن مشروب، وجبة، أو عروض..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full h-14 pr-14 pl-5 bg-white rounded-2xl border border-white shadow-lg shadow-gray-200/50 outline-none focus:ring-4 focus:ring-brand-primary/5 transition-all font-bold text-brand-dark text-sm placeholder-brand-dark/20"
+                            className="w-full h-14 pr-14 pl-5 bg-white rounded-2xl border border-gray-100 dark:border-white/30 shadow-lg shadow-gray-200/50 dark:shadow-none outline-none focus:ring-4 focus:ring-brand-primary/5 transition-all font-bold text-brand-dark text-sm placeholder-brand-dark/20"
                         />
                     </div>
                 </div>
@@ -676,19 +676,19 @@ const SalesView: React.FC<SalesViewProps> = React.memo(({
                                 <div className="flex bg-gray-50 p-2 rounded-[2rem] mb-10 border border-gray-100">
                                     <button
                                         onClick={() => setActivityTab('active')}
-                                        className={`flex-1 py-4 rounded-[1.5rem] font-black text-xs uppercase transition-all ${activityTab === 'active' ? 'bg-white text-brand-primary shadow-xl shadow-gray-200/50' : 'text-gray-400'}`}
+                                        className={`flex-1 py-4 rounded-[1.5rem] font-black text-xs uppercase transition-all ${activityTab === 'active' ? 'bg-white text-brand-primary shadow-xl shadow-gray-200/50 dark:shadow-none dark:ring-1 dark:ring-white/20' : 'text-gray-400'}`}
                                     >
                                         النشطة
                                     </button>
                                     <button
                                         onClick={() => setActivityTab('completed')}
-                                        className={`flex-1 py-4 rounded-[1.5rem] font-black text-xs uppercase transition-all ${activityTab === 'completed' ? 'bg-white text-emerald-600 shadow-xl shadow-gray-200/50' : 'text-gray-400'}`}
+                                        className={`flex-1 py-4 rounded-[1.5rem] font-black text-xs uppercase transition-all ${activityTab === 'completed' ? 'bg-white text-emerald-600 shadow-xl shadow-gray-200/50 dark:shadow-none dark:ring-1 dark:ring-white/20' : 'text-gray-400'}`}
                                     >
                                         المنجزة ({transactions.filter(t => t.salesPerson === currentUser?.name && t.status === 'completed' && new Date(t.date).toDateString() === new Date().toDateString()).length})
                                     </button>
                                     <button
                                         onClick={() => setActivityTab('cancelled')}
-                                        className={`flex-1 py-4 rounded-[1.5rem] font-black text-xs uppercase transition-all ${activityTab === 'cancelled' ? 'bg-white text-rose-500 shadow-xl shadow-gray-200/50' : 'text-gray-400'}`}
+                                        className={`flex-1 py-4 rounded-[1.5rem] font-black text-xs uppercase transition-all ${activityTab === 'cancelled' ? 'bg-white text-rose-500 shadow-xl shadow-gray-200/50 dark:shadow-none dark:ring-1 dark:ring-white/20' : 'text-gray-400'}`}
                                     >
                                         الملغاة
                                     </button>

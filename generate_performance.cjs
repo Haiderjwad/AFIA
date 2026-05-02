@@ -1,8 +1,10 @@
+const fs = require('fs');
 
+const code = `
 import React, { useMemo, useState } from 'react';
 import { Transaction, Employee, AppSettings, UserRole } from '../types';
 import {
-    User, Users, ShoppingBag, ChefHat, UserPlus, Trash2, Edit, Save,
+    Users, ShoppingBag, ChefHat, UserPlus, Trash2, Edit, Save,
     Truck, Banknote, Star, Award, Search, Hash, Mail, Key, Shield, DollarSign,
     ListChecks, X, Download, RefreshCw, Sparkles, TrendingUp
 } from 'lucide-react';
@@ -70,8 +72,8 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
             await new Promise(resolve => setTimeout(resolve, 500));
 
             const pdf = new jsPDF('p', 'mm', 'a4');
-            const pW = pdf.internal.pageSize.getWidth();
-            const pH = pdf.internal.pageSize.getHeight();
+            const pW = pdf.internal.pageSize.getWidth();   
+            const pH = pdf.internal.pageSize.getHeight();  
             const margin = 18;
             const contentW = pW - margin * 2;
             let y = margin;
@@ -98,7 +100,7 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
             const COL_GOLD: RGB = [248, 150, 30];
             const COL_GRAY: RGB = [120, 120, 120];
             const COL_LIGHT: RGB = [245, 247, 244];
-
+            
             const sf = (c: RGB) => pdf.setFillColor(c[0], c[1], c[2]);
             const sd = (c: RGB) => pdf.setDrawColor(c[0], c[1], c[2]);
             const sc = (c: RGB) => pdf.setTextColor(c[0], c[1], c[2]);
@@ -118,7 +120,7 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
             pdf.setTextColor(180, 180, 180);
             pdf.setFontSize(7);
             text(new Date().toLocaleDateString('en-GB'), margin, 20);
-            text(`Al Afia POS System`, pW - margin, 20, { align: 'right' });
+            text(\`Al Afia POS System\`, pW - margin, 20, { align: 'right' });
 
             y = 40;
 
@@ -244,9 +246,9 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
             pdf.setFontSize(7);
             pdf.setFont('helvetica', 'normal');
             text('© Al Afia Business Intelligence System — Confidential', margin, pH - 5);
-            text(`Generated: ${new Date().toLocaleString('en-GB')}`, pW - margin, pH - 5, { align: 'right' });
+            text(\`Generated: \${new Date().toLocaleString('en-GB')}\`, pW - margin, pH - 5, { align: 'right' });
 
-            pdf.save(`تقرير_أداء_الموظفين_${settings.storeName}_${new Date().toISOString().split('T')[0]}.pdf`);
+            pdf.save(\`تقرير_أداء_الموظفين_\${settings.storeName}_\${new Date().toISOString().split('T')[0]}.pdf\`);
 
             setStatusModal({
                 isOpen: true,
@@ -265,7 +267,7 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                 isOpen: true,
                 type: 'error',
                 title: 'خطأ في معالجة التقرير',
-                message: `تعذّر إنشاء الملف. تفاصيل الخطأ: ${String(error)}`
+                message: \`تعذّر إنشاء الملف. تفاصيل الخطأ: \${String(error)}\`
             });
         } finally {
             setIsGenerating(false);
@@ -303,7 +305,7 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
         let secondaryApp;
         try {
             setLoadingEmployees(true);
-            secondaryApp = initializeApp(firebaseConfig, `SecondaryApp-${Date.now()}`);
+            secondaryApp = initializeApp(firebaseConfig, \`SecondaryApp-\${Date.now()}\`);
             const secondaryAuth = getAuth(secondaryApp);
             const userCredential = await createUserWithEmailAndPassword(secondaryAuth, empForm.email, empForm.password);
             const uid = userCredential.user.uid;
@@ -314,7 +316,7 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                 email: empForm.email,
                 role: empForm.role,
                 permissions: empForm.permissions.length > 0 ? empForm.permissions : [empForm.role],
-                employeeId: empForm.employeeId || `EMP-${Date.now().toString().slice(-4)}`,
+                employeeId: empForm.employeeId || \`EMP-\${Date.now().toString().slice(-4)}\`,
                 joinedAt: new Date().toISOString(),
                 salary: parseFloat(empForm.salary) || 0
             };
@@ -323,7 +325,7 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
 
             setEmpForm({ name: '', email: '', password: '', role: 'sales', employeeId: '', permissions: [], salary: '' });
             setIsEmployeeModalOpen(false);
-
+            
             setStatusModal({
                 isOpen: true,
                 type: 'success',
@@ -337,7 +339,7 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                 isOpen: true,
                 type: 'error',
                 title: 'فشل الإنشاء',
-                message: `تأكد من اتصالك بالإنترنت وصحة البيانات: ${error.message}`
+                message: \`تأكد من اتصالك بالإنترنت وصحة البيانات: \${error.message}\`
             });
         } finally {
             if (secondaryApp) {
@@ -386,7 +388,7 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                 isOpen: true,
                 type: 'error',
                 title: 'فشل التحديث',
-                message: `حدث خطأ تقني: ${error.message}`
+                message: \`حدث خطأ تقني: \${error.message}\`
             });
         } finally {
             setLoadingEmployees(false);
@@ -414,24 +416,24 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                     </div>
                 </div>
 
-                <div className="bg-white dark:bg-brand-dark/40 dark:border-brand-primary/10 p-1.5 rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-none border border-white flex gap-1 overflow-x-auto w-full lg:w-auto">
+                <div className="bg-white p-1.5 rounded-2xl shadow-xl shadow-gray-200/50 border border-white flex gap-1 overflow-x-auto w-full lg:w-auto">
                     <button
                         onClick={() => setMainTab('performance')}
-                        className={`flex-1 lg:flex-none px-6 py-3 rounded-[1rem] font-black text-xs transition-all duration-300 whitespace-nowrap
-                            ${mainTab === 'performance'
-                                ? 'bg-brand-dark text-brand-accent shadow-lg shadow-brand-dark/20 scale-[1.02] -translate-y-0.5 dark:bg-brand-primary dark:text-white'
-                                : 'text-gray-400 hover:text-brand-primary hover:bg-gray-50 dark:hover:bg-brand-primary/10 dark:text-gray-300'
-                            }`}
+                        className={\`flex-1 lg:flex-none px-6 py-3 rounded-[1rem] font-black text-xs transition-all duration-300 whitespace-nowrap
+                            \${mainTab === 'performance'
+                                ? 'bg-brand-dark text-brand-accent shadow-lg shadow-brand-dark/20 scale-[1.02] -translate-y-0.5'
+                                : 'text-gray-400 hover:text-brand-primary hover:bg-gray-50'
+                            }\`}
                     >
                         أداء الموظفين
                     </button>
                     <button
                         onClick={() => setMainTab('management')}
-                        className={`flex-1 lg:flex-none px-6 py-3 rounded-[1rem] font-black text-xs transition-all duration-300 whitespace-nowrap
-                            ${mainTab === 'management'
-                                ? 'bg-brand-dark text-brand-accent shadow-lg shadow-brand-dark/20 scale-[1.02] -translate-y-0.5 dark:bg-brand-primary dark:text-white'
-                                : 'text-gray-400 hover:text-brand-primary hover:bg-gray-50 dark:hover:bg-brand-primary/10 dark:text-gray-300'
-                            }`}
+                        className={\`flex-1 lg:flex-none px-6 py-3 rounded-[1rem] font-black text-xs transition-all duration-300 whitespace-nowrap
+                            \${mainTab === 'management'
+                                ? 'bg-brand-dark text-brand-accent shadow-lg shadow-brand-dark/20 scale-[1.02] -translate-y-0.5'
+                                : 'text-gray-400 hover:text-brand-primary hover:bg-gray-50'
+                            }\`}
                     >
                         إدارة الموظفين
                     </button>
@@ -444,12 +446,10 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                         <button
                             onClick={handleExportPDF}
                             disabled={isGenerating}
-                            className="group relative overflow-hidden flex-1 lg:flex-none flex items-center justify-center gap-3 bg-gradient-to-r from-brand-primary to-brand-secondary hover:from-brand-secondary hover:to-brand-primary px-8 py-4 rounded-[1.5rem] font-black text-white shadow-xl shadow-brand-primary/30 dark:shadow-brand-primary/10 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-2xl hover:shadow-brand-primary/40 active:scale-[0.97] disabled:opacity-50 border border-white/10"
+                            className="flex-1 lg:flex-none flex items-center justify-center gap-3 bg-brand-primary hover:bg-brand-secondary px-8 py-4 rounded-[1.5rem] font-black text-white shadow-xl shadow-brand-primary/20 transition-all active:scale-95 disabled:opacity-50"
                         >
-                            {/* Shine effect */}
-                            <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"></div>
-                            {isGenerating ? <RefreshCw size={20} className="animate-spin relative z-10" /> : <Download size={20} className="relative z-10" />}
-                            <span className="relative z-10">تحميل تقرير الأداء</span>
+                            {isGenerating ? <RefreshCw size={20} className="animate-spin" /> : <Download size={20} />}
+                            <span>تحميل تقرير الأداء</span>
                         </button>
                     </div>
 
@@ -502,7 +502,7 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                                 <input
                                     type="text"
                                     placeholder="بحث عن موظف..."
-                                    className="w-full pr-12 pl-4 py-2.5 bg-white dark:bg-brand-light/5 rounded-xl border border-gray-100 dark:border-white/5 dark:text-white outline-none focus:ring-2 focus:ring-brand-primary transition-all text-sm font-bold"
+                                    className="w-full pr-12 pl-4 py-2.5 bg-white rounded-xl border border-gray-100 outline-none focus:ring-2 focus:ring-brand-primary transition-all text-sm font-bold"
                                 />
                             </div>
                         </div>
@@ -510,42 +510,42 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                         <div className="overflow-x-auto">
                             <table className="w-full text-right">
                                 <thead>
-                                    <tr className="bg-brand-light/20 dark:bg-white/5 border-b border-brand-primary/10 dark:border-white/10">
-                                        <th className="px-8 py-5 text-[11px] font-black text-brand-dark dark:text-gray-300 uppercase tracking-widest">الموظف</th>
-                                        <th className="px-8 py-5 text-[11px] font-black text-brand-dark dark:text-gray-300 uppercase tracking-widest">الدور الوظيفي</th>
-                                        <th className="px-8 py-5 text-[11px] font-black text-brand-dark dark:text-gray-300 uppercase tracking-widest text-center">مبيعات</th>
-                                        <th className="px-8 py-5 text-[11px] font-black text-brand-dark dark:text-gray-300 uppercase tracking-widest text-center">مطبخ</th>
-                                        <th className="px-8 py-5 text-[11px] font-black text-brand-dark dark:text-gray-300 uppercase tracking-widest text-center">استلام</th>
-                                        <th className="px-8 py-5 text-[11px] font-black text-brand-dark dark:text-gray-300 uppercase tracking-widest text-center">كاشير</th>
-                                        <th className="px-8 py-5 text-[11px] font-black text-brand-dark dark:text-gray-300 uppercase tracking-widest text-left">مجموع العمليات</th>
+                                    <tr className="bg-gray-50/50">
+                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase">الموظف</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase">الدور الوظيفي</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase text-center">مبيعات</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase text-center">مطبخ</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase text-center">استلام</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase text-center">كاشير</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase text-left">مجموع العمليات</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-50 dark:divide-white/5">
+                                <tbody className="divide-y divide-gray-50">
                                     {performanceData.map((emp, idx) => (
-                                        <tr key={emp.uid} className="hover:bg-brand-primary/5 dark:hover:bg-brand-light/10 transition-colors group">
+                                        <tr key={emp.uid} className="hover:bg-brand-primary/5 transition-colors group">
                                             <td className="px-8 py-6">
                                                 <div className="flex items-center gap-4">
                                                     <div className="w-12 h-12 rounded-2xl bg-brand-light/20 flex items-center justify-center font-black text-brand-primary group-hover:bg-brand-primary group-hover:text-white transition-all shadow-sm">
                                                         {emp.name.charAt(0)}
                                                     </div>
                                                     <div>
-                                                        <p className="font-black text-brand-dark dark:text-white">{emp.name}</p>
+                                                        <p className="font-black text-brand-dark">{emp.name}</p>
                                                         <p className="text-[10px] text-gray-400 font-bold">{emp.email}</p>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td className="px-8 py-6">
-                                                <span className="px-4 py-1.5 rounded-full bg-gray-100 dark:bg-brand-light/10 text-[10px] font-black text-gray-500 dark:text-gray-300 uppercase tracking-widest">
+                                                <span className="px-4 py-1.5 rounded-full bg-gray-100 text-[10px] font-black text-gray-500 uppercase tracking-widest">
                                                     {emp.role}
                                                 </span>
                                             </td>
-                                            <td className="px-8 py-6 text-center font-black text-brand-dark dark:text-white">{emp.stats.sales}</td>
-                                            <td className="px-8 py-6 text-center font-black text-brand-dark dark:text-white">{emp.stats.kitchen}</td>
-                                            <td className="px-8 py-6 text-center font-black text-brand-dark dark:text-white">{emp.stats.delivery}</td>
-                                            <td className="px-8 py-6 text-center font-black text-brand-dark dark:text-white">{emp.stats.cashier}</td>
+                                            <td className="px-8 py-6 text-center font-black text-brand-primary bg-brand-primary/5">{emp.stats.sales}</td>
+                                            <td className="px-8 py-6 text-center font-black text-orange-500">{emp.stats.kitchen}</td>
+                                            <td className="px-8 py-6 text-center font-black text-blue-500 bg-blue-50/30">{emp.stats.delivery}</td>
+                                            <td className="px-8 py-6 text-center font-black text-green-600">{emp.stats.cashier}</td>
                                             <td className="px-8 py-6 text-left">
                                                 <div className="flex items-center justify-end gap-3">
-                                                    <span className="font-black text-xl text-brand-dark dark:text-white">{emp.stats.total}</span>
+                                                    <span className="font-black text-xl text-brand-dark">{emp.stats.total}</span>
                                                     {idx === 0 && <Star className="text-brand-accent fill-brand-accent" size={18} />}
                                                 </div>
                                             </td>
@@ -560,9 +560,9 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
 
             {mainTab === 'management' && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-brand-dark p-6 rounded-3xl border border-brand-primary/10 dark:border-white/5 shadow-sm mb-6">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-3xl border border-brand-primary/10 shadow-sm mb-6">
                         <div className="flex-1">
-                            <h3 className="text-xl font-black text-brand-dark dark:text-white flex items-center gap-2">
+                            <h3 className="text-xl font-black text-brand-dark flex items-center gap-2">
                                 <Users size={24} className="text-brand-primary" /> كادر العمل الذكي
                             </h3>
                             <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Personnel Management Intelligence</p>
@@ -575,7 +575,7 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                                     placeholder="بحث عن موظف..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-brand-light/5 border border-brand-primary/5 dark:border-white/5 dark:text-white rounded-xl focus:ring-2 focus:ring-brand-primary outline-none text-sm font-bold"
+                                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-brand-primary/5 rounded-xl focus:ring-2 focus:ring-brand-primary outline-none text-sm font-bold"
                                 />
                                 <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                             </div>
@@ -586,25 +586,25 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                                     setEmpForm({ name: '', email: '', password: '', role: 'sales', employeeId: '', permissions: [], salary: '' });
                                     setIsEmployeeModalOpen(true);
                                 }}
-                                className="flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-2xl font-black hover:bg-green-500 hover:scale-[1.02] active:scale-95 transition-all duration-300 shadow-lg shadow-green-600/20 hover:shadow-green-500/40 shrink-0"
+                                className="flex items-center gap-2 bg-brand-primary text-white px-6 py-3 rounded-2xl font-black hover:bg-brand-secondary transition-all shadow-lg shadow-brand-primary/20 shrink-0"
                             >
                                 <UserPlus size={20} /> إضافة موظف
                             </button>
                         </div>
                     </div>
 
-                    <div className="bg-white dark:bg-brand-dark rounded-[2.5rem] shadow-xl border border-brand-primary/5 dark:border-white/5 overflow-hidden relative z-10">
+                    <div className="bg-white rounded-[2.5rem] shadow-xl border border-brand-primary/5 overflow-hidden relative z-10">
                         <table className="w-full text-right">
-                            <thead className="bg-brand-light/20 dark:bg-white/5 border-b border-brand-primary/10 dark:border-white/10">
+                            <thead className="bg-brand-light/20 border-b border-brand-primary/10">
                                 <tr>
-                                    <th className="px-8 py-5 text-[11px] font-black text-brand-dark dark:text-gray-300 uppercase tracking-widest">الموظف</th>
-                                    <th className="px-8 py-5 text-[11px] font-black text-brand-dark dark:text-gray-300 uppercase tracking-widest">الدور الوظيفي</th>
-                                    <th className="px-8 py-5 text-[11px] font-black text-brand-dark dark:text-gray-300 uppercase tracking-widest text-center">كود التعريف</th>
-                                    <th className="px-8 py-5 text-[11px] font-black text-brand-dark dark:text-gray-300 uppercase tracking-widest text-center">الراتب</th>
-                                    <th className="px-8 py-5 text-[11px] font-black text-brand-dark dark:text-gray-300 uppercase tracking-widest text-left">التحكم</th>
+                                    <th className="px-8 py-5 text-sm font-black text-brand-dark uppercase tracking-tighter">الموظف</th>
+                                    <th className="px-8 py-5 text-sm font-black text-brand-dark uppercase tracking-tighter">الدور الوظيفي</th>
+                                    <th className="px-8 py-5 text-sm font-black text-brand-dark uppercase tracking-tighter text-center">كود التعريف</th>
+                                    <th className="px-8 py-5 text-sm font-black text-brand-dark uppercase tracking-tighter text-center">الراتب</th>
+                                    <th className="px-8 py-5 text-sm font-black text-brand-dark uppercase tracking-tighter text-left">التحكم</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-50 dark:divide-white/5">
+                            <tbody className="divide-y divide-gray-50">
                                 {loadingEmployees ? (
                                     <tr>
                                         <td colSpan={5} className="py-20 text-center text-gray-400">جاري المعالجة...</td>
@@ -619,33 +619,31 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                                     employees
                                         .filter(e => e.name.toLowerCase().includes(searchTerm.toLowerCase()) || e.email.toLowerCase().includes(searchTerm.toLowerCase()))
                                         .map((emp) => (
-                                            <tr key={emp.uid || emp.email || emp.employeeId} className="hover:bg-brand-light/5 dark:hover:bg-white/5 transition-colors group">
+                                            <tr key={emp.uid || emp.email || emp.employeeId} className="hover:bg-brand-light/5 transition-colors group">
                                                 <td className="px-8 py-5">
                                                     <div className="flex items-center gap-4">
                                                         <div className="w-12 h-12 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center font-black text-lg">
                                                             {emp.name.charAt(0)}
                                                         </div>
                                                         <div>
-                                                            <p className="font-black text-brand-dark dark:text-white">{emp.name}</p>
+                                                            <p className="font-black text-brand-dark">{emp.name}</p>
                                                             <p className="text-xs text-gray-400 font-bold">{emp.email}</p>
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-5">
-                                                    <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${emp.role.toLowerCase() === 'admin' ? 'bg-red-50 text-red-600' :
+                                                    <span className={\`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest \${emp.role.toLowerCase() === 'admin' ? 'bg-red-50 text-red-600' :
                                                         emp.role.toLowerCase() === 'manager' ? 'bg-brand-accent/20 text-brand-accent' :
                                                             'bg-brand-light/50 text-brand-primary'
-                                                        }`}>
+                                                        }\`}>
                                                         {['kitchen', 'cook', 'chef'].includes(emp.role.toLowerCase()) ? 'طباخ' :
                                                             emp.role.toLowerCase() === 'admin' ? 'مدير النظام' :
                                                                 emp.role.toLowerCase() === 'manager' ? 'المدير' :
                                                                     emp.role.toLowerCase() === 'cashier' ? 'الكاشير' : 'المبيعات'}
                                                     </span>
                                                 </td>
-                                                <td className="px-8 py-5 text-center">
-                                                    <span className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-white/10 text-brand-dark dark:text-white font-black text-sm border border-gray-200 dark:border-white/5 shadow-sm inline-block">
-                                                        {emp.employeeId}
-                                                    </span>
+                                                <td className="px-8 py-5 text-center font-bold text-brand-dark/40 text-sm">
+                                                    {emp.employeeId}
                                                 </td>
                                                 <td className="px-8 py-5 text-center font-bold text-green-600 text-sm">
                                                     {formatCurrency(emp.salary || 0, settings.currency)}
@@ -666,7 +664,7 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                                                                 });
                                                                 setIsEmployeeModalOpen(true);
                                                             }}
-                                                            className="p-2.5 bg-brand-primary/10 text-brand-primary hover:bg-brand-primary hover:text-white hover:scale-110 active:scale-90 rounded-xl transition-all duration-300 font-bold shadow-sm hover:shadow-brand-primary/40"
+                                                            className="p-2.5 bg-brand-primary/10 text-brand-primary hover:bg-brand-primary hover:text-white rounded-xl transition-all duration-300 font-bold shadow-sm"
                                                         >
                                                             <Edit size={18} />
                                                         </button>
@@ -688,7 +686,7 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                     {/* Add/Edit Employee Modal */}
                     {isEmployeeModalOpen && (
                         <div className="fixed top-0 right-0 left-0 bottom-0 z-[150] bg-brand-dark/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
-                            <div className="bg-white dark:bg-brand-dark w-full max-w-2xl rounded-[3rem] shadow-4xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-500">
+                            <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-4xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-500">
                                 <div className="p-8 bg-brand-dark text-white flex justify-between items-center">
                                     <div className="flex items-center gap-4">
                                         <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-sm shadow-xl">
@@ -699,7 +697,7 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                                             <p className="text-brand-accent/60 text-xs font-bold uppercase tracking-widest mt-1">Staff Access Intelligence</p>
                                         </div>
                                     </div>
-                                    <button onClick={() => { setIsEmployeeModalOpen(false); setEditingEmployee(null); }} className="bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white hover:scale-110 active:scale-90 p-3 rounded-full transition-all duration-300 hover:shadow-lg hover:shadow-red-500/40">
+                                    <button onClick={() => { setIsEmployeeModalOpen(false); setEditingEmployee(null); }} className="bg-white/10 hover:bg-red-500 hover:text-white p-3 rounded-full transition-all">
                                         <X size={24} />
                                     </button>
                                 </div>
@@ -714,7 +712,7 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                                                 type="text"
                                                 value={empForm.name}
                                                 onChange={(e) => setEmpForm({ ...empForm, name: e.target.value })}
-                                                className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-brand-light/5 border border-brand-primary/10 dark:border-white/5 focus:ring-2 dark:text-white focus:ring-brand-primary outline-none font-bold text-brand-dark"
+                                                className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-brand-primary/10 focus:ring-2 focus:ring-brand-primary outline-none font-bold text-brand-dark"
                                                 placeholder="مثال: أحمد محمد"
                                             />
                                         </div>
@@ -726,7 +724,7 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                                                 type="text"
                                                 value={empForm.employeeId}
                                                 onChange={(e) => setEmpForm({ ...empForm, employeeId: e.target.value })}
-                                                className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-brand-light/5 border border-brand-primary/10 dark:border-white/5 focus:ring-2 dark:text-white focus:ring-brand-primary outline-none font-bold text-brand-dark"
+                                                className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-brand-primary/10 focus:ring-2 focus:ring-brand-primary outline-none font-bold text-brand-dark"
                                                 placeholder="مثال: EMP-101"
                                             />
                                         </div>
@@ -740,7 +738,7 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                                             type="email"
                                             value={empForm.email}
                                             onChange={(e) => setEmpForm({ ...empForm, email: e.target.value })}
-                                            className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-brand-light/5 border border-brand-primary/10 dark:border-white/5 focus:ring-2 dark:text-white focus:ring-brand-primary outline-none font-bold text-brand-dark"
+                                            className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-brand-primary/10 focus:ring-2 focus:ring-brand-primary outline-none font-bold text-brand-dark"
                                             placeholder="name@company.com"
                                         />
                                     </div>
@@ -753,7 +751,7 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                                             <select
                                                 value={empForm.role}
                                                 onChange={(e) => setEmpForm({ ...empForm, role: e.target.value as UserRole })}
-                                                className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-brand-light/5 border border-brand-primary/10 dark:border-white/5 focus:ring-2 dark:text-white focus:ring-brand-primary outline-none font-bold text-brand-dark appearance-none"
+                                                className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-brand-primary/10 focus:ring-2 focus:ring-brand-primary outline-none font-bold text-brand-dark appearance-none"
                                             >
                                                 <option value="sales">المبيعات</option>
                                                 <option value="cashier">الكاشير</option>
@@ -771,7 +769,7 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                                                     type="password"
                                                     value={empForm.password}
                                                     onChange={(e) => setEmpForm({ ...empForm, password: e.target.value })}
-                                                    className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-brand-light/5 border border-brand-primary/10 dark:border-white/5 focus:ring-2 dark:text-white focus:ring-brand-primary outline-none font-bold text-brand-dark"
+                                                    className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-brand-primary/10 focus:ring-2 focus:ring-brand-primary outline-none font-bold text-brand-dark"
                                                     placeholder="******"
                                                 />
                                             </div>
@@ -787,13 +785,13 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                                                 type="number"
                                                 value={empForm.salary}
                                                 onChange={(e) => setEmpForm({ ...empForm, salary: e.target.value })}
-                                                className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-brand-light/5 border border-brand-primary/10 dark:border-white/5 focus:ring-2 dark:text-white focus:ring-brand-primary outline-none font-bold text-brand-dark"
+                                                className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-brand-primary/10 focus:ring-2 focus:ring-brand-primary outline-none font-bold text-brand-dark"
                                                 placeholder="0.00"
                                             />
                                         </div>
                                     </div>
 
-                                    <div className="p-6 bg-brand-light/10 dark:bg-brand-dark/50 rounded-3xl border border-dashed border-brand-primary/20 dark:border-white/10">
+                                    <div className="p-6 bg-brand-light/10 rounded-3xl border border-dashed border-brand-primary/20">
                                         <h4 className="text-sm font-black text-brand-dark mb-4 flex items-center gap-2">
                                             <ListChecks size={18} className="text-brand-primary" /> صلاحيات الوصول المخصصة
                                         </h4>
@@ -811,10 +809,10 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                                             ].map(perm => (
                                                 <label
                                                     key={perm.id}
-                                                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${Array.isArray(empForm.permissions) && empForm.permissions.includes(perm.id)
+                                                    className={\`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer \${Array.isArray(empForm.permissions) && empForm.permissions.includes(perm.id)
                                                         ? 'bg-brand-primary/10 border-brand-primary/30 shadow-sm'
                                                         : 'bg-white border-gray-100 hover:bg-gray-50'
-                                                        }`}
+                                                        }\`}
                                                 >
                                                     <input
                                                         type="checkbox"
@@ -841,11 +839,11 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                                     </div>
                                 </div>
 
-                                <div className="p-8 bg-gray-50 dark:bg-brand-dark flex gap-4 border-t dark:border-white/5">
+                                <div className="p-8 bg-gray-50 flex gap-4">
                                     <button
                                         onClick={editingEmployee ? handleUpdateEmployee : handleAddEmployee}
                                         disabled={loadingEmployees}
-                                        className="flex-1 bg-green-600 text-white font-black py-5 rounded-[1.5rem] flex items-center justify-center gap-2 hover:bg-green-500 hover:scale-[1.02] active:scale-95 transition-all duration-300 shadow-xl shadow-green-600/30 hover:shadow-green-500/50 disabled:opacity-50 disabled:hover:scale-100"
+                                        className="flex-1 bg-brand-primary text-white font-black py-5 rounded-[1.5rem] flex items-center justify-center gap-2 hover:bg-brand-secondary transition-all shadow-xl shadow-brand-primary/20 disabled:opacity-50"
                                     >
                                         {loadingEmployees ? (
                                             <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -858,9 +856,9 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
                                     </button>
                                     <button
                                         onClick={() => { setIsEmployeeModalOpen(false); setEditingEmployee(null); }}
-                                        className="px-8 bg-white dark:bg-brand-dark text-gray-400 font-black py-5 rounded-[1.5rem] border-2 border-gray-100 dark:border-white/10 hover:border-gray-300 hover:text-brand-dark dark:hover:border-white/20 dark:hover:text-white hover:scale-[1.02] active:scale-95 transition-all duration-300"
+                                        className="px-8 bg-white text-gray-400 font-black py-5 rounded-[1.5rem] border-2 border-gray-100 hover:text-brand-dark transition-all"
                                     >
-                                        تراجع
+                                        إلغاء
                                     </button>
                                 </div>
                             </div>
@@ -890,3 +888,6 @@ const EmployeePerformanceView: React.FC<EmployeePerformanceViewProps> = ({ emplo
 };
 
 export default EmployeePerformanceView;
+`;
+
+fs.writeFileSync('/home/al-ayada/Desktop/AFIA/components/EmployeePerformanceView.tsx', code);
