@@ -142,12 +142,10 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                                 fontSize: 'clamp(2.8rem, 8vw, 4.5rem)',
                                 lineHeight: 1.25,
                                 paddingBottom: '0.1em',
-                                background: isDarkMode
-                                    ? 'linear-gradient(135deg, #40C980 0%, #1A4532 50%, #0f5a2e 100%)'
-                                    : 'linear-gradient(135deg, #1B4332 0%, #2D6A4F 50%, #52B788 100%)',
-                                WebkitBackgroundClip: 'text',
-                                WebkitTextFillColor: 'transparent',
-                                backgroundClip: 'text',
+                                color: isDarkMode ? '#40C980' : '#2D6A4F',
+                                textShadow: isDarkMode
+                                    ? '0 0 20px rgba(64,201,128,0.3)'
+                                    : '0 0 20px rgba(45,106,79,0.2)'
                             }}
                         >
                             سوفتي كود
