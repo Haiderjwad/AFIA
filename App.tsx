@@ -27,6 +27,7 @@ import SplashScreen from './components/SplashScreen';
 import PublicMenuView from './components/PublicMenuView';
 import DigitalMenuView from './components/DigitalMenuView';
 import StatusModal from './components/StatusModal';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 
 const App: React.FC = () => {
@@ -796,11 +797,16 @@ const App: React.FC = () => {
   }
 
   if (!isAuthenticated) {
-    return <LoginView onLogin={handleLogin} />;
+    return (
+      <ThemeProvider>
+        <LoginView onLogin={handleLogin} />
+      </ThemeProvider>
+    );
   }
 
   return (
-    <div className={`flex h-screen w-full bg-brand-cream font-sans overflow-hidden transition-colors duration-500`}>
+    <ThemeProvider>
+      <div className={`flex h-screen w-full bg-brand-cream font-sans overflow-hidden transition-colors duration-500`}>
       <Sidebar
         activeItem={activeTab}
         setActiveItem={handleSidebarNavigation}
@@ -951,6 +957,7 @@ const App: React.FC = () => {
 
       {/* Kitchen Warning Removed */}
     </div>
+    </ThemeProvider>
   );
 };
 
